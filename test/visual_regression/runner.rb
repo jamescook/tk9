@@ -40,14 +40,22 @@ module VisualRegression
 
     def generate_screenshots
       puts "Generating screenshots..."
+      $stdout.flush
       WidgetShowcase.new(output_dir: UNVERIFIED_DIR).run
+      puts "Screenshot generation complete!"
+      $stdout.flush
     end
 
     def compare_screenshots
       puts "\nComparing screenshots against blessed baselines..."
       puts "-" * 60
+      $stdout.flush
 
+      puts "Initializing perceptualdiff..."
+      $stdout.flush
       diff_tool = Perceptualdiff.new(threshold: threshold)
+      puts "Perceptualdiff initialized with threshold: #{threshold}"
+      $stdout.flush
       unverified_files = Dir.glob(File.join(UNVERIFIED_DIR, '*.png')).sort
 
       if unverified_files.empty?

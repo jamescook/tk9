@@ -10,7 +10,8 @@ module TkcTagAccess
   include TkTreatTagFont
 end
 
-require 'tk/canvas'
+# Note: Removed circular 'require tk/canvas' - canvas.rb already requires
+# canvastag.rb, and the methods below only reference @c at runtime.
 
 module TkcTagAccess
   def addtag(tag)

@@ -52,7 +52,12 @@ module VisualRegression
     private
 
     def validate_installation!
-      return if self.class.installed?
+      puts "  Checking if perceptualdiff is installed..."
+      $stdout.flush
+      installed = self.class.installed?
+      puts "  perceptualdiff installed: #{installed}"
+      $stdout.flush
+      return if installed
 
       raise NotInstalledError, <<~MSG
         perceptualdiff is not installed. Install it with:
