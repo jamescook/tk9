@@ -560,28 +560,9 @@ module VisualRegression
     # Screenshot Capture
     ###########################################
     def schedule_captures
-      # Use Tk.after to poll for window readiness within the main event loop.
-      # This is more reliable than tkwait which can hang if called before mainloop.
-      @wait_attempts = 0
-      wait_for_window_ready { run_captures(0) }
-    end
-
-    def wait_for_window_ready(&block)
-      @wait_attempts += 1
-      mapped = Tk.tk_call('winfo', 'ismapped', @root).to_i
-
-      if mapped == 1
-        # Window is mapped, give it a moment to fully render
-        Tk.after(250, &block)
-      elsif @wait_attempts >= 100  # 5 seconds max (100 * 50ms)
-        # Give up waiting and proceed anyway (xvfb may report differently)
-        warn "Warning: Window not reported as mapped after #{@wait_attempts} attempts, proceeding anyway"
-        Tk.update
-        Tk.after(200, &block)
-      else
-        # Not mapped yet, check again in 50ms
-        Tk.after(50) { wait_for_window_ready(&block) }
-      end
+      # Wait for window to be ready before capturing screenshots.
+      # Using a fixed delay since winfo ismapped doesn't work reliably under xvfb.
+      Tk.after(1000) { run_captures(0) }
     end
 
     def run_captures(index)
