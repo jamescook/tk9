@@ -1,13 +1,22 @@
-# Ruby/Tk
+# tk9
 
-Tk interface module using tcltklib
+Tk interface module for Ruby with **Tcl/Tk 9.x support**.
+
+This is a fork of [ruby/tk](https://github.com/ruby/tk) updated to work with Tcl/Tk 9.0+ while maintaining backward compatibility with Tcl/Tk 8.6.
+
+## Features
+
+- Full Tcl/Tk 9.x compatibility
+- Backward compatible with Tcl/Tk 8.6
+- New Tcl 9 widget options (e.g., `placeholder` for Entry/Combobox)
+- Visual regression testing for both Tcl versions
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'tk'
+gem 'tk9'
 ```
 
 And then execute:
@@ -16,15 +25,27 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install tk
+    $ gem install tk9
 
 You may need to set options when using `gem install` so that the gem can find the Tcl/Tk headers and library:
 
-    $ gem install tk -- \
+    $ gem install tk9 -- \
         --with-tcl-include='/path/to/tcl/header/directory' \
         --with-tk-include='/path/to/tk/header/directory' \
         --with-tcl-lib='/path/to/tcl/shared/library/directory' \
         --with-tk-lib='/path/to/tk/shared/library/directory'
+
+## Usage
+
+```ruby
+require 'tk'
+
+root = TkRoot.new { title "Hello, Tk9!" }
+TkLabel.new(root) { text "Works with Tcl/Tk 8.6 and 9.x" }.pack
+Tk.mainloop
+```
+
+Note: You still `require 'tk'` - the gem name is `tk9` but the library interface is unchanged.
 
 ## Documentation
 
@@ -59,21 +80,14 @@ You must also check that your Tcl/Tk is installed properly.
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Contributing
 
-Your contributions are welcome on GitHub at https://github.com/ruby/tk.
-
-Unfortunately we have no resource to handle issue reports.
-
-Therefore please open pull request with either:
-
-- a bug report with a correction patch or
-- (at least) a reproducible code snippet for an issue in form of a test/spec.
-
-Thank you in advance!
+Contributions are welcome on GitHub at https://github.com/jamescook/tk9.
 
 ## License
 
 The gem is available as open source under the terms of the [Ruby license](LICENSE.txt).
+
+This is a fork of [ruby/tk](https://github.com/ruby/tk). Original authors: SHIBATA Hiroshi, Nobuyoshi Nakada, Jeremy Evans.
