@@ -1,8 +1,8 @@
-# tk9
+# tk-ng
 
-Tk interface module for Ruby with **Tcl/Tk 9.x support**.
+Tk interface module for Ruby.
 
-This is a fork of [ruby/tk](https://github.com/ruby/tk) updated to work with Tcl/Tk 9.0+ while maintaining backward compatibility with Tcl/Tk 8.6.
+Fork of [ruby/tk](https://github.com/ruby/tk) with Tcl/Tk 8.6 and 9.x support. Modernized for Ruby 3.2+.
 
 ## Features
 
@@ -16,7 +16,7 @@ This is a fork of [ruby/tk](https://github.com/ruby/tk) updated to work with Tcl
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'tk9'
+gem 'tk-ng'
 ```
 
 And then execute:
@@ -25,11 +25,11 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install tk9
+    $ gem install tk-ng
 
 You may need to set options when using `gem install` so that the gem can find the Tcl/Tk headers and library:
 
-    $ gem install tk9 -- \
+    $ gem install tk-ng -- \
         --with-tcl-include='/path/to/tcl/header/directory' \
         --with-tk-include='/path/to/tk/header/directory' \
         --with-tcl-lib='/path/to/tcl/shared/library/directory' \
@@ -45,7 +45,7 @@ TkLabel.new(root) { text "Works with Tcl/Tk 8.6 and 9.x" }.pack
 Tk.mainloop
 ```
 
-Note: You still `require 'tk'` - the gem name is `tk9` but the library interface is unchanged.
+Note: You still `require 'tk'` - the gem name is `tk-ng` but the library interface is unchanged.
 
 ## Documentation
 
@@ -84,7 +84,7 @@ To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Contributing
 
-Contributions are welcome on GitHub at https://github.com/jamescook/tk9.
+Contributions are welcome on GitHub at https://github.com/jamescook/tk-ng.
 
 ## License
 

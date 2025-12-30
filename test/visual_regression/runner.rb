@@ -97,7 +97,7 @@ module VisualRegression
 
     def compare_single(diff_tool, name, blessed, unverified, diff)
       unless File.exist?(blessed)
-        puts "  #{name}: MISSING BASELINE"
+        puts "  #{name.ljust(28)} MISSING BASELINE"
         return { name: name, status: :missing, message: 'No blessed baseline exists' }
       end
 
@@ -108,11 +108,11 @@ module VisualRegression
       File.write(log_file, "Comparing: #{blessed} vs #{unverified}\n\n#{result.output}\n")
 
       if result.passed?
-        puts "  #{name}: PASS"
+        puts "  #{name.ljust(28)} PASS"
         FileUtils.rm_f(diff) # Remove diff file for passing tests
         { name: name, status: :pass, pixel_diff: result.pixel_diff }
       else
-        puts "  #{name}: FAIL (#{result.pixel_diff} pixels differ)"
+        puts "  #{name.ljust(28)} FAIL (#{result.pixel_diff} pixels differ)"
         puts "    Log: #{log_file}"
         # Create overlay showing diff on top of blessed image
         overlay = File.join(diffs_dir, "overlay_#{name}")
