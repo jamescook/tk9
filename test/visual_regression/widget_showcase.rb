@@ -572,7 +572,7 @@ module VisualRegression
 
       if mapped == 1
         # Window is mapped, give it a moment to fully render
-        Tk.after(100, &block)
+        Tk.after(250, &block)
       elsif @wait_attempts >= 100  # 5 seconds max (100 * 50ms)
         # Give up waiting and proceed anyway (xvfb may report differently)
         warn "Warning: Window not reported as mapped after #{@wait_attempts} attempts, proceeding anyway"

@@ -6669,7 +6669,6 @@ call_queue_handler(Tcl_Event *evPtr, int flags)
 {
     struct call_queue *q = (struct call_queue *)evPtr;
     volatile VALUE ret;
-    volatile VALUE q_dat;
     volatile VALUE thread = q->thread;
     struct tcltkip *ptr;
 
@@ -7117,7 +7116,6 @@ eval_queue_handler(Tcl_Event *evPtr, int flags)
 {
     struct eval_queue *q = (struct eval_queue *)evPtr;
     volatile VALUE ret;
-    volatile VALUE q_dat;
     volatile VALUE thread = q->thread;
     struct tcltkip *ptr;
 
@@ -8035,8 +8033,8 @@ invoke_tcl_proc(arg)
 #endif
 {
     struct invoke_info *inf = (struct invoke_info *)arg;
-#if TCL_MAJOR_VERSION >= 8 && TCL_MINOR_VERSION < 6
-    Tcl_Size i, len;  /* Tcl 9 uses Tcl_Size */
+#if TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION < 6
+    Tcl_Size i, len;
     Tcl_Size argc = inf->objc;
     char **argv = (char **)NULL;
 #endif
@@ -8529,7 +8527,6 @@ invoke_queue_handler(Tcl_Event *evPtr, int flags)
 {
     struct invoke_queue *q = (struct invoke_queue *)evPtr;
     volatile VALUE ret;
-    volatile VALUE q_dat;
     volatile VALUE thread = q->thread;
     struct tcltkip *ptr;
 

@@ -1776,9 +1776,15 @@ def pthread_check()
       else
         tcl_major_ver = TclConfig_Info['TCL_MAJOR_VERSION'].to_i
         tcl_minor_ver = TclConfig_Info['TCL_MINOR_VERSION'].to_i
-        if tcl_major_ver < 8 || (tcl_major_ver == 8 && tcl_minor_ver == 0)
+        if tcl_major_ver >= 9
+          # Tcl 9+ always has threading enabled (--disable-threads was removed)
+          tcl_enable_thread = true
+        elsif tcl_major_ver < 8 || (tcl_major_ver == 8 && tcl_minor_ver == 0)
+          # Tcl 8.0 and earlier didn't have native thread support
           tcl_enable_thread = false
         end
+        # For Tcl 8.1-8.6, threading is optional and TCL_THREADS should be in
+        # tclConfig.sh. If missing, tcl_enable_thread stays nil (unknown).
       end
 
       if tcl_enable_thread == nil
