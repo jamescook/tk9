@@ -11,15 +11,39 @@ module VisualRegression
   # 3. Reports differences and exits with appropriate status
   class Runner
     SCREENSHOTS_DIR = File.expand_path('../../../screenshots', __FILE__)
-    BLESSED_DIR = File.join(SCREENSHOTS_DIR, 'blessed')
-    UNVERIFIED_DIR = File.join(SCREENSHOTS_DIR, 'unverified')
-    DIFFS_DIR = File.join(SCREENSHOTS_DIR, 'diffs')
 
-    attr_reader :threshold, :results
+    attr_reader :threshold, :results, :tcl_version, :platform
 
     def initialize(threshold: Perceptualdiff::DEFAULT_THRESHOLD)
       @threshold = threshold
       @results = []
+      @tcl_version = "tcl#{Tk::TCL_VERSION}"
+      @platform = detect_platform
+    end
+
+    def detect_platform
+      case RUBY_PLATFORM
+      when /darwin/
+        'darwin'
+      when /linux/
+        'linux'
+      when /mingw|mswin/
+        'windows'
+      else
+        'unknown'
+      end
+    end
+
+    def blessed_dir
+      File.join(SCREENSHOTS_DIR, 'blessed', platform, tcl_version)
+    end
+
+    def unverified_dir
+      File.join(SCREENSHOTS_DIR, 'unverified', platform, tcl_version)
+    end
+
+    def diffs_dir
+      File.join(SCREENSHOTS_DIR, 'diffs', platform, tcl_version)
     end
 
     def self.call(threshold: Perceptualdiff::DEFAULT_THRESHOLD)
@@ -32,31 +56,23 @@ module VisualRegression
     end
 
     def setup_directories
-      FileUtils.mkdir_p(BLESSED_DIR)
-      FileUtils.mkdir_p(UNVERIFIED_DIR)
-      FileUtils.mkdir_p(DIFFS_DIR)
-      FileUtils.rm_f(Dir.glob(File.join(DIFFS_DIR, '*.png')))
+      FileUtils.mkdir_p(blessed_dir)
+      FileUtils.mkdir_p(unverified_dir)
+      FileUtils.mkdir_p(diffs_dir)
+      FileUtils.rm_f(Dir.glob(File.join(diffs_dir, '*.png')))
     end
 
     def generate_screenshots
-      puts "Generating screenshots..."
-      $stdout.flush
-      WidgetShowcase.new(output_dir: UNVERIFIED_DIR).run
-      puts "Screenshot generation complete!"
-      $stdout.flush
+      puts "Generating screenshots for #{tcl_version}..."
+      WidgetShowcase.new(output_dir: unverified_dir).run
     end
 
     def compare_screenshots
-      puts "\nComparing screenshots against blessed baselines..."
+      puts "\nComparing against blessed baselines (#{tcl_version})..."
       puts "-" * 60
-      $stdout.flush
 
-      puts "Initializing perceptualdiff..."
-      $stdout.flush
       diff_tool = Perceptualdiff.new(threshold: threshold)
-      puts "Perceptualdiff initialized with threshold: #{threshold}"
-      $stdout.flush
-      unverified_files = Dir.glob(File.join(UNVERIFIED_DIR, '*.png')).sort
+      unverified_files = Dir.glob(File.join(unverified_dir, '*.png')).sort
 
       if unverified_files.empty?
         puts "ERROR: No screenshots generated!"
@@ -65,8 +81,8 @@ module VisualRegression
 
       unverified_files.each do |unverified|
         name = File.basename(unverified)
-        blessed = File.join(BLESSED_DIR, name)
-        diff = File.join(DIFFS_DIR, "diff_#{name}")
+        blessed = File.join(blessed_dir, name)
+        diff = File.join(diffs_dir, "diff_#{name}")
 
         result = compare_single(diff_tool, name, blessed, unverified, diff)
         @results << result
@@ -117,7 +133,7 @@ module VisualRegression
           puts "  - #{r[:name]}"
         end
         puts "\nTo bless current screenshots:"
-        puts "  cp #{UNVERIFIED_DIR}/*.png #{BLESSED_DIR}/"
+        puts "  cp #{unverified_dir}/*.png #{blessed_dir}/"
       end
     end
 

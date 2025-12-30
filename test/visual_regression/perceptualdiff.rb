@@ -52,16 +52,12 @@ module VisualRegression
     private
 
     def validate_installation!
-      puts "  Checking if perceptualdiff is installed..."
-      $stdout.flush
-      installed = self.class.installed?
-      puts "  perceptualdiff installed: #{installed}"
-      $stdout.flush
-      return if installed
+      return if self.class.installed?
 
       raise NotInstalledError, <<~MSG
         perceptualdiff is not installed. Install it with:
-          brew install perceptualdiff
+          macOS: brew install perceptualdiff
+          Linux: apt-get install perceptualdiff
       MSG
     end
 

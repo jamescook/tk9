@@ -1,0 +1,84 @@
+# Test Dockerfile for Tcl/Tk on Ubuntu 24.04
+#
+# Usage:
+#   Tcl/Tk 9.0 (default, built from source):
+#     docker build -f Dockerfile.ci-test -t tk-ci-test .
+#
+#   Tcl/Tk 8.6 (from apt):
+#     docker build -f Dockerfile.ci-test --build-arg TCL_VERSION=8.6 -t tk-ci-test-8 .
+#
+#   Run tests:
+#     docker run --rm -v $(pwd)/screenshots:/app/screenshots tk-ci-test
+
+FROM ubuntu:24.04
+
+ARG TCL_VERSION=9.0
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TCL_VERSION=${TCL_VERSION}
+
+# Install base dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    ruby \
+    ruby-dev \
+    git \
+    xvfb \
+    imagemagick \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Tcl/Tk based on version
+RUN apt-get update && \
+    if [ "${TCL_VERSION}" = "8.6" ]; then \
+        apt-get install -y tcl-dev tk-dev; \
+    else \
+        apt-get install -y curl libx11-dev libxft-dev libxss-dev && \
+        cd /tmp && \
+        curl -LO "https://prdownloads.sourceforge.net/tcl/tcl9.0.1-src.tar.gz" && \
+        tar xzf tcl9.0.1-src.tar.gz && \
+        rm -rf tcl9.0.1/pkgs/sqlite3* && \
+        cd tcl9.0.1/unix && \
+        ./configure --prefix=/usr/local --disable-zipfs && \
+        make -j$(nproc) && \
+        make install && \
+        cd /tmp && \
+        curl -LO "https://prdownloads.sourceforge.net/tcl/tk9.0.1-src.tar.gz" && \
+        tar xzf tk9.0.1-src.tar.gz && \
+        cd tk9.0.1/unix && \
+        ./configure --prefix=/usr/local --with-tcl=/usr/local/lib && \
+        make -j$(nproc) && \
+        make install && \
+        rm -rf /tmp/tcl* /tmp/tk*; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+# Copy gem source
+WORKDIR /app
+COPY . .
+
+# Install bundler and dependencies
+RUN gem install bundler --no-document && bundle install
+
+# Compile the extension based on version
+# Note: Use dpkg-architecture to get correct lib path for arm64 vs x86_64
+RUN if [ "${TCL_VERSION}" = "8.6" ]; then \
+        MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
+        rake compile -- --with-tcltkversion=8.6 \
+            --with-tcl-lib=/usr/lib/${MULTIARCH} \
+            --with-tk-lib=/usr/lib/${MULTIARCH} \
+            --with-tcl-include=/usr/include/tcl8.6 \
+            --with-tk-include=/usr/include/tcl8.6; \
+    else \
+        rake compile -- --with-tcltkversion=9.0 \
+            --with-tcl-lib=/usr/local/lib \
+            --with-tk-lib=/usr/local/lib \
+            --with-tcl-include=/usr/local/include \
+            --with-tk-include=/usr/local/include; \
+    fi
+
+# Verify extension loads
+RUN xvfb-run ruby -I lib -r tk -e "puts \"Tk loaded! TCL_VERSION=#{Tk::TCL_VERSION}\""
+
+# Screenshots will be in /app/screenshots/unverified/linux/tcl{version}/
+CMD ["bash", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 1 && DISPLAY=:99 rake test"]

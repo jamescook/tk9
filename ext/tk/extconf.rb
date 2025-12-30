@@ -651,23 +651,49 @@ def libcheck_for_tclConfig(tcldir, tkdir, tclconf, tkconf)
   exts = "(" + get_ext_list.join('|') + ")"
 
   if tclver
-    tcl_glob = "*tcl#{stub}#{tclver}.*"
-    tcl_regexp = /^.*(tcl#{stub}#{tclver}.*)\.(#{exts}).*$/
+    # Tcl 9.x stubs are unversioned (libtclstub.a), Tcl 8.x are versioned (libtclstub8.6.a)
+    if stub != "" && tclver.start_with?("9")
+      tcl_glob = "{*tcl#{stub}.*,*tcl#{stub}#{tclver}.*}"
+      tcl_regexp = /^.*(tcl#{stub}(?:#{tclver})?.*)\.(#{exts}).*$/
+    else
+      tcl_glob = "*tcl#{stub}#{tclver}.*"
+      tcl_regexp = /^.*(tcl#{stub}#{tclver}.*)\.(#{exts}).*$/
+    end
   elsif tclconf
-    tcl_glob = "*tcl#{stub}#{tclconf['TCL_MAJOR_VERSION']}{.,}#{tclconf['TCL_MINOR_VERSION']}*.*"
-    tcl_regexp = /^.*(tcl#{stub}#{tclconf['TCL_MAJOR_VERSION']}(?:\.|)#{tclconf['TCL_MINOR_VERSION']}.*)\.(#{exts}).*$/
+    # Tcl 9.x stubs are unversioned (libtclstub.a), Tcl 8.x are versioned (libtclstub8.6.a)
+    major = tclconf['TCL_MAJOR_VERSION']
+    minor = tclconf['TCL_MINOR_VERSION']
+    if stub != "" && major.to_i >= 9
+      tcl_glob = "{*tcl#{stub}.*,*tcl#{stub}#{major}{.,}#{minor}*.*}"
+      tcl_regexp = /^.*(tcl#{stub}(?:#{major}(?:\.|)#{minor})?.*)\.(#{exts}).*$/
+    else
+      tcl_glob = "*tcl#{stub}#{major}{.,}#{minor}*.*"
+      tcl_regexp = /^.*(tcl#{stub}#{major}(?:\.|)#{minor}.*)\.(#{exts}).*$/
+    end
   end
   if tkver
     # Tcl 9.x uses "tcl9tk" prefix (TIP 628), Tcl 8.x uses "tk" prefix
-    tk_glob = "{*tcl9tk#{stub}#{tkver}.*,*tk#{stub}#{tkver}.*}"
-    tk_regexp = /^.*((?:tcl9)?tk#{stub}#{tkver}.*)\.(#{exts}).*$/
+    # Tcl 9.x stubs are unversioned (libtkstub.a), Tcl 8.x are versioned (libtkstub8.6.a)
+    if stub != "" && tkver.start_with?("9")
+      tk_glob = "{*tk#{stub}.*,*tcl9tk#{stub}#{tkver}.*,*tk#{stub}#{tkver}.*}"
+      tk_regexp = /^.*((?:tcl9)?tk#{stub}(?:#{tkver})?.*)\.(#{exts}).*$/
+    else
+      tk_glob = "{*tcl9tk#{stub}#{tkver}.*,*tk#{stub}#{tkver}.*}"
+      tk_regexp = /^.*((?:tcl9)?tk#{stub}#{tkver}.*)\.(#{exts}).*$/
+    end
   elsif tkconf
     # Tcl 9.x uses "tcl9tk" prefix (TIP 628), Tcl 8.x uses "tk" prefix
+    # Tcl 9.x stubs are unversioned (libtkstub.a), Tcl 8.x are versioned (libtkstub8.6.a)
     major = tkconf['TK_MAJOR_VERSION']
     minor = tkconf['TK_MINOR_VERSION']
     if major.to_i >= 9
-      tk_glob = "*tcl9tk#{stub}#{major}{.,}#{minor}*.*"
-      tk_regexp = /^.*(tcl9tk#{stub}#{major}(?:\.|)#{minor}.*)\.#{exts}.*$/
+      if stub != ""
+        tk_glob = "{*tk#{stub}.*,*tcl9tk#{stub}#{major}{.,}#{minor}*.*}"
+        tk_regexp = /^.*((?:tcl9)?tk#{stub}(?:#{major}(?:\.|)#{minor})?.*)\.#{exts}.*$/
+      else
+        tk_glob = "*tcl9tk#{stub}#{major}{.,}#{minor}*.*"
+        tk_regexp = /^.*(tcl9tk#{stub}#{major}(?:\.|)#{minor}.*)\.#{exts}.*$/
+      end
     else
       tk_glob = "*tk#{stub}#{major}{.,}#{minor}*.*"
       tk_regexp = /^.*(tk#{stub}#{major}(?:\.|)#{minor}.*)\.#{exts}.*$/
@@ -1356,6 +1382,8 @@ def find_tk(tklib, stubs, version, *opt_paths)
           no_dot_ver = ver.delete('.')
           libnames = ["#{lib}#{ver}", "#{lib}#{no_dot_ver}"]
           libnames << "tk#{ver}" << "tk#{no_dot_ver}"  if lib != "tk"
+          # Tcl 9.x uses "tcl9tk" prefix (TIP 628)
+          libnames << "tcl9tk#{ver}" << "tcl9tk#{no_dot_ver}" if ver.start_with?("9")
           libnames.find{|libname|
             sufx_list.find{|sufx|
               print(".")
@@ -1987,7 +2015,18 @@ end
 =end
 stubs = enable_config("tcltk-stubs") || with_config("tcltk-stubs")
 if (TkLib_Config["tcltk-stubs"] = stubs)
-  puts("Compile with Tcl/Tk stubs.")
+  puts("")
+  puts("=" * 72)
+  puts("WARNING: --enable-tcltk-stubs is not fully supported by this extension.")
+  puts("")
+  puts("This extension calls Tcl/Tk functions that are not available through")
+  puts("the stubs table (e.g., Tcl_StaticPackage, Tk_CreateConsoleWindow).")
+  puts("These will cause 'symbol not found' errors at runtime.")
+  puts("")
+  puts("Since Ruby gems are compiled at install time against the system's")
+  puts("Tcl/Tk, stubs provide no practical benefit here anyway.")
+  puts("=" * 72)
+  puts("")
   $CPPFLAGS ||= ""; $CPPFLAGS += ' -DUSE_TCL_STUBS -DUSE_TK_STUBS'
 end
 
@@ -2149,5 +2188,4 @@ if (TkLib_Config["tcltk-framework"] ||
 else
   puts "\nCan't find proper Tcl/Tk libraries. So, can't make tcltklib.so which is required by Ruby/Tk."
   puts "If you have Tcl/Tk libraries on your environment, you may be able to use them with configure options (see ext/tk/README.tcltklib)."
-  puts "At present, Tcl/Tk8.6 is not supported. Although you can try to use Tcl/Tk8.6 with configure options, it will not work correctly. I recommend you to use Tcl/Tk8.5 or 8.4."
 end

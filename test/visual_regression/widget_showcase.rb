@@ -52,6 +52,16 @@ module VisualRegression
       @root.focus(true)
       @root.overrideredirect(true)  # Borderless window - must be after focus for some reason. Needed to avoid subtle changes between runs due to rounded corners
 
+      # Track OS-level window focus for screenshot warnings
+      @window_focused = true
+      Tk.tk_call('bind', @root, '<Activate>', proc { @window_focused = true })
+      Tk.tk_call('bind', @root, '<Deactivate>', proc { @window_focused = false })
+
+      # Force light appearance to avoid dark mode variations
+      if RUBY_PLATFORM =~ /darwin/
+        Tk.tk_call('tk::unsupported::MacWindowStyle', 'appearance', @root, 'aqua')
+      end
+
       # Add a menubar to the root window
       build_menubar
 
@@ -568,6 +578,20 @@ module VisualRegression
     end
 
     def take_screenshot(name)
+      # Try to ensure window is frontmost
+      @root.raise
+      Tk.update
+
+      # Abort if window doesn't have focus (screenshots will capture wrong content)
+      if RUBY_PLATFORM =~ /darwin/ && !ENV['CI'] && !@window_focused
+        warn ""
+        warn "ERROR: Tk window is not focused! Screenshots would capture wrong content."
+        warn "       Keep the widget showcase window focused during capture."
+        warn ""
+        @root.destroy
+        exit 1
+      end
+
       x = @root.winfo_rootx
       y = @root.winfo_rooty
       w = @root.winfo_width
@@ -576,8 +600,24 @@ module VisualRegression
       # No title bar adjustment needed - window is borderless (overrideredirect)
 
       file = File.join(output_dir, "#{name}.png")
-      system("screencapture", "-R#{x},#{y},#{w},#{h}", file)
+      capture_screen_region(x, y, w, h, file)
       puts "  Captured: #{name}.png"
+    end
+
+    # Cross-platform screen capture.
+    #
+    # macOS: Uses screencapture. Requires Screen Recording permission for your
+    # terminal app (System Settings > Privacy & Security > Screen Recording).
+    # First run will prompt for permission - grant it and restart terminal.
+    #
+    # Linux: Uses ImageMagick's import command. Requires imagemagick package.
+    # For headless CI, run under xvfb-run.
+    def capture_screen_region(x, y, w, h, file)
+      if RUBY_PLATFORM =~ /darwin/
+        system("screencapture", "-R#{x},#{y},#{w},#{h}", file)
+      else
+        system("import", "-window", "root", "-crop", "#{w}x#{h}+#{x}+#{y}", "+repage", file)
+      end
     end
   end
 end

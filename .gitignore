@@ -1,3 +1,4 @@
+.DS_Store
 /.bundle/
 /.yardoc
 /Gemfile.lock
@@ -12,3 +13,5 @@
 *.bundle
 *.dSYM/
 ext/**/Makefile
+screenshots/unverified/
+screenshots/diffs/

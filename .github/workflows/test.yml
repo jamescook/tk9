@@ -1,14 +1,158 @@
-name: build
+name: CI
 
 on: [push, pull_request]
 
 jobs:
-  build:
-    name: build (${{ matrix.ruby }}
+  # Build and cache Tcl/Tk 9.0 first (single job, no matrix)
+  build-tcltk9:
+    name: build tcl/tk 9.0
+    runs-on: ubuntu-24.04
+    env:
+      TCL_VERSION: "9.0.1"
+      TK_VERSION: "9.0.1"
+    steps:
+    - name: Cache Tcl/Tk 9.0 build
+      id: cache-tcltk
+      uses: actions/cache@v4
+      with:
+        path: /opt/tcltk9
+        key: tcltk-${{ env.TCL_VERSION }}-${{ env.TK_VERSION }}-ubuntu2404
+
+    - name: Install build dependencies
+      if: steps.cache-tcltk.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential curl libx11-dev libxft-dev libxss-dev
+
+    - name: Build Tcl from source
+      if: steps.cache-tcltk.outputs.cache-hit != 'true'
+      run: |
+        cd /tmp
+        curl -LO "https://prdownloads.sourceforge.net/tcl/tcl${TCL_VERSION}-src.tar.gz"
+        tar xzf tcl${TCL_VERSION}-src.tar.gz
+        rm -rf tcl${TCL_VERSION}/pkgs/sqlite3*
+        cd tcl${TCL_VERSION}/unix
+        ./configure --prefix=/opt/tcltk9 --disable-zipfs
+        make -j$(nproc)
+        sudo make install
+
+    - name: Build Tk from source
+      if: steps.cache-tcltk.outputs.cache-hit != 'true'
+      run: |
+        cd /tmp
+        curl -LO "https://prdownloads.sourceforge.net/tcl/tk${TK_VERSION}-src.tar.gz"
+        tar xzf tk${TK_VERSION}-src.tar.gz
+        cd tk${TK_VERSION}/unix
+        ./configure --prefix=/opt/tcltk9 --with-tcl=/opt/tcltk9/lib
+        make -j$(nproc)
+        sudo make install
+
+  # Tcl 9.x Ruby builds (parallel matrix, cache already populated)
+  build-tcl9:
+    name: build (ruby ${{ matrix.ruby }}, tcl 9.0)
+    needs: build-tcltk9
     strategy:
       fail-fast: false
       matrix:
-        ruby: [ 3.4, 3.3, 3.2, 3.1, head ]
+        ruby: [ '3.4' ]
+    runs-on: ubuntu-24.04
+    env:
+      TCL_VERSION: "9.0.1"
+      TK_VERSION: "9.0.1"
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Restore Tcl/Tk 9.0 cache
+      uses: actions/cache@v4
+      with:
+        path: /opt/tcltk9
+        key: tcltk-${{ env.TCL_VERSION }}-${{ env.TK_VERSION }}-ubuntu2404
+
+    - name: Install build and runtime dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxft-dev libxss-dev xvfb
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+
+    - name: Install gem dependencies
+      run: |
+        gem install bundler --no-document
+        bundle install
+
+    - name: Compile extension
+      env:
+        LD_LIBRARY_PATH: /opt/tcltk9/lib
+      run: |
+        rake compile -- --with-tcltkversion=9.0 \
+          --with-tcl-lib=/opt/tcltk9/lib \
+          --with-tk-lib=/opt/tcltk9/lib \
+          --with-tcl-include=/opt/tcltk9/include \
+          --with-tk-include=/opt/tcltk9/include
+
+    - name: Verify extension loads
+      env:
+        LD_LIBRARY_PATH: /opt/tcltk9/lib
+      run: |
+        xvfb-run ruby -I lib -r tk -e "puts \"Tk loaded! TCL_VERSION=#{Tk::TCL_VERSION}\""
+
+  visual-regression-tcl9:
+    name: visual regression (tcl 9.0)
+    needs: build-tcl9
+    runs-on: ubuntu-24.04
+    env:
+      TCL_VERSION: "9.0.1"
+      TK_VERSION: "9.0.1"
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Restore Tcl/Tk 9.0 cache
+      uses: actions/cache@v4
+      with:
+        path: /opt/tcltk9
+        key: tcltk-${{ env.TCL_VERSION }}-${{ env.TK_VERSION }}-ubuntu2404
+
+    - name: Install build and runtime dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxft-dev libxss-dev xvfb imagemagick perceptualdiff
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+
+    - name: Install gem dependencies
+      run: |
+        gem install bundler --no-document
+        bundle install
+
+    - name: Compile extension
+      env:
+        LD_LIBRARY_PATH: /opt/tcltk9/lib
+      run: |
+        rake compile -- --with-tcltkversion=9.0 \
+          --with-tcl-lib=/opt/tcltk9/lib \
+          --with-tk-lib=/opt/tcltk9/lib \
+          --with-tcl-include=/opt/tcltk9/include \
+          --with-tk-include=/opt/tcltk9/include
+
+    - name: Run visual regression tests
+      env:
+        LD_LIBRARY_PATH: /opt/tcltk9/lib
+      run: xvfb-run --auto-servernum rake test
+
+  # Tcl 8.6 builds only run after all Tcl 9.x jobs pass
+  build-tcl8:
+    name: build (ruby ${{ matrix.ruby }}, tcl 8.6)
+    needs: visual-regression-tcl9
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [ '3.4' ]
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v6
@@ -16,15 +160,49 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
-    - name: Install dependencies
+    - name: Install Tcl/Tk
       run: |
-        sudo apt install tk-dev
+        sudo apt-get update
+        sudo apt-get install -y tk-dev xvfb
+    - name: Install gem dependencies
+      run: |
         gem install bundler --no-document
         bundle install
-    - name: Run test
+    - name: Compile extension
       run: |
         rake compile -- --with-tcltkversion=8.6 \
-        --with-tcl-lib=/usr/lib/x86_64-linux-gnu \
-        --with-tk-lib=/usr/lib/x86_64-linux-gnu \
-        --with-tcl-include=/usr/include/tcl8.6 \
-        --with-tk-include=/usr/include/tcl8.6
+          --with-tcl-lib=/usr/lib/x86_64-linux-gnu \
+          --with-tk-lib=/usr/lib/x86_64-linux-gnu \
+          --with-tcl-include=/usr/include/tcl8.6 \
+          --with-tk-include=/usr/include/tcl8.6
+    - name: Verify extension loads
+      run: |
+        xvfb-run ruby -I lib -r tk -e "puts \"Tk loaded! TCL_VERSION=#{Tk::TCL_VERSION}\""
+
+  visual-regression-tcl8:
+    name: visual regression (tcl 8.6)
+    needs: build-tcl8
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tk-dev xvfb imagemagick perceptualdiff
+    - name: Install gem dependencies
+      run: |
+        gem install bundler --no-document
+        bundle install
+    - name: Compile extension
+      run: |
+        rake compile -- --with-tcltkversion=8.6 \
+          --with-tcl-lib=/usr/lib/x86_64-linux-gnu \
+          --with-tk-lib=/usr/lib/x86_64-linux-gnu \
+          --with-tcl-include=/usr/include/tcl8.6 \
+          --with-tk-include=/usr/include/tcl8.6
+    - name: Run visual regression tests
+      run: xvfb-run --auto-servernum rake test

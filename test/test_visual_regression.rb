@@ -20,7 +20,7 @@ class TestVisualRegression < Minitest::Test
 
     assert_empty missing, "Missing blessed baselines:\n" +
       missing.map { |r| "  #{r[:name]}" }.join("\n") +
-      "\n\nTo create baselines: cp screenshots/unverified/*.png screenshots/blessed/"
+      "\n\nTo create baselines: rake screenshots:bless (or: cp #{runner.unverified_dir}/*.png #{runner.blessed_dir}/)"
 
     assert_empty failures, "Visual regression failures:\n" +
       failures.map { |r| "  #{r[:name]}: #{r[:pixel_diff]} pixels differ" }.join("\n")
