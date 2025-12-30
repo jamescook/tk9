@@ -16,7 +16,6 @@ Gem::Specification.new do |spec|
   spec.extensions = ["ext/tk/extconf.rb", "ext/tk/tkutil/extconf.rb"]
   spec.required_ruby_version = ">= 3.2"
 
-  spec.add_development_dependency "bundler", "~> 2.0"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rake-compiler", "~> 1.0"
 
