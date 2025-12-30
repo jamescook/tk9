@@ -134,6 +134,19 @@ jobs:
         packages: libx11-dev libxft-dev libxss-dev xvfb imagemagick perceptualdiff
         execute_install_scripts: true
 
+    - name: Verify screenshot tools
+      run: |
+        if ! which import; then
+          echo "ERROR: 'import' command not found"
+          echo "--- ImageMagick package info ---"
+          dpkg -l | grep -i magick || echo "No imagemagick packages installed"
+          echo "--- Available magick binaries ---"
+          dpkg -L imagemagick 2>/dev/null | grep bin || echo "imagemagick package not installed"
+          which magick && magick --version || echo "magick command not found"
+          exit 1
+        fi
+        which perceptualdiff || (echo "ERROR: perceptualdiff not found" && exit 1)
+
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
@@ -219,6 +232,18 @@ jobs:
       with:
         packages: tcl-dev tk-dev xvfb imagemagick perceptualdiff
         execute_install_scripts: true
+    - name: Verify screenshot tools
+      run: |
+        if ! which import; then
+          echo "ERROR: 'import' command not found"
+          echo "--- ImageMagick package info ---"
+          dpkg -l | grep -i magick || echo "No imagemagick packages installed"
+          echo "--- Available magick binaries ---"
+          dpkg -L imagemagick 2>/dev/null | grep bin || echo "imagemagick package not installed"
+          which magick && magick --version || echo "magick command not found"
+          exit 1
+        fi
+        which perceptualdiff || (echo "ERROR: perceptualdiff not found" && exit 1)
     - name: Install gem dependencies
       run: |
         gem install bundler --no-document

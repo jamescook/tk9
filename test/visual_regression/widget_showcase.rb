@@ -20,9 +20,22 @@ module VisualRegression
     end
 
     def run
+      setup_error_handler
       build_ui
       schedule_captures
       Tk.mainloop
+    end
+
+    def setup_error_handler
+      # Define bgerror handler to catch background errors from Tk.after callbacks.
+      # When errors occur in Tk.after callbacks, Tcl saves the error and invokes
+      # bgerror as an idle event. We define it to print the error and exit.
+      Tk.tk_call('proc', '::bgerror', 'message', <<~'TCL')
+        puts stderr "ERROR (bgerror): $message"
+        puts stderr [info errorinfo]
+        flush stderr
+        exit 1
+      TCL
     end
 
     private
