@@ -64,27 +64,8 @@ extern VALUE rb_proc_new (VALUE (*)(ANYARGS/* VALUE yieldarg[, VALUE procarg] */
 
 #undef EXTERN   /* avoid conflict with tcl.h of tcl8.2 or before */
 #include <stdio.h>
-#ifdef HAVE_STDARG_PROTOTYPES
 #include <stdarg.h>
-#define va_init_list(a,b) va_start(a,b)
-#else
-#include <varargs.h>
-#define va_init_list(a,b) va_start(a)
-#endif
 #include <string.h>
-
-#if !defined HAVE_VSNPRINTF && !defined vsnprintf
-#  ifdef WIN32
-     /* In Win32, vsnprintf is available as the "non-ANSI" _vsnprintf. */
-#    define vsnprintf _vsnprintf
-#  else
-#    ifdef HAVE_RUBY_RUBY_H
-#      include "ruby/missing.h"
-#    else
-#      include "missing.h"
-#    endif
-#  endif
-#endif
 
 #include <tcl.h>
 #include <tk.h>
@@ -853,7 +834,7 @@ create_ip_exc(interp, exc, fmt, va_alist)
     VALUE einfo;
     struct tcltkip *ptr = get_ip(interp);
 
-    va_init_list(args,fmt);
+    va_start(args, fmt);
     msg = rb_vsprintf(fmt, args);
     va_end(args);
     einfo = rb_exc_new_str(exc, msg);
