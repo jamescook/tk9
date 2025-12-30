@@ -159,6 +159,16 @@ jobs:
         LD_LIBRARY_PATH: /opt/tcltk9/lib
       run: xvfb-run --auto-servernum rake test
 
+    - name: Upload failed screenshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: failed-screenshots-tcl9
+        path: |
+          screenshots/unverified/
+          screenshots/diffs/
+        retention-days: 7
+
   # Tcl 8.6 builds only run after all Tcl 9.x jobs pass
   build-tcl8:
     name: build (ruby ${{ matrix.ruby }}, tcl 8.6)
@@ -222,3 +232,13 @@ jobs:
           --with-tk-include=/usr/include/tcl8.6
     - name: Run visual regression tests
       run: xvfb-run --auto-servernum rake test
+
+    - name: Upload failed screenshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: failed-screenshots-tcl8
+        path: |
+          screenshots/unverified/
+          screenshots/diffs/
+        retention-days: 7

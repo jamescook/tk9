@@ -25,6 +25,9 @@ class Tk::Tile::TEntry < Tk::Entry
   WidgetClassName = 'TEntry'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
+  # Options added in Tcl/Tk 9.0
+  TCL9_OPTIONS = ['placeholder', 'placeholderforeground'].freeze
+
   def __optkey_aliases
     {:vcmd=>:validatecommand, :invcmd=>:invalidcommand}
   end
@@ -36,9 +39,31 @@ class Tk::Tile::TEntry < Tk::Entry
   private :__boolval_optkeys
 
   def __strval_optkeys
-    super() << 'show'
+    keys = super() << 'show'
+    # Add placeholder options for Tcl/Tk 9.0+
+    if Tk::TCL_MAJOR_VERSION >= 9
+      keys.concat(TCL9_OPTIONS)
+    end
+    keys
   end
   private :__strval_optkeys
+
+  # Warn if Tcl 9 options used on Tcl 8.x
+  def configure(slot, value=TkComm::None)
+    if Tk::TCL_MAJOR_VERSION < 9 && slot.is_a?(Hash)
+      TCL9_OPTIONS.each do |opt|
+        if slot.key?(opt) || slot.key?(opt.to_sym)
+          warn "Warning: '#{opt}' option requires Tcl/Tk 9.0+ (you have #{Tk::TCL_VERSION})"
+          slot.delete(opt)
+          slot.delete(opt.to_sym)
+        end
+      end
+    elsif Tk::TCL_MAJOR_VERSION < 9 && TCL9_OPTIONS.include?(slot.to_s)
+      warn "Warning: '#{slot}' option requires Tcl/Tk 9.0+ (you have #{Tk::TCL_VERSION})"
+      return self
+    end
+    super
+  end
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

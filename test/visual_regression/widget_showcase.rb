@@ -170,6 +170,18 @@ module VisualRegression
       e4.pack(side: 'left', padx: 2)
       e4.insert(0, 'Readonly')
       e4.state(['readonly'])
+
+      # Placeholder (Tcl/Tk 9.0+ only, ignored on 8.6)
+      frame2 = Ttk::Frame.new(lf)
+      frame2.pack(fill: 'x', padx: 5, pady: 5)
+
+      e5 = Ttk::Entry.new(frame2, width: 25, placeholder: 'Enter your name...')
+      e5.pack(side: 'left', padx: 2)
+
+      e6 = Ttk::Combobox.new(frame2, width: 20,
+                              values: ['Red', 'Green', 'Blue'],
+                              placeholder: 'Select a color...')
+      e6.pack(side: 'left', padx: 2)
     end
 
     ###########################################

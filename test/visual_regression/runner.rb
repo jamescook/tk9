@@ -103,7 +103,12 @@ module VisualRegression
         { name: name, status: :pass, pixel_diff: result.pixel_diff }
       else
         puts "  #{name}: FAIL (#{result.pixel_diff} pixels differ)"
-        { name: name, status: :fail, pixel_diff: result.pixel_diff, diff_image: diff }
+        # Create overlay showing diff on top of blessed image
+        overlay = File.join(diffs_dir, "overlay_#{name}")
+        if Perceptualdiff.create_overlay(blessed: blessed, diff: diff, output: overlay)
+          puts "    Overlay: #{overlay}"
+        end
+        { name: name, status: :fail, pixel_diff: result.pixel_diff, diff_image: diff, overlay_image: overlay }
       end
     end
 

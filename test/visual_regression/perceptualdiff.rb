@@ -95,5 +95,33 @@ module VisualRegression
         nil
       end
     end
+
+    # Check if ImageMagick's composite command is installed
+    def self.composite_installed?
+      _, _, status = Open3.capture3('which', 'composite')
+      status.success?
+    end
+
+    # Create an overlay image showing the diff on top of the blessed image
+    # Requires ImageMagick's composite command
+    #
+    # @param blessed [String] Path to the blessed image
+    # @param diff [String] Path to the diff image
+    # @param output [String] Path for the output overlay image
+    # @return [Boolean] true if successful
+    def self.create_overlay(blessed:, diff:, output:)
+      unless composite_installed?
+        warn "    (overlay skipped: install imagemagick for overlay images)"
+        return false
+      end
+      return false unless File.exist?(blessed) && File.exist?(diff)
+
+      # Use ImageMagick composite to blend diff (50% opacity) over blessed
+      _, _, status = Open3.capture3(
+        'composite', '-dissolve', '50', '-gravity', 'center',
+        diff, blessed, output
+      )
+      status.success?
+    end
   end
 end
