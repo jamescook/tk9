@@ -48,6 +48,7 @@ module VisualRegression
     def build_ui
       @root = TkRoot.new { title "Tk Widget Showcase" }
       @root.geometry("750x550+100+100")
+
       @root.raise
       @root.focus(true)
       @root.overrideredirect(true)  # Borderless window - must be after focus for some reason. Needed to avoid subtle changes between runs due to rounded corners
@@ -559,8 +560,27 @@ module VisualRegression
     # Screenshot Capture
     ###########################################
     def schedule_captures
-      Tk.after(500) do
-        run_captures(0)
+      # Use Tk.after to poll for window readiness within the main event loop.
+      # This is more reliable than tkwait which can hang if called before mainloop.
+      @wait_attempts = 0
+      wait_for_window_ready { run_captures(0) }
+    end
+
+    def wait_for_window_ready(&block)
+      @wait_attempts += 1
+      mapped = Tk.tk_call('winfo', 'ismapped', @root).to_i
+
+      if mapped == 1
+        # Window is mapped, give it a moment to fully render
+        Tk.after(100, &block)
+      elsif @wait_attempts >= 100  # 5 seconds max (100 * 50ms)
+        # Give up waiting and proceed anyway (xvfb may report differently)
+        warn "Warning: Window not reported as mapped after #{@wait_attempts} attempts, proceeding anyway"
+        Tk.update
+        Tk.after(200, &block)
+      else
+        # Not mapped yet, check again in 50ms
+        Tk.after(50) { wait_for_window_ready(&block) }
       end
     end
 
@@ -573,7 +593,7 @@ module VisualRegression
         @notebook.select(capture[:tab_index])
 
         # Wait for render
-        Tk.after(250) do
+        Tk.after(500) do
           # Run optional setup (e.g., scroll to bottom)
           capture[:setup]&.call
 
@@ -585,7 +605,7 @@ module VisualRegression
         end
       else
         puts "Screenshots saved to: #{output_dir}/"
-        Tk.after(200) { @root.destroy }
+        Tk.after(500) { @root.destroy }
       end
     end
 

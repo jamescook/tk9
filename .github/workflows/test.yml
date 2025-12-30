@@ -157,7 +157,7 @@ jobs:
     - name: Run visual regression tests
       env:
         LD_LIBRARY_PATH: /opt/tcltk9/lib
-      run: xvfb-run --auto-servernum rake test
+      run: timeout 60 xvfb-run --auto-servernum rake test
 
     - name: Upload failed screenshots
       if: failure()
@@ -231,7 +231,7 @@ jobs:
           --with-tcl-include=/usr/include/tcl8.6 \
           --with-tk-include=/usr/include/tcl8.6
     - name: Run visual regression tests
-      run: xvfb-run --auto-servernum rake test
+      run: timeout 60 xvfb-run --auto-servernum rake test
 
     - name: Upload failed screenshots
       if: failure()
