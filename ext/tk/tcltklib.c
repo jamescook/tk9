@@ -713,11 +713,6 @@ static char rubytkkit_preInitCmd[] =
         "}\n"
         "if {$a(contents) eq \"\"} { error {empty boot.tcl} }\n"
         "uplevel #0 $a(contents)\n"
-#if 0
-    "} elseif {[lindex $::argv 0] eq \"-init-\"} {\n"
-        "uplevel #0 { source [lindex $::argv 1] }\n"
-        "exit\n"
-#endif
     "} else {\n"
         /* When cannot find VFS data, try to use a real directory */
         "set vfsdir \"[file rootname $::tcl::kitpath].vfs\"\n"
@@ -734,20 +729,6 @@ static char rubytkkit_preInitCmd[] =
 "}\n"
 "tclKitPreInit"
 ;
-
-#if 0
-/* Not use this script.
-   It's a memo to support an initScript for Tcl interpreters in the future. */
-static const char initScript[] =
-"if {[file isfile [file join $::tcl::kitpath main.tcl]]} {\n"
-    "if {[info commands console] != {}} { console hide }\n"
-    "set tcl_interactive 0\n"
-    "incr argc\n"
-    "set argv [linsert $argv 0 $argv0]\n"
-    "set argv0 [file join $::tcl::kitpath main.tcl]\n"
-"} else continue\n"
-;
-#endif
 
 /*--------------------------------------------------------*/
 
@@ -898,20 +879,6 @@ init_static_tcltk_packages(void)
 static int
 call_tclkit_init_script(Tcl_Interp  *interp)
 {
-#if 0
-  /* Currently, do nothing in this function.
-     It's a memo (quoted from kitInit.c of Tclkit)
-     to support an initScript for Tcl interpreters in the future. */
-  if (Tcl_EvalEx(interp, initScript, -1, TCL_EVAL_GLOBAL) == TCL_OK) {
-    const char *encoding = NULL;
-    Tcl_Obj* path = Tcl_GetStartupScript(&encoding);
-    Tcl_SetStartupScript(Tcl_GetObjResult(interp), encoding);
-    if (path == NULL) {
-      Tcl_Eval(interp, "incr argc -1; set argv [lrange $argv 1 end]");
-    }
-  }
-#endif
-
   return 1;
 }
 
@@ -1612,43 +1579,6 @@ call_DoOneEvent(VALUE flag_val)
 #endif
 
 
-#if 0
-static VALUE
-eventloop_sleep(VALUE dummy)
-{
-    struct timeval t;
-
-    if (no_event_wait <= 0) {
-      return Qnil;
-    }
-
-    t.tv_sec = 0;
-    t.tv_usec = (int)(no_event_wait*1000.0);
-
-#ifdef HAVE_NATIVETHREAD
-#ifndef RUBY_USE_NATIVE_THREAD
-    if (!ruby_native_thread_p()) {
-        rb_bug("cross-thread violation on eventloop_sleep()");
-    }
-#endif
-#endif
-
-    DUMP2("eventloop_sleep: rb_thread_wait_for() at thread : %"PRIxVALUE, rb_thread_current());
-    rb_thread_wait_for(t);
-    DUMP2("eventloop_sleep: finish at thread : %"PRIxVALUE, rb_thread_current());
-
-#ifdef HAVE_NATIVETHREAD
-#ifndef RUBY_USE_NATIVE_THREAD
-    if (!ruby_native_thread_p()) {
-        rb_bug("cross-thread violation on eventloop_sleep()");
-    }
-#endif
-#endif
-
-    return Qnil;
-}
-#endif
-
 #define USE_EVLOOP_THREAD_ALONE_CHECK_FLAG 0
 
 #if USE_EVLOOP_THREAD_ALONE_CHECK_FLAG
@@ -1740,9 +1670,6 @@ lib_eventloop_core(int check_root, int update_flag, int *check_var, Tcl_Interp *
     volatile VALUE current = eventloop_thread;
     int found_event = 1;
     int event_flag;
-#if 0
-    struct timeval t;
-#endif
     int status;
     int depth = rbtk_eventloop_depth;
 #if USE_EVLOOP_THREAD_ALONE_CHECK_FLAG
@@ -1752,11 +1679,6 @@ lib_eventloop_core(int check_root, int update_flag, int *check_var, Tcl_Interp *
 #endif
 
     if (update_flag) DUMP1("update loop start!!");
-
-#if 0
-    t.tv_sec = 0;
-    t.tv_usec = 1000 * no_event_wait;
-#endif
 
     Tcl_DeleteTimerHandler(timer_token);
     run_timer_flag = 0;
@@ -2004,43 +1926,6 @@ lib_eventloop_core(int check_root, int update_flag, int *check_var, Tcl_Interp *
                         }
 
                         tick_counter += no_event_tick;
-
-#if 0
-                        /* rb_thread_wait_for(t); */
-                        rb_protect(eventloop_sleep, Qnil, &status);
-
-                        if (status) {
-                            switch (status) {
-                            case TAG_RAISE:
-                                if (NIL_P(rb_errinfo())) {
-                                    rbtk_pending_exception
-                                        = rb_exc_new2(rb_eException,
-                                                      "unknown exception");
-                                } else {
-                                    rbtk_pending_exception = rb_errinfo();
-
-                                    if (!NIL_P(rbtk_pending_exception)) {
-                                        if (rbtk_eventloop_depth == 0) {
-                                            VALUE exc = rbtk_pending_exception;
-                                            rbtk_pending_exception = Qnil;
-                                            rb_exc_raise(exc);
-                                        } else {
-                                            return 0;
-                                        }
-                                    }
-                                }
-                                break;
-
-                            case TAG_FATAL:
-                                if (NIL_P(rb_errinfo())) {
-                                    rb_exc_raise(rb_exc_new2(rb_eFatal,
-                                                             "FATAL"));
-                                } else {
-                                    rb_exc_raise(rb_errinfo());
-                                }
-                            }
-                        }
-#endif
                     }
 
                 } else {
@@ -2124,34 +2009,6 @@ VALUE
 lib_eventloop_main(VALUE args)
 {
     return lib_eventloop_main_core(args);
-
-#if 0
-    volatile VALUE ret;
-    int status = 0;
-
-    ret = rb_protect(lib_eventloop_main_core, args, &status);
-
-    switch (status) {
-    case TAG_RAISE:
-        if (NIL_P(rb_errinfo())) {
-            rbtk_pending_exception
-                = rb_exc_new2(rb_eException, "unknown exception");
-        } else {
-            rbtk_pending_exception = rb_errinfo();
-        }
-        return Qnil;
-
-    case TAG_FATAL:
-        if (NIL_P(rb_errinfo())) {
-            rbtk_pending_exception = rb_exc_new2(rb_eFatal, "FATAL");
-        } else {
-            rbtk_pending_exception = rb_errinfo();
-        }
-        return Qnil;
-    }
-
-    return ret;
-#endif
 }
 
 VALUE
@@ -2249,10 +2106,6 @@ lib_eventloop_launcher(int check_root, int update_flag, int *check_var, Tcl_Inte
     args->check_var    = check_var;
     args->interp       = interp;
 
-#if 0
-    return rb_ensure(lib_eventloop_main, (VALUE)args,
-                     lib_eventloop_ensure, (VALUE)args);
-#endif
     return rb_ensure(lib_eventloop_main_core, (VALUE)args,
                      lib_eventloop_ensure, (VALUE)args);
 }
@@ -2851,10 +2704,6 @@ ip_ruby_eval(
 
     /* ruby command has 1 arg. */
     if (argc != 2) {
-#if 0
-        rb_raise(rb_eArgError,
-                 "wrong number of arguments (%d for 1)", argc - 1);
-#else
         char buf[sizeof(int)*8 + 1];
         Tcl_ResetResult(interp);
         sprintf(buf, "%d", argc-1);
@@ -2863,7 +2712,6 @@ ip_ruby_eval(
         rbtk_pending_exception = rb_exc_new2(rb_eArgError,
                                              Tcl_GetStringResult(interp));
         return TCL_ERROR;
-#endif
     }
 
     /* get C string from Tcl object */
@@ -2969,15 +2817,11 @@ ip_ruby_cmd(
     }
 
     if (argc < 3) {
-#if 0
-        rb_raise(rb_eArgError, "too few arguments");
-#else
         Tcl_ResetResult(interp);
         Tcl_AppendResult(interp, "too few arguments", (char *)NULL);
         rbtk_pending_exception = rb_exc_new2(rb_eArgError,
                                              Tcl_GetStringResult(interp));
         return TCL_ERROR;
-#endif
     }
 
     /* get arguments from Tcl objects */
@@ -2989,10 +2833,6 @@ ip_ruby_cmd(
     /* receiver = rb_protect(ip_ruby_cmd_receiver_get, (VALUE)str, &code); */
     receiver = ip_ruby_cmd_receiver_get(str);
     if (NIL_P(receiver)) {
-#if 0
-        rb_raise(rb_eArgError,
-                 "unknown class/module/global-variable '%s'", str);
-#else
         Tcl_ResetResult(interp);
         Tcl_AppendResult(interp, "unknown class/module/global-variable '",
                          str, "'", (char *)NULL);
@@ -3000,7 +2840,6 @@ ip_ruby_cmd(
                                              Tcl_GetStringResult(interp));
         if (old_gc == Qfalse) rb_gc_enable();
         return TCL_ERROR;
-#endif
     }
 
     /* get metrhod */
@@ -4100,13 +3939,6 @@ ip_rb_threadTkWaitObjCmd(
         break;
 
     case TKWAIT_VISIBILITY:
-#if 0 /* variable 'tkwin' must keep the token of MainWindow */
-        if (!tk_stubs_init_p() || Tk_MainWindow(interp) == (Tk_Window)NULL) {
-            window = NULL;
-        } else {
-            window = Tk_NameToWindow(interp, nameString, tkwin);
-        }
-#else
         if (!tk_stubs_init_p() || tkwin == (Tk_Window)NULL) {
             window = NULL;
 	} else {
@@ -4118,7 +3950,6 @@ ip_rb_threadTkWaitObjCmd(
                 window = NULL;
             }
 	}
-#endif
 
         if (window == NULL) {
             Tcl_AppendResult(interp, ": thread_tkwait: ",
@@ -4183,13 +4014,6 @@ ip_rb_threadTkWaitObjCmd(
         break;
 
     case TKWAIT_WINDOW:
-#if 0 /* variable 'tkwin' must keep the token of MainWindow */
-        if (!tk_stubs_init_p() || Tk_MainWindow(interp) == (Tk_Window)NULL) {
-            window = NULL;
-        } else {
-            window = Tk_NameToWindow(interp, nameString, tkwin);
-        }
-#else
         if (!tk_stubs_init_p() || tkwin == (Tk_Window)NULL) {
             window = NULL;
 	} else {
@@ -4201,7 +4025,6 @@ ip_rb_threadTkWaitObjCmd(
                 window = NULL;
             }
 	}
-#endif
 
         Tcl_DecrRefCount(objv[2]);
 
@@ -4952,19 +4775,6 @@ ip_create_slave_core(VALUE interp, int argc, VALUE *argv)
         safe = 1;
     }
 
-#if 0
-    /* init Tk */
-    if (RTEST(with_tk)) {
-        volatile VALUE exc;
-        if (!tk_stubs_init_p()) {
-            exc = tcltkip_init_tk(interp);
-            if (!NIL_P(exc)) {
-                return exc;
-            }
-        }
-    }
-#endif
-
     new_ip = TypedData_Make_Struct(CLASS_OF(interp), struct tcltkip,
 				   &tcltkip_type, slave);
     /* create slave-ip */
@@ -5657,10 +5467,6 @@ ip_eval_real(VALUE self, char *cmd_str, int cmd_len)
           /* Tcl_Preserve(ptr->ip); */
           rbtk_preserve_ip(ptr);
 
-#if 0
-          ptr->return_value = Tcl_EvalObj(ptr->ip, cmd);
-          /* ptr->return_value = Tcl_GlobalEvalObj(ptr->ip, cmd); */
-#else
           inf.ptr = ptr;
           inf.cmd = cmd;
           ret = rb_protect(call_tcl_eval, (VALUE)&inf, &status);
@@ -5681,7 +5487,6 @@ ip_eval_real(VALUE self, char *cmd_str, int cmd_len)
                   rbtk_pending_exception = rb_errinfo();
               }
           }
-#endif
       }
 
       Tcl_DecrRefCount(cmd);
@@ -8055,11 +7860,7 @@ struct dummy_TkMenuRef {
     char *dummy3;
 };
 
-#if 0 /* was available on Tk8.0 -- Tk8.4 */
-EXTERN struct dummy_TkMenuRef *TkFindMenuReferences(Tcl_Interp*, char*);
-#else /* based on Tk8.0 -- Tk8.5.0 */
 #define MENU_HASH_KEY "tkMenus"
-#endif
 
 static VALUE
 ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
@@ -8074,9 +7875,6 @@ ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
     menu_path = argv[0];
     StringValue(menu_path);
 
-#if 0 /* was available on Tk8.0 -- Tk8.4 */
-    menuRefPtr = TkFindMenuReferences(ptr->ip, RSTRING_PTR(menu_path));
-#else /* based on Tk8.0 -- Tk8.5b1 */
     if ((menuTablePtr
 	 = (Tcl_HashTable *) Tcl_GetAssocData(ptr->ip, MENU_HASH_KEY, NULL))
 	!= NULL) {
@@ -8086,7 +7884,6 @@ ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
         menuRefPtr = (struct dummy_TkMenuRef *) Tcl_GetHashValue(hashEntryPtr);
       }
     }
-#endif
 
     if (menuRefPtr == (struct dummy_TkMenuRef *) NULL) {
         rb_raise(rb_eArgError, "not a menu widget, or invalid widget path");
@@ -8103,23 +7900,7 @@ ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
     }
 
     (menuRefPtr->menuPtr)->menuType = TEAROFF_MENU;
-#if 0  /* cause SEGV */
-    {
-       /* char *s = "tearoff"; */
-       char *s = "normal";
-       /* Tcl_SetStringObj((menuRefPtr->menuPtr)->menuTypePtr, s, strlen(s));*/
-       (menuRefPtr->menuPtr)->menuTypePtr = Tcl_NewStringObj(s, strlen(s));
-       /* Tcl_IncrRefCount((menuRefPtr->menuPtr)->menuTypePtr); */
-       /* (menuRefPtr->menuPtr)->menuType = TEAROFF_MENU; */
-       (menuRefPtr->menuPtr)->menuType = MASTER_MENU;
-    }
-#endif
 
-#if 0 /* was available on Tk8.0 -- Tk8.4 */
-    TkEventuallyRecomputeMenu(menuRefPtr->menuPtr);
-    TkEventuallyRedrawMenu(menuRefPtr->menuPtr,
-			   (struct dummy_TkMenuEntry *)NULL);
-#else /* based on Tk8.0 -- Tk8.5b1 */
     memset((void *) &event, 0, sizeof(event));
     event.xany.type = ConfigureNotify;
     event.xany.serial = NextRequest(Tk_Display((menuRefPtr->menuPtr)->tkwin));
@@ -8128,7 +7909,6 @@ ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
     event.xany.display = Tk_Display((menuRefPtr->menuPtr)->tkwin);
     event.xconfigure.window = event.xany.window;
     Tk_HandleEvent(&event);
-#endif
 
     return interp;
 }

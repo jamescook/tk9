@@ -177,13 +177,6 @@ tk_eval_cmd(int argc, VALUE *argv, VALUE self)
 static VALUE
 tk_do_callback(int argc, VALUE *argv, VALUE self)
 {
-#if 0
-    volatile VALUE id;
-    volatile VALUE rest;
-
-    rb_scan_args(argc, argv, "1*", &id, &rest);
-    return rb_apply(rb_hash_aref(CALLBACK_TABLE, id), ID_call, rest);
-#endif
     return rb_funcall2(rb_hash_aref(CALLBACK_TABLE, argv[0]),
                        ID_call, argc - 1, argv + 1);
 }
@@ -208,12 +201,6 @@ tk_install_cmd(int argc, VALUE *argv, VALUE self)
 {
     volatile VALUE cmd;
 
-#if 0
-    if (rb_scan_args(argc, argv, "01", &cmd) == 0) {
-        cmd = rb_block_proc();
-    }
-    return tk_install_cmd_core(cmd);
-#endif
     if (argc == 0) {
         cmd = rb_block_proc();
     } else {
@@ -261,17 +248,6 @@ fromDefaultEnc_toUTF8(VALUE str, VALUE self)
     argv[0] = str;
     return tk_toUTF8(1, argv, self);
 }
-
-#if 0
-static VALUE
-fromUTF8_toDefaultEnc(VALUE str, VALUE self)
-{
-    VALUE argv[1];
-
-    argv[0] = str;
-    return tk_fromUTF8(1, argv, self);
-}
-#endif
 
 static int
 to_strkey(VALUE key, VALUE value, VALUE hash)
@@ -640,10 +616,6 @@ push_kv(VALUE key, VALUE val, VALUE args)
 
     ary = RARRAY_AREF(args, 0);
 
-#if 0
-    rb_ary_push(ary, key2keyname(key));
-    if (val != TK_None) rb_ary_push(ary, val);
-#endif
     rb_ary_push(ary, key2keyname(key));
 
     if (val == TK_None) return ST_CHECK;
@@ -675,13 +647,6 @@ push_kv_enc(VALUE key, VALUE val, VALUE args)
 
     ary = RARRAY_AREF(args, 0);
 
-#if 0
-    rb_ary_push(ary, key2keyname(key));
-    if (val != TK_None) {
-        rb_ary_push(ary, get_eval_string_core(val, Qtrue,
-                                              RARRAY_AREF(args, 1)));
-    }
-#endif
     rb_ary_push(ary, key2keyname(key));
 
     if (val == TK_None) return ST_CHECK;
@@ -968,14 +933,6 @@ tcl2rb_bool(VALUE self, VALUE value)
         return Qtrue;
     }
 }
-
-#if 0
-static VALUE
-tkstr_to_dec(VALUE value)
-{
-    return rb_cstr_to_inum(RSTRING_PTR(value), 10, 1);
-}
-#endif
 
 static VALUE
 tkstr_to_int(VALUE value)
