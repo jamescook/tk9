@@ -9,9 +9,7 @@
 
 #include "ruby.h"
 
-#ifdef HAVE_RUBY_ENCODING_H
 #include "ruby/encoding.h"
-#endif
 #ifdef HAVE_RUBY_VERSION_H
 #include "ruby/version.h"
 #endif
@@ -142,13 +140,11 @@ static void ip_free (void *p);
 
 static int at_exit = 0;
 
-#ifdef HAVE_RUBY_ENCODING_H
 static VALUE cRubyEncoding;
 
 /* encoding */
 static int ENCODING_INDEX_UTF8;
 static int ENCODING_INDEX_BINARY;
-#endif
 static VALUE ENCODING_NAME_UTF8;
 static VALUE ENCODING_NAME_BINARY;
 
@@ -920,9 +916,7 @@ setup_rubytkkit(void)
       pathobj = rb_const_get(rb_cObject, const_id);
 
       if (rb_obj_is_kind_of(pathobj, rb_cString)) {
-#ifdef HAVE_RUBY_ENCODING_H
 	pathobj = rb_str_export_to_enc(pathobj, rb_utf8_encoding());
-#endif
 	set_rubytk_kitpath(RSTRING_PTR(pathobj));
       }
     }
@@ -5128,14 +5122,10 @@ get_str_from_obj(Tcl_Obj *obj)
 
     str = s ? rb_str_new(s, len) : rb_str_new2("");
     if (binary) {
-#ifdef HAVE_RUBY_ENCODING_H
       rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
-#endif
       rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
     } else {
-#ifdef HAVE_RUBY_ENCODING_H
       rb_enc_associate_index(str, ENCODING_INDEX_UTF8);
-#endif
       rb_ivar_set(str, ID_at_enc, ENCODING_NAME_UTF8);
     }
     return str;
@@ -5156,11 +5146,9 @@ get_obj_from_str(VALUE str)
             /* text string */
             return Tcl_NewStringObj(s, RSTRING_LENINT(str));
         }
-#ifdef HAVE_RUBY_ENCODING_H
     } else if (rb_enc_get_index(str) == ENCODING_INDEX_BINARY) {
         /* binary string */
         return Tcl_NewByteArrayObj((const unsigned char *)s, RSTRING_LENINT(str));
-#endif
     } else if (memchr(s, 0, RSTRING_LEN(str))) {
         /* probably binary string */
         return Tcl_NewByteArrayObj((const unsigned char *)s, RSTRING_LENINT(str));
@@ -5939,11 +5927,7 @@ lib_toUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
         if (RB_TYPE_P(str, T_STRING)) {
             volatile VALUE enc;
 
-#ifdef HAVE_RUBY_ENCODING_H
             enc = rb_funcallv(rb_obj_encoding(str), ID_to_s, 0, 0);
-#else
-            enc = rb_attr_get(str, ID_at_enc);
-#endif
             if (NIL_P(enc)) {
                 if (NIL_P(ip_obj)) {
                     encoding = (Tcl_Encoding)NULL;
@@ -5969,9 +5953,7 @@ lib_toUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
             } else {
                 StringValue(enc);
                 if (strcmp(RSTRING_PTR(enc), "binary") == 0) {
-#ifdef HAVE_RUBY_ENCODING_H
 		    rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
-#endif
 		    rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
                     return str;
                 }
@@ -5988,9 +5970,7 @@ lib_toUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
     } else {
         StringValue(encodename);
 	if (strcmp(RSTRING_PTR(encodename), "binary") == 0) {
-#ifdef HAVE_RUBY_ENCODING_H
 	  rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
-#endif
 	  rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
 	  return str;
 	}
@@ -6023,9 +6003,7 @@ lib_toUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
     /* str = rb_str_new2(Tcl_DStringValue(&dstr)); */
     /* str = rb_str_new2(Tcl_DStringValue(&dstr)); */
     str = rb_str_new(Tcl_DStringValue(&dstr), Tcl_DStringLength(&dstr));
-#ifdef HAVE_RUBY_ENCODING_H
     rb_enc_associate_index(str, ENCODING_INDEX_UTF8);
-#endif
     rb_ivar_set(str, ID_at_enc, ENCODING_NAME_UTF8);
 
     /*
@@ -6102,18 +6080,14 @@ lib_fromUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
             if (!NIL_P(enc)) {
                 StringValue(enc);
                 if (strcmp(RSTRING_PTR(enc), "binary") == 0) {
-#ifdef HAVE_RUBY_ENCODING_H
 		    rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
-#endif
 		    rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
                     return str;
                 }
-#ifdef HAVE_RUBY_ENCODING_H
 	    } else if (rb_enc_get_index(str) == ENCODING_INDEX_BINARY) {
 	        rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
 		rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
 		return str;
-#endif
             }
         }
 
@@ -6156,9 +6130,7 @@ lib_fromUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
             str = rb_str_new(s, len);
 	    s = (char*)NULL;
 	    Tcl_DecrRefCount(tclstr);
-#ifdef HAVE_RUBY_ENCODING_H
 	    rb_enc_associate_index(str, ENCODING_INDEX_BINARY);
-#endif
             rb_ivar_set(str, ID_at_enc, ENCODING_NAME_BINARY);
 
             return str;
@@ -6196,7 +6168,6 @@ lib_fromUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
     /* str = rb_str_new2(Tcl_DStringValue(&dstr)); */
     /* str = rb_str_new2(Tcl_DStringValue(&dstr)); */
     str = rb_str_new(Tcl_DStringValue(&dstr), Tcl_DStringLength(&dstr));
-#ifdef HAVE_RUBY_ENCODING_H
     if (interp) {
       /* can access encoding_table of TclTkIp */
       /*   ->  try to use encoding_table      */
@@ -6208,7 +6179,6 @@ lib_fromUTF8_core(VALUE ip_obj, VALUE src, VALUE encodename)
       /*   ->  try to find on Ruby Encoding      */
       rb_enc_associate_index(str, rb_enc_find_index(RSTRING_PTR(encodename)));
     }
-#endif
 
     rb_ivar_set(str, ID_at_enc, encodename);
 
@@ -6284,9 +6254,7 @@ lib_UTF_backslash_core(VALUE self, VALUE str, int all_bs)
     }
 
     str = rb_str_new(dst_buf, dst_len);
-#ifdef HAVE_RUBY_ENCODING_H
     rb_enc_associate_index(str, ENCODING_INDEX_UTF8);
-#endif
     rb_ivar_set(str, ID_at_enc, ENCODING_NAME_UTF8);
 
     ckfree(src_buf);
@@ -7101,10 +7069,8 @@ lib_split_tklist_core(VALUE ip_obj, VALUE list_str)
     Tcl_Interp *interp;
     volatile VALUE ary, elem;
     int idx;
-#ifdef HAVE_RUBY_ENCODING_H
     int list_enc_idx;
     volatile VALUE list_ivar_enc;
-#endif
     int result;
     VALUE old_gc;
 
@@ -7119,10 +7085,8 @@ lib_split_tklist_core(VALUE ip_obj, VALUE list_str)
     }
 
     StringValue(list_str);
-#ifdef HAVE_RUBY_ENCODING_H
     list_enc_idx = rb_enc_get_index(list_str);
     list_ivar_enc = rb_ivar_get(list_str, ID_at_enc);
-#endif
 
     {
         /* object style interface */
@@ -7156,7 +7120,6 @@ lib_split_tklist_core(VALUE ip_obj, VALUE list_str)
         for(idx = 0; idx < objc; idx++) {
             elem = get_str_from_obj(objv[idx]);
 
-#ifdef HAVE_RUBY_ENCODING_H
 	    if (rb_enc_get_index(elem) == ENCODING_INDEX_BINARY) {
 	        rb_enc_associate_index(elem, ENCODING_INDEX_BINARY);
 		rb_ivar_set(elem, ID_at_enc, ENCODING_NAME_BINARY);
@@ -7164,7 +7127,6 @@ lib_split_tklist_core(VALUE ip_obj, VALUE list_str)
 	        rb_enc_associate_index(elem, list_enc_idx);
 		rb_ivar_set(elem, ID_at_enc, list_ivar_enc);
 	    }
-#endif
             /* RARRAY(ary)->ptr[idx] = elem; */
 	    rb_ary_push(ary, elem);
         }
@@ -7379,7 +7341,6 @@ create_dummy_encoding_for_tk_core(VALUE interp, VALUE name, VALUE error_mode)
     }
   }
 
-#ifdef HAVE_RUBY_ENCODING_H
   if (RTEST(rb_define_dummy_encoding(RSTRING_PTR(name)))) {
     int idx = rb_enc_find_index(StringValueCStr(name));
     return rb_enc_from_encoding(rb_enc_from_index(idx));
@@ -7393,9 +7354,6 @@ create_dummy_encoding_for_tk_core(VALUE interp, VALUE name, VALUE error_mode)
   }
 
   UNREACHABLE;
-#else
-    return name;
-#endif
 }
 static VALUE
 create_dummy_encoding_for_tk(VALUE interp, VALUE name)
@@ -7403,8 +7361,6 @@ create_dummy_encoding_for_tk(VALUE interp, VALUE name)
   return create_dummy_encoding_for_tk_core(interp, name, Qtrue);
 }
 
-
-#ifdef HAVE_RUBY_ENCODING_H
 static int
 update_encoding_table(VALUE table, VALUE interp, VALUE error_mode)
 {
@@ -7578,87 +7534,6 @@ encoding_table_get_obj_core(VALUE table, VALUE enc, VALUE error_mode)
   }
 }
 
-#else /* ! HAVE_RUBY_ENCODING_H */
-static int
-update_encoding_table(VALUE table, VALUE interp, VALUE error_mode)
-{
-  struct tcltkip *ptr;
-  int retry = 0;
-  Tcl_Size i, objc;
-  Tcl_Obj **objv;
-  Tcl_Obj *enc_list;
-  volatile VALUE encname = Qnil;
-
-  /* interpreter check */
-  if (NIL_P(interp)) return 0;
-  ptr = get_ip(interp);
-  if (ptr == (struct tcltkip *) NULL)  return 0;
-  if (deleted_ip(ptr)) return 0;
-
-  /* get Tcl's encoding list */
-  Tcl_GetEncodingNames(ptr->ip);
-  enc_list = Tcl_GetObjResult(ptr->ip);
-  Tcl_IncrRefCount(enc_list);
-
-  if (Tcl_ListObjGetElements(ptr->ip, enc_list, &objc, &objv) != TCL_OK) {
-    Tcl_DecrRefCount(enc_list);
-    /* rb_raise(rb_eRuntimeError, "failt to get Tcl's encoding names"); */
-    return 0;
-  }
-
-  /* get encoding name and set it to table */
-  for(i = 0; i < objc; i++) {
-    encname = rb_str_new2(Tcl_GetString(objv[i]));
-    if (NIL_P(rb_hash_lookup(table, encname))) {
-      /* new Tk encoding -> add to table */
-      encname = rb_obj_freeze(encname);
-      rb_hash_aset(table, encname, encname);
-      retry = 1;
-    }
-  }
-
-  Tcl_DecrRefCount(enc_list);
-
-  return retry;
-}
-
-static VALUE
-encoding_table_get_name_core(VALUE table, VALUE enc, VALUE error_mode)
-{
-  volatile VALUE name = Qnil;
-
-  enc = rb_funcallv(enc, ID_to_s, 0, 0);
-  name = rb_hash_lookup(table, enc);
-
-  if (!NIL_P(name)) {
-    /* find */
-    return name;
-  }
-
-  /* update check */
-  if (update_encoding_table(table, rb_ivar_get(table, ID_at_interp),
-					       error_mode)) {
-    /* add new relations to the table   */
-    /* RETRY: registered Ruby encoding? */
-    name = rb_hash_lookup(table, enc);
-    if (!NIL_P(name)) {
-      /* find */
-      return name;
-    }
-  }
-
-  if (RTEST(error_mode)) {
-    rb_raise(rb_eArgError, "unsupported Tk encoding '%s'", RSTRING_PTR(enc));
-  }
-  return Qnil;
-}
-static VALUE
-encoding_table_get_obj_core(VALUE table, VALUE enc, VALUE error_mode)
-{
-  return encoding_table_get_name_core(table, enc, error_mode);
-}
-#endif
-
 static VALUE
 encoding_table_get_name(VALUE table, VALUE enc)
 {
@@ -7670,7 +7545,6 @@ encoding_table_get_obj(VALUE table, VALUE enc)
   return encoding_table_get_obj_core(table, enc, Qtrue);
 }
 
-#ifdef HAVE_RUBY_ENCODING_H
 static VALUE
 create_encoding_table_core(RB_BLOCK_CALL_FUNC_ARGLIST(arg, interp))
 {
@@ -7757,46 +7631,6 @@ create_encoding_table_core(RB_BLOCK_CALL_FUNC_ARGLIST(arg, interp))
 
   return table;
 }
-
-#else /* ! HAVE_RUBY_ENCODING_H */
-static VALUE
-create_encoding_table_core(RB_BLOCK_CALL_FUNC_ARGLIST(arg, interp))
-{
-  struct tcltkip *ptr = get_ip(interp);
-  volatile VALUE table = rb_hash_new();
-  volatile VALUE encname = Qnil;
-  Tcl_Size i, objc;
-  Tcl_Obj **objv;
-  Tcl_Obj *enc_list;
-
-
-  /* set 'binary' encoding */
-  rb_hash_aset(table, ENCODING_NAME_BINARY, ENCODING_NAME_BINARY);
-
-  /* get Tcl's encoding list */
-  Tcl_GetEncodingNames(ptr->ip);
-  enc_list = Tcl_GetObjResult(ptr->ip);
-  Tcl_IncrRefCount(enc_list);
-
-  if (Tcl_ListObjGetElements(ptr->ip, enc_list, &objc, &objv) != TCL_OK) {
-    Tcl_DecrRefCount(enc_list);
-    rb_raise(rb_eRuntimeError, "failt to get Tcl's encoding names");
-  }
-
-  /* get encoding name and set it to table */
-  for(i = 0; i < objc; i++) {
-    encname = rb_obj_freeze(rb_str_new2(Tcl_GetString(objv[i])));
-    rb_hash_aset(table, encname, encname);
-  }
-
-  Tcl_DecrRefCount(enc_list);
-
-  rb_ivar_set(table, ID_at_interp, interp);
-  rb_ivar_set(interp, ID_encoding_table, table);
-
-  return table;
-}
-#endif
 
 static VALUE
 create_encoding_table(VALUE interp)
@@ -7944,13 +7778,11 @@ Init_tcltklib(void)
 
     /* --------------------------------------------------------------- */
 
-#ifdef HAVE_RUBY_ENCODING_H
     rb_global_variable(&cRubyEncoding);
     cRubyEncoding = rb_path2class("Encoding");
 
     ENCODING_INDEX_UTF8   = rb_enc_to_index(rb_utf8_encoding());
     ENCODING_INDEX_BINARY = rb_enc_find_index("binary");
-#endif
 
     rb_global_variable(&ENCODING_NAME_UTF8);
     rb_global_variable(&ENCODING_NAME_BINARY);
