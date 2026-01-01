@@ -2440,10 +2440,6 @@ class << MultiTkIp
     __getip._unset_global_var2(var, idx)
   end
 
-  def _make_menu_embeddable(menu_path)
-    __getip._make_menu_embeddable(menu_path)
-  end
-
   def _split_tklist(str)
     __getip._split_tklist(str)
   end
@@ -2885,11 +2881,6 @@ class MultiTkIp
   def _unset_global_var2(var, idx)
     raise SecurityError, "no permission to manipulate" unless self.manipulable?
     @interp._unset_global_var2(var, idx)
-  end
-
-  def _make_menu_embeddable(menu_path)
-    raise SecurityError, "no permission to manipulate" unless self.manipulable?
-    @interp._make_menu_embeddable(menu_path)
   end
 
   def _split_tklist(str)

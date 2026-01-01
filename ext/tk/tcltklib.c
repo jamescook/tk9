@@ -7051,108 +7051,6 @@ ip_get_encoding_table(VALUE interp)
 }
 
 
-/*###############################################*/
-
-/*
- *   The following is based on tkMenu.[ch]
- *   of Tcl/Tk (Tk8.0 -- Tk8.5b1) source code.
- */
-
-#define MASTER_MENU             0
-#define TEAROFF_MENU            1
-#define MENUBAR                 2
-
-struct dummy_TkMenuEntry {
-    int type;
-    struct dummy_TkMenu *menuPtr;
-    /* , and etc.   */
-};
-
-struct dummy_TkMenu {
-    Tk_Window tkwin;
-    Display *display;
-    Tcl_Interp *interp;
-    Tcl_Command widgetCmd;
-    struct dummy_TkMenuEntry **entries;
-    int numEntries;
-    int active;
-    int menuType;     /* MASTER_MENU, TEAROFF_MENU, or MENUBAR */
-    Tcl_Obj *menuTypePtr;
-    /* , and etc.   */
-};
-
-struct dummy_TkMenuRef {
-    struct dummy_TkMenu *menuPtr;
-    char *dummy1;
-    char *dummy2;
-    char *dummy3;
-};
-
-#define MENU_HASH_KEY "tkMenus"
-
-static VALUE
-ip_make_menu_embeddable_core(VALUE interp, int argc, VALUE *argv)
-{
-    volatile VALUE menu_path;
-    struct tcltkip *ptr = get_ip(interp);
-    struct dummy_TkMenuRef *menuRefPtr = NULL;
-    XEvent event;
-    Tcl_HashTable *menuTablePtr;
-    Tcl_HashEntry *hashEntryPtr;
-
-    menu_path = argv[0];
-    StringValue(menu_path);
-
-    if ((menuTablePtr
-	 = (Tcl_HashTable *) Tcl_GetAssocData(ptr->ip, MENU_HASH_KEY, NULL))
-	!= NULL) {
-      if ((hashEntryPtr
-	   = Tcl_FindHashEntry(menuTablePtr, RSTRING_PTR(menu_path)))
-	  != NULL) {
-        menuRefPtr = (struct dummy_TkMenuRef *) Tcl_GetHashValue(hashEntryPtr);
-      }
-    }
-
-    if (menuRefPtr == (struct dummy_TkMenuRef *) NULL) {
-        rb_raise(rb_eArgError, "not a menu widget, or invalid widget path");
-    }
-
-    if (menuRefPtr->menuPtr == (struct dummy_TkMenu *) NULL) {
-        rb_raise(rb_eRuntimeError,
-		 "invalid menu widget (maybe already destroyed)");
-    }
-
-    if ((menuRefPtr->menuPtr)->menuType != MENUBAR) {
-        rb_raise(rb_eRuntimeError,
-		 "target menu widget must be a MENUBAR type");
-    }
-
-    (menuRefPtr->menuPtr)->menuType = TEAROFF_MENU;
-
-    memset((void *) &event, 0, sizeof(event));
-    event.xany.type = ConfigureNotify;
-    event.xany.serial = NextRequest(Tk_Display((menuRefPtr->menuPtr)->tkwin));
-    event.xany.send_event = 0; /* FALSE */
-    event.xany.window = Tk_WindowId((menuRefPtr->menuPtr)->tkwin);
-    event.xany.display = Tk_Display((menuRefPtr->menuPtr)->tkwin);
-    event.xconfigure.window = event.xany.window;
-    Tk_HandleEvent(&event);
-
-    return interp;
-}
-
-static VALUE
-ip_make_menu_embeddable(VALUE interp, VALUE menu_path)
-{
-    VALUE argv[1];
-
-    argv[0] = menu_path;
-    return tk_funcall(ip_make_menu_embeddable_core, 1, argv, interp);
-}
-
-
-/*###############################################*/
-
 /*---- initialization ----*/
 void
 Init_tcltklib(void)
@@ -7400,10 +7298,6 @@ Init_tcltklib(void)
     rb_define_method(ip, "_set_global_var2", ip_set_global_var2, 3);
     rb_define_method(ip, "_unset_global_var", ip_unset_global_var, 1);
     rb_define_method(ip, "_unset_global_var2", ip_unset_global_var2, 2);
-
-    /* --------------------------------------------------------------- */
-
-    rb_define_method(ip, "_make_menu_embeddable", ip_make_menu_embeddable, 1);
 
     /* --------------------------------------------------------------- */
 

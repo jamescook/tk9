@@ -76,6 +76,12 @@ You must also check that your Tcl/Tk is installed properly.
 [README.fork]: README.fork
 [README.macosx-aqua]: README.macosx-aqua
 
+## Backwards Incompatible Changes
+
+This fork removes some methods that existed in the original ruby/tk but were unused, undocumented, or relied on fragile internal hacks:
+
+- **`TclTkIp#_make_menu_embeddable`** - Removed. This was a 2006-era hack that accessed Tk's private internal structs to convert a menubar into an embeddable widget. No public Tk API exists for this because it's not a supported use case. Use `TkMenubutton` widgets for packable menu buttons, or the standard `-menu` option for menubars.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
