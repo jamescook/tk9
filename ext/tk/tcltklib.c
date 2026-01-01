@@ -2003,10 +2003,7 @@ tcl_protect_core(Tcl_Interp *interp, VALUE (*proc)(VALUE), VALUE data)  /* shoul
     ret = rb_protect(proc, data, &status);
     if (status) {
         char *buf;
-        VALUE old_gc;
         volatile VALUE type, str;
-
-        old_gc = rb_gc_disable();
 
         switch(status) {
         case TAG_RETURN:
@@ -2077,8 +2074,6 @@ tcl_protect_core(Tcl_Interp *interp, VALUE (*proc)(VALUE), VALUE data)  /* shoul
             break;
         }
 
-        if (old_gc == Qfalse) rb_gc_enable();
-
         ret = Qnil;
     }
 
@@ -2146,6 +2141,7 @@ tcl_protect_core(Tcl_Interp *interp, VALUE (*proc)(VALUE), VALUE data)  /* shoul
 
     DUMP2("(result) %s", NIL_P(ret) ? "nil" : RSTRING_PTR(ret));
 
+    RB_GC_GUARD(ret);
     return TCL_OK;
 }
 
