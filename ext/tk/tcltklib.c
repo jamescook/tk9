@@ -6592,7 +6592,6 @@ lib_merge_tklist(int argc, VALUE *argv, VALUE obj)
     str = rb_str_new(result, dst - result - 1);
     ckfree(result);
 
-    RB_GC_GUARD(str);
     return str;
 }
 
