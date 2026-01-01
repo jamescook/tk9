@@ -844,13 +844,10 @@ tk_conv_args(
     int idx;
     long size;
     volatile VALUE dst;
-    VALUE old_gc;
 
     if (argc < 2) {
       rb_raise(rb_eArgError, "too few arguments");
     }
-
-    old_gc = rb_gc_disable();
 
     for(size = 0, idx = 2; idx < argc; idx++) {
         if (RB_TYPE_P(argv[idx], T_HASH)) {
@@ -872,8 +869,6 @@ tk_conv_args(
             rb_ary_push(dst, get_eval_string_core(argv[idx], argv[1], self));
         }
     }
-
-    if (old_gc == Qfalse) rb_gc_enable();
 
     return rb_ary_plus(argv[0], dst);
 }
@@ -1499,9 +1494,6 @@ cbsubst_scan_args(VALUE self, VALUE arg_key, VALUE val_ary)
     unsigned char type_chr;
     volatile VALUE dst = rb_ary_new2(vallen);
     volatile VALUE proc;
-    VALUE old_gc;
-
-    old_gc = rb_gc_disable();
 
     inf = cbsubst_get_ptr(self);
 
@@ -1525,8 +1517,6 @@ cbsubst_scan_args(VALUE self, VALUE arg_key, VALUE val_ary)
 				    RARRAY_AREF(val_ary, idx)));
       }
     }
-
-    if (old_gc == Qfalse) rb_gc_enable();
 
     return dst;
 }
