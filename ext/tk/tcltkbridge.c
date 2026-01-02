@@ -17,6 +17,9 @@
 #include <tk.h>
 #include <string.h>
 
+/* Tcl 8.x/9.x compatibility (Tcl_Size, etc.) */
+#include "tcl9compat.h"
+
 /* Minimum Tcl/Tk version - "8.6-" means 8.6+ including 9.x */
 #define MIN_TCL_VERSION "8.6-"
 #define MIN_TK_VERSION "8.6-"
