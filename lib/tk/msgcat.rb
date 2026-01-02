@@ -39,14 +39,17 @@ class TkMsgCatalog < TkObject
 
   UNKNOWN_CBTBL = Hash.new{|hash,key| hash[key] = {}}
 
-  TkCore::INTERP.add_tk_procs('::msgcat::mcunknown', 'args', <<-'EOL')
-    if {[set st [catch {eval {ruby_cmd TkMsgCatalog callback} [namespace current] $args} ret]] != 0} {
+  # Register callback for TkMsgCatalog.callback, used by mcunknown Tcl proc
+  TKMSGCAT_CALLBACK_ID = TkCore::INTERP.register_callback(proc { |*args| TkMsgCatalog.callback(*args) })
+
+  TkCore::INTERP.add_tk_procs('::msgcat::mcunknown', 'args', <<-EOL)
+    if {[set st [catch {eval {ruby_callback #{TKMSGCAT_CALLBACK_ID}} [namespace current] $args} ret]] != 0} {
        #return -code $st $ret
-       set idx [string first "\n\n" $ret]
+       set idx [string first "\\n\\n" $ret]
        if {$idx > 0} {
-          return -code $st \
-                 -errorinfo [string range $ret [expr $idx + 2] \
-                                               [string length $ret]] \
+          return -code $st \\
+                 -errorinfo [string range $ret [expr $idx + 2] \\
+                                               [string length $ret]] \\
                  [string range $ret 0 [expr $idx - 1]]
        } else {
           return -code $st $ret

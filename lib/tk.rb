@@ -6,6 +6,8 @@
 # use Shigehiro's tcltklib
 require 'tcltklib'
 require 'tkutil'
+require_relative 'tcltk_version'  # generated at compile time - see ext/tk/extconf.rb
+require_relative 'tcltk_compat'   # legacy compatibility wrappers
 
 # autoload
 require 'tk/autoload'
@@ -1452,19 +1454,22 @@ EOS
   INTERP.add_tk_procs(TclTkLib::FINALIZE_PROC_NAME, '',
                       "catch { bind all <#{WIDGET_DESTROY_HOOK}> {} }")
 
-  INTERP.add_tk_procs('rb_out', 'ns args', <<-'EOL')
+  # Register callback for TkCore.callback, used by rb_out Tcl proc
+  TKCORE_CALLBACK_ID = INTERP.register_callback(proc { |*args| TkCore.callback(*args) })
+
+  INTERP.add_tk_procs('rb_out', 'ns args', <<-EOL)
     if [regexp {^::} $ns] {
-      set cmd {namespace eval $ns {ruby_cmd TkCore callback} $args}
+      set cmd {namespace eval $ns {ruby_callback #{TKCORE_CALLBACK_ID}} $args}
     } else {
-      set cmd {eval {ruby_cmd TkCore callback} $ns $args}
+      set cmd {eval {ruby_callback #{TKCORE_CALLBACK_ID}} $ns $args}
     }
     if {[set st [catch $cmd ret]] != 0} {
        #return -code $st $ret
-       set idx [string first "\n\n" $ret]
+       set idx [string first "\\n\\n" $ret]
        if {$idx > 0} {
-          return -code $st \
-                 -errorinfo [string range $ret [expr $idx + 2] \
-                                               [string length $ret]] \
+          return -code $st \\
+                 -errorinfo [string range $ret [expr $idx + 2] \\
+                                               [string length $ret]] \\
                  [string range $ret 0 [expr $idx - 1]]
        } else {
           return -code $st $ret
@@ -2491,8 +2496,7 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
         BINARY  = RubyEncoding.find(BINARY_NAME)
         UNKNOWN = RubyEncoding.find('ASCII-8BIT')
 
-        ### start of creating ENCODING_TABLE
-        ENCODING_TABLE = TkCore::INTERP.encoding_table
+        ### ENCODING_TABLE removed - modern Tcl/Ruby use UTF-8 natively
 =begin
         ENCODING_TABLE = {
           'binary'       => BINARY,
@@ -2607,18 +2611,20 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
         end
 
         def default_encoding=(enc)
-          TkCore::INTERP.default_encoding = Tk::Encoding::ENCODING_TABLE.get_name(enc)
+          warn "Tk.default_encoding= is deprecated: modern Tcl/Ruby use UTF-8 natively", uplevel: 1
+          TkCore::INTERP.default_encoding = 'utf-8'
         end
 
         def encoding=(enc)
-          TkCore::INTERP.encoding = Tk::Encoding::ENCODING_TABLE.get_name(enc)
+          warn "Tk.encoding= is deprecated: modern Tcl/Ruby use UTF-8 natively", uplevel: 1
+          TkCore::INTERP.encoding = 'utf-8'
         end
 
         def encoding_name
-          Tk::Encoding::ENCODING_TABLE.get_name(TkCore::INTERP.encoding)
+          'utf-8'
         end
         def encoding_obj
-          Tk::Encoding::ENCODING_TABLE.get_obj(TkCore::INTERP.encoding)
+          RubyEncoding::UTF_8
         end
         alias encoding encoding_name
         alias default_encoding encoding_name
@@ -2628,25 +2634,21 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
           TkComm.simplelist(TkCore::INTERP._invoke_without_enc('encoding', 'names'))
         end
         def encoding_names
-          self.tk_encoding_names.find_all{|name|
-            Tk::Encoding::ENCODING_TABLE.get_name(name) rescue false
-          }
+          self.tk_encoding_names
         end
         def encoding_objs
-          self.tk_encoding_names.map!{|name|
-            Tk::Encoding::ENCODING_TABLE.get_obj(name) rescue nil
-          }.compact
+          [RubyEncoding::UTF_8]
         end
 
         def encoding_system=(enc)
-          TclTkLib.encoding_system = Tk::Encoding::ENCODING_TABLE.get_name(enc)
+          warn "Tk.encoding_system= is deprecated: modern Tcl/Ruby use UTF-8 natively", uplevel: 1
         end
 
         def encoding_system_name
-          Tk::Encoding::ENCODING_TABLE.get_name(TclTkLib.encoding_system)
+          'utf-8'
         end
         def encoding_system_obj
-          Tk::Encoding::ENCODING_TABLE.get_obj(TclTkLib.encoding_system)
+          RubyEncoding::UTF_8
         end
         alias encoding_system encoding_system_name
 
@@ -2736,8 +2738,7 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
                                                  enc, str)
         #ret.instance_variable_set('@encoding', 'binary')
         if TkCore::WITH_ENCODING
-          #ret.force_encoding(Tk::Encoding::ENCODING_TABLE.get_obj('binary'))
-          ret.force_encoding(Tk::Encoding::ENCODING_TABLE.get_obj(enc))
+          ret.force_encoding(RubyEncoding::UTF_8)
         end
         ret
       end
@@ -2757,149 +2758,23 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
     extend Encoding
   end
 
+  # TclTkIp encoding methods removed - modern Tcl (8.1+) uses UTF-8 internally
+  # See: https://wiki.tcl-lang.org/page/Unicode+and+UTF-8
+  # "as of version 8.1, Tcl...uses a modified version of utf-8 as its
+  # internal representation for strings"
   class TclTkIp
-    def force_default_encoding=(mode)
-      @force_default_encoding[0] = (mode)? true: false
-    end
-
-    def force_default_encoding?
-      @force_default_encoding[0] ||= false
-    end
-
-    def default_encoding=(name)
-      name = name.name if Tk::WITH_ENCODING && name.kind_of?(::Encoding)
-      @encoding[0] = name.to_s.dup
-    end
-
-    # from tkencoding.rb by ttate@jaist.ac.jp
-    #attr_accessor :encoding
-    def encoding=(name)
-      self.force_default_encoding = true  # for compatibility
-      self.default_encoding = name
-    end
-
-    def encoding_name
-      (@encoding[0])? @encoding[0].dup: nil
-    end
+    def force_default_encoding=(mode); end
+    def force_default_encoding? = true
+    def default_encoding=(name); end
+    def encoding=(name); end
+    def encoding_name = 'utf-8'
+    def encoding_obj = ::Encoding::UTF_8
     alias encoding encoding_name
     alias default_encoding encoding_name
 
-    def encoding_obj
-      if Tk::WITH_ENCODING
-        Tk::Encoding.tcl2rb_encoding(@encoding[0])
-      else
-        (@encoding[0])? @encoding[0].dup: nil
-      end
-    end
-
-    alias __toUTF8 _toUTF8
-    alias __fromUTF8 _fromUTF8
-
-    if Object.const_defined?(:Encoding) && ::Encoding.class == Class
-      # with Encoding (Ruby 1.9+)
-      #
-      # use functions on Tcl as default.
-      # but when unsupported encoding on Tcl, use methods on Ruby.
-      #
-      def _toUTF8(str, enc = nil)
-        if enc
-          # use given encoding
-          begin
-            enc_name = Tk::Encoding::ENCODING_TABLE.get_name(enc)
-          rescue
-            # unknown encoding for Tk -> try to convert encoding on Ruby
-            str = str.dup.force_encoding(enc)
-            str.encode!(Tk::Encoding::UTF8_NAME) # modify self !!
-            return str  # if no error, probably succeed converting
-          end
-        end
-
-        enc_name ||= str.instance_variable_get(:@encoding)
-
-        enc_name ||=
-          Tk::Encoding::ENCODING_TABLE.get_name(str.encoding) rescue nil
-
-        if enc_name
-          # str has its encoding information
-          encstr = __toUTF8(str, enc_name)
-          encstr.force_encoding(Tk::Encoding::UTF8_NAME)
-          return encstr
-        else
-          # str.encoding isn't supported by Tk -> try to convert on Ruby
-          begin
-            return str.encode(Tk::Encoding::UTF8_NAME) # new string
-          rescue
-            # error -> ignore, try to use default encoding of Ruby/Tk
-          end
-        end
-
-        #enc_name ||=
-        #  Tk::Encoding::ENCODING_TABLE.get_name(Tk.encoding) rescue nil
-        enc_name ||= Tk::Encoding::ENCODING_TABLE.get_name(nil)
-
-        # is 'binary' encoding?
-        if enc_name == Tk::Encoding::BINARY_NAME
-          return str.dup.force_encoding(Tk::Encoding::BINARY_NAME)
-        end
-
-        # force default encoding?
-        if ! str.kind_of?(Tk::EncodedString) && self.force_default_encoding?
-          enc_name = Tk::Encoding::ENCODING_TABLE.get_name(Tk.default_encoding)
-        end
-
-        encstr = __toUTF8(str, enc_name)
-        encstr.force_encoding(Tk::Encoding::UTF8_NAME)
-        encstr
-      end
-      def _fromUTF8(str, enc = nil)
-        # str must be UTF-8 or binary.
-        enc_name = str.instance_variable_get(:@encoding)
-        enc_name ||=
-          Tk::Encoding::ENCODING_TABLE.get_name(str.encoding) rescue nil
-
-        # is 'binary' encoding?
-        if enc_name == Tk::Encoding::BINARY_NAME
-          return str.dup.force_encoding(Tk::Encoding::BINARY_NAME)
-        end
-
-        # get target encoding name (if enc == nil, use default encoding)
-        begin
-          enc_name = Tk::Encoding::ENCODING_TABLE.get_name(enc)
-        rescue
-          # then, enc != nil
-          # unknown encoding for Tk -> try to convert encoding on Ruby
-          str = str.dup.force_encoding(Tk::Encoding::UTF8_NAME)
-          str.encode!(enc) # modify self !!
-          return str  # if no error, probably succeed converting
-        end
-
-        encstr = __fromUTF8(str, enc_name)
-        encstr.force_encoding(Tk::Encoding::ENCODING_TABLE.get_obj(enc_name))
-        encstr
-      end
-      ###
-    else
-      # without Encoding (Ruby 1.8)
-      def _toUTF8(str, encoding = nil)
-        __toUTF8(str, encoding)
-      end
-      def _fromUTF8(str, encoding = nil)
-        __fromUTF8(str, encoding)
-      end
-      ###
-    end
-
+    # These aliases are expected by other tk.rb code
     alias __eval _eval
     alias __invoke _invoke
-
-    def _eval(cmd)
-      _fromUTF8(__eval(_toUTF8(cmd)))
-    end
-
-    def _invoke(*cmds)
-      _fromUTF8(__invoke(*(cmds.collect{|cmd| _toUTF8(cmd)})))
-    end
-
     alias _eval_with_enc _eval
     alias _invoke_with_enc _invoke
 
@@ -3006,198 +2881,18 @@ if (/^(8\.[1-9]|9\.|[1-9][0-9])/ =~ Tk::TCL_VERSION && !Tk::JAPANIZED_TK)
 =end
   end
 
+  # TclTkLib encoding methods - all UTF-8 now
   module TclTkLib
     class << self
-      def force_default_encoding=(mode)
-        TkCore::INTERP.force_default_encoding = mode
-      end
-
-      def force_default_encoding?
-        TkCore::INTERP.force_default_encoding?
-      end
-
-      def default_encoding=(name)
-        TkCore::INTERP.default_encoding = name
-      end
-
-      alias _encoding encoding
-      alias _encoding= encoding=
-      def encoding=(name)
-        name = name.name if name.kind_of?(::Encoding) if Tk::WITH_ENCODING
-        TkCore::INTERP.encoding = name
-      end
-
-      def encoding_name
-        TkCore::INTERP.encoding
-      end
+      def force_default_encoding=(mode); end
+      def force_default_encoding? = true
+      def default_encoding=(name); end
+      def encoding=(name); end
+      def encoding_name = 'utf-8'
+      def encoding_obj = ::Encoding::UTF_8
       alias encoding encoding_name
       alias default_encoding encoding_name
-
-      def encoding_obj
-        if Tk::WITH_ENCODING
-          Tk::Encoding.tcl2rb_encoding(TkCore::INTERP.encoding)
-        else
-          TkCore::INTERP.encoding
-        end
-      end
     end
-  end
-
-  # estimate encoding
-  unless TkCore::WITH_ENCODING
-    case $KCODE
-    when /^e/i  # EUC
-      Tk.encoding = 'euc-jp'
-      Tk.encoding_system = 'euc-jp'
-    when /^s/i  # SJIS
-      begin
-        if Tk.encoding_system == 'cp932'
-          Tk.encoding = 'cp932'
-        else
-          Tk.encoding = 'shiftjis'
-          Tk.encoding_system = 'shiftjis'
-        end
-      rescue StandardError, NameError
-        Tk.encoding = 'shiftjis'
-        Tk.encoding_system = 'shiftjis'
-      end
-    when /^u/i  # UTF8
-      Tk.encoding = 'utf-8'
-      Tk.encoding_system = 'utf-8'
-    else        # NONE
-      if defined? DEFAULT_TK_ENCODING
-        Tk.encoding_system = DEFAULT_TK_ENCODING
-      end
-      begin
-        Tk.encoding = Tk.encoding_system
-      rescue StandardError, NameError
-        Tk.encoding = 'utf-8'
-        Tk.encoding_system = 'utf-8'
-      end
-    end
-
-  else ### Ruby 1.9 !!!!!!!!!!!!
-    # loc_enc_obj = (::Encoding.find(::Encoding.locale_charmap) rescue Tk::Encoding::UNKNOWN)
-    loc_enc_obj = ::Encoding.find("locale")
-    ext_enc_obj = ::Encoding.default_external
-    int_enc_obj = ::Encoding.default_internal || ext_enc_obj
-    tksys_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(Tk.encoding_system)
-    # p [Tk.encoding, Tk.encoding_system, loc_enc_obj, ext_enc_obj]
-
-=begin
-    if ext_enc_obj == Tk::Encoding::UNKNOWN
-      if defined? DEFAULT_TK_ENCODING
-        if DEFAULT_TK_ENCODING.kind_of?(::Encoding)
-          tk_enc_name    = DEFAULT_TK_ENCODING.name
-          tksys_enc_name = DEFAULT_TK_ENCODING.name
-        else
-          tk_enc_name    = DEFAULT_TK_ENCODING
-          tksys_enc_name = DEFAULT_TK_ENCODING
-        end
-      else
-        tk_enc_name    = loc_enc_obj.name
-        tksys_enc_name = loc_enc_obj.name
-      end
-    else
-      tk_enc_name    = ext_enc_obj.name
-      tksys_enc_name = ext_enc_obj.name
-    end
-
-    # Tk.encoding = tk_enc_name
-    Tk.default_encoding = tk_enc_name
-    Tk.encoding_system = tksys_enc_name
-=end
-
-    if ext_enc_obj == Tk::Encoding::UNKNOWN
-      if loc_enc_obj == Tk::Encoding::UNKNOWN
-        # use Tk.encoding_system
-      else
-        # use locale_charmap
-        begin
-          loc_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(loc_enc_obj)
-          if loc_enc_name && loc_enc_name != tksys_enc_name
-            # use locale_charmap
-            Tk.encoding_system = loc_enc_name
-          else
-            # use Tk.encoding_system
-          end
-        rescue ArgumentError
-          # unsupported encoding on Tk -> use Tk.encoding_system
-        end
-      end
-    else
-      begin
-        ext_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(ext_enc_obj)
-        if ext_enc_name && ext_enc_name != tksys_enc_name
-          # use default_external
-          Tk.encoding_system = ext_enc_name
-        else
-          # use Tk.encoding_system
-        end
-      rescue ArgumentError
-        # unsupported encoding on Tk -> use Tk.encoding_system
-      end
-    end
-
-    # setup Tk.encoding
-    enc_name = nil
-
-    begin
-      default_def = DEFAULT_TK_ENCODING
-      if ::Encoding.find(default_def.to_s) != Tk::Encoding::UNKNOWN
-        enc_name = Tk::Encoding::ENCODING_TABLE.get_name(default_def)
-      end
-    rescue NameError
-      # ignore
-      enc_name = nil
-    rescue ArgumentError
-      enc_name = nil
-      fail ArgumentError,
-           "DEFAULT_TK_ENCODING has an unknown encoding #{default_def}"
-    end
-
-    unless enc_name
-      #if ext_enc_obj == Tk::Encoding::UNKNOWN
-      if int_enc_obj == Tk::Encoding::UNKNOWN
-        if loc_enc_obj == Tk::Encoding::UNKNOWN
-          # use Tk.encoding_system
-          enc_name = tksys_enc_name
-        else
-          # use locale_charmap
-          begin
-            loc_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(loc_enc_obj)
-            if loc_enc_name
-              # use locale_charmap
-              enc_name = loc_enc_name
-            else
-              # use Tk.encoding_system
-              enc_name = tksys_enc_name
-            end
-          rescue ArgumentError
-            # unsupported encoding on Tk -> use Tk.encoding_system
-            enc_name = tksys_enc_name
-          end
-        end
-      else
-        begin
-          #ext_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(ext_enc_obj)
-          #if ext_enc_name && ext_enc_name != tksys_enc_name
-          int_enc_name = Tk::Encoding::ENCODING_TABLE.get_name(int_enc_obj)
-          if int_enc_name
-            # use default_internal
-            enc_name = int_enc_name
-          else
-            # use Tk.encoding_system
-            enc_name = tksys_enc_name
-          end
-        rescue ArgumentError
-          # unsupported encoding on Tk -> use Tk.encoding_system
-          enc_name = tksys_enc_name
-        end
-      end
-    end
-
-    Tk.default_encoding = (enc_name)? enc_name: tksys_enc_name
   end
 
 else

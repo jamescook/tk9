@@ -284,4 +284,14 @@ sched.create_pie(0,0, 60)            #  60 minutes from 00:00
 sched.create_pie(6,30, 280, 'green') # 280 minutes from 06:30
 sched.create_pie(15,20, 90, 'blue')  #  90 minutes from 15:20
 
+# Signal ready to smoke test harness when window becomes visible
+if ENV['TK_READY_FD']
+  Tk.root.bind('Visibility') {
+    if (fd = ENV.delete('TK_READY_FD'))
+      IO.for_fd(fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+    end
+    Tk.after_idle { Tk.root.destroy }
+  }
+end
+
 Tk.mainloop

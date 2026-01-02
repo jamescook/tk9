@@ -2,6 +2,7 @@
 #
 # tk/encodedstr.rb : Tk::EncodedString class
 #
+# TODO: DELETE
 require 'tk' unless defined?(Tk)
 
 ###########################################
@@ -68,19 +69,11 @@ module Tk
 
     def initialize(str, enc = nil)
       super(str)
-      # @encoding = ( enc ||
-      #              ((self.class::Encoding)?
-      #                  self.class::Encoding : Tk.encoding_system) )
-      enc ||= (self.class::Encoding)?
-                         self.class::Encoding :
-                         ((Tk.encoding)? Tk.encoding : Tk.encoding_system)
       if TkCore::WITH_ENCODING
-        unless encobj = Tk::Encoding::ENCODING_TABLE.get_obj(enc)
-          fail ArgumentError, "unsupported Tk encoding '#{enc}'"
-        end
-        self.force_encoding(encobj)
+        # Modern Tcl/Ruby use UTF-8 natively
+        self.force_encoding(::Encoding::UTF_8)
       else
-        @encoding = enc
+        @encoding = enc || 'utf-8'
       end
     end
 
@@ -88,7 +81,7 @@ module Tk
       alias encoding_obj encoding
       alias __encoding   encoding
       def encoding
-        Tk::Encoding::ENCODING_TABLE.get_name(super())
+        'utf-8'
       end
     else
       def encoding

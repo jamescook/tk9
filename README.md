@@ -53,7 +53,7 @@ Note: You still `require 'tk'` - the gem name is `tk-ng` but the library interfa
 
 If you want to use Ruby/Tk (tk.rb and so on), you must have tcltklib.so
 which is working correctly. When you have some troubles on compiling,
-please read [README.tcltklib] and [README.ActiveTcl].
+please read [README.tcltklib].
 
 Even if there is a tcltklib.so on your Ruby library directory, it will not
 work without Tcl/Tk libraries (e.g. libtcl9.0.so) on your environment.
@@ -72,15 +72,32 @@ You must also check that your Tcl/Tk is installed properly.
 [README.macosx-aqua] is about MacOS X Aqua usage.
 
 [README.tcltklib]: README.tcltklib
-[README.ActiveTcl]: README.ActiveTcl
 [README.fork]: README.fork
 [README.macosx-aqua]: README.macosx-aqua
 
 ## Backwards Incompatible Changes
 
-This fork removes some methods that existed in the original ruby/tk but were unused, undocumented, or relied on fragile internal hacks:
+This fork removes legacy code that was complex, rarely used, or incompatible with modern systems.
 
-- **`TclTkIp#_make_menu_embeddable`** - Removed. This was a 2006-era hack that accessed Tk's private internal structs to convert a menubar into an embeddable widget. No public Tk API exists for this because it's not a supported use case. Use `TkMenubutton` widgets for packable menu buttons, or the standard `-menu` option for menubars.
+### Removed Libraries
+
+- **`multi-tk.rb`** - Removed. The ThreadGroup-based multi-interpreter dispatch (~3500 lines) added significant complexity. For multiple interpreters, use explicit calls: `interp.after(1000) { }` instead of relying on magic dispatch.
+
+- **`remote-tk.rb`** - Removed. Depended on multi-tk.rb for controlling Tk interpreters in other processes.
+
+- **`thread_tk.rb`** - Removed. Allowed running Tk mainloop on a background thread, which doesn't work on macOS (Tk requires the main thread).
+
+### Changed Behavior
+
+- **`TkCore::INTERP`** - Deprecated. Accessing this constant emits a warning. Use `TkCore.interp` instead, which raises an error if multiple interpreters exist (preventing ambiguous "which interpreter?" bugs).
+
+- **Encoding machinery** - Simplified. Modern Tcl (8.1+) and Ruby use UTF-8 natively, so the complex encoding conversion code was removed.
+
+### Removed Methods
+
+- **`TclTkIp#encoding_table`** - Removed. Raises `NotImplementedError` with explanation.
+
+- **`TclTkIp#_make_menu_embeddable`** - Removed. This was a 2006-era hack that accessed Tk's private internal structs. Use `TkMenubutton` for packable menu buttons.
 
 ## Development
 

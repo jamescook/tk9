@@ -67,22 +67,39 @@ TkFrame.new{|f|
   TkLabel.new(f, :textvariable=>v).pack(:side=>:left)
 }.pack
 
-TkButton.new(:text=>'normal Button widget',
-             :command=>proc{
-               puts 'button is clicked!!'
-               lbl.text 'button is clicked!!'
-               v.numeric += 1
-             }){
+btn = TkButton.new(:text=>'normal Button widget',
+                   :command=>proc{
+                     puts 'button is clicked!!'
+                     lbl.text 'button is clicked!!'
+                     v.numeric += 1
+                   }){
   pack(:fill=>:x, :expand=>true)
 }
 
-Button_clone.new(:text=>'Label with Button binding',
-                 :command=>proc{
-                   puts 'label is clicked!!'
-                   lbl.text 'label is clicked!!'
-                   v.numeric += 1
-                 }){
+btn_clone = Button_clone.new(:text=>'Label with Button binding',
+                             :command=>proc{
+                               puts 'label is clicked!!'
+                               lbl.text 'label is clicked!!'
+                               v.numeric += 1
+                             }){
   pack(:fill=>:x, :expand=>true)
 }
+
+# Smoke test support
+if ENV['TK_READY_FD']
+  Tk.root.bind('Visibility') {
+    # Click both buttons after UI is visible
+    Tk.after(50) {
+      btn.invoke
+      btn_clone.invoke
+      $stdout.flush
+
+      if (fd = ENV.delete('TK_READY_FD'))
+        IO.for_fd(fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+      end
+      Tk.after_idle { Tk.root.destroy }
+    }
+  }
+end
 
 Tk.mainloop
