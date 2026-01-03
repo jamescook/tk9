@@ -22,7 +22,7 @@ require 'rake/clean'
 #     --without-X11
 
 # Clean up extconf cached config files
-CLEAN.include('ext/tk/config_list', 'ext/tk/tkutil/config_list')
+CLEAN.include('ext/tk/config_list')
 CLOBBER.include('tmp', 'lib/*.bundle', 'lib/*.so', 'ext/**/*.o', 'ext/**/*.bundle', 'ext/**/*.bundle.dSYM')
 
 Rake::ExtensionTask.new do |ext|
@@ -31,11 +31,7 @@ Rake::ExtensionTask.new do |ext|
   ext.lib_dir = 'lib'
 end
 
-Rake::ExtensionTask.new do |ext|
-  ext.name = 'tkutil'
-  ext.ext_dir = 'ext/tk/tkutil'
-  ext.lib_dir = 'lib'
-end
+# NOTE: tkutil C extension eliminated - now pure Ruby in lib/tk/util.rb
 
 Rake::TestTask.new(:test) do |t|
   t.libs << 'test'

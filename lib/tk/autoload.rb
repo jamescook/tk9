@@ -108,15 +108,6 @@ module Tk
   autoload :ValidateConfigure,     'tk/validation'
   autoload :ItemValidateConfigure, 'tk/validation'
 
-  autoload :EncodedString,    'tk/encodedstr'
-  def Tk.EncodedString(str, enc = nil); Tk::EncodedString.new(str, enc); end
-
-  autoload :BinaryString,     'tk/encodedstr'
-  def Tk.BinaryString(str); Tk::BinaryString.new(str); end
-
-  autoload :UTF8_String,      'tk/encodedstr'
-  def Tk.UTF8_String(str); Tk::UTF8_String.new(str); end
-
 end
 
 

@@ -8,7 +8,6 @@ end
 
 ########################
 
-require 'tkutil'
 require 'tk' unless Object.const_defined? :TkComm
 
 ########################

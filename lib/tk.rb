@@ -5,7 +5,9 @@
 
 # use Shigehiro's tcltklib
 require 'tcltklib'
-require 'tkutil'
+require_relative 'tk/tk_kernel'        # TkKernel base class
+require_relative 'tk/tk_callback_entry' # TkCallbackEntry marker class
+require_relative 'tk/util'             # TkUtil module (pure Ruby)
 require_relative 'tcltk_version'  # generated at compile time - see ext/tk/extconf.rb
 require_relative 'tcltk_compat'   # legacy compatibility wrappers
 
@@ -4498,11 +4500,14 @@ class TkObject<TkKernel
   include TkConfigMethod
   include TkBindCore
 
-### --> definition is moved to TkUtil module
-#  def path
-#    @path
-#  end
+  # Returns the Tk widget path (e.g., ".frame1.button2")
+  # Used by Tcl/Tk commands to identify this widget
+  def path
+    @path
+  end
 
+  # Escaped path - currently same as path
+  # Historical: was used for paths needing escape sequences
   def epath
     @path
   end
