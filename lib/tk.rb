@@ -877,148 +877,16 @@ module TkCore
       opts = ''
     end
 
-    if defined? ::TK_MAINLOOP_ON_MAIN_THREAD_ONLY
-      RUN_EVENTLOOP_ON_MAIN_THREAD = ::TK_MAINLOOP_ON_MAIN_THREAD_ONLY
+    # Tk requires the main thread for UI operations.
+    # On macOS this is enforced by AppKit; on other platforms it simplifies
+    # the threading model and avoids complex synchronization issues.
+    if Thread.current != Thread.main
+      raise RuntimeError,
+        "Tk requires the main thread. " \
+        "IRB and other REPLs that evaluate code in background threads are not supported. " \
+        "Run your Tk code in a script instead."
     end
-
-    unless self.const_defined? :RUN_EVENTLOOP_ON_MAIN_THREAD
-      if RUBY_PLATFORM =~ /darwin/
-        # macOS requires all UI operations on the main thread (AppKit limitation).
-        # This cannot be worked around - Tk must run on main thread.
-        RUN_EVENTLOOP_ON_MAIN_THREAD = true
-      elsif defined? ::IRB
-        RUN_EVENTLOOP_ON_MAIN_THREAD = false
-      else
-        RUN_EVENTLOOP_ON_MAIN_THREAD = WITH_RUBY_VM
-      end
-    end
-
-    if !WITH_RUBY_VM || RUN_EVENTLOOP_ON_MAIN_THREAD ### check Ruby 1.9 !!!!!!!
-      # On macOS, check we're on main thread before initializing Tk
-      if RUBY_PLATFORM =~ /darwin/ && Thread.current != Thread.main
-        raise RuntimeError,
-          "Tk on macOS requires the main thread. " \
-          "IRB and other REPLs that evaluate code in background threads are not supported. " \
-          "Run your Tk code in a script instead."
-      end
-      INTERP = TclTkIp.new(name, opts) unless self.const_defined? :INTERP
-    else
-      INTERP_MUTEX = Mutex.new
-      INTERP_ROOT_CHECK = ConditionVariable.new
-      INTERP_THREAD = Thread.new{
-        begin
-          #Thread.current[:interp] = interp = TclTkIp.new(name, opts)
-          interp = TclTkIp.new(name, opts)
-        rescue => e
-          Thread.current[:interp] = e
-          raise e
-        end
-
-        interp.mainloop_abort_on_exception = true
-        Thread.current.instance_variable_set("@interp", interp)
-
-        status = [nil]
-        def status.value
-          self[0]
-        end
-        def status.value=(val)
-          self[0] = val
-        end
-
-        Thread.current[:status] = status
-        #sleep
-
-        # like as 1.8, withdraw a root widget before calling Tk.mainloop
-        interp._eval <<EOS
-wm withdraw .
-rename wm __wm_orig__
-proc wm {subcmd win args} {
-  set val [eval [list __wm_orig__ $subcmd $win] $args]
-  if {[string equal $subcmd withdraw] && [string equal $win .]} {
-    rename wm {}
-    rename __wm_orig__ wm
-  }
-  return $val
-}
-proc __startup_rbtk_mainloop__ {args} {
-  rename __startup_rbtk_mainloop__ {}
-  if {[info command __wm_orig__] == "__wm_orig__"} {
-    rename wm {}
-    rename __wm_orig__ wm
-    if [string equal [wm state .] withdrawn] {
-      wm deiconify .
-    }
-  }
-}
-set __initial_state_of_rubytk__ 1
-trace add variable __initial_state_of_rubytk__ unset __startup_rbtk_mainloop__
-
-# complete initializing
-ruby {TkCore::INTERP_THREAD[:interp] = TkCore::INTERP_THREAD.instance_variable_get('@interp')}
-EOS
-
-        begin
-          begin
-            #TclTkLib.mainloop_abort_on_exception = false
-            #interp.mainloop_abort_on_exception = true
-            #Thread.current[:interp] = interp
-            #Thread.current[:status].value = TclTkLib.mainloop(true)
-            Thread.current[:status].value = interp.mainloop(true)
-          rescue SystemExit=>e
-            Thread.current[:status].value = e
-          rescue Exception=>e
-            Thread.current[:status].value = e
-            p e if $DEBUG
-            retry if interp.has_mainwindow?
-          ensure
-            INTERP_MUTEX.synchronize{ INTERP_ROOT_CHECK.broadcast }
-          end
-
-          unless interp.deleted?
-            begin
-              #Thread.current[:status].value = TclTkLib.mainloop(false)
-              Thread.current[:status].value = interp.mainloop(false)
-            rescue Exception=>e
-              puts "ignore exception on interp: #{e.inspect}\n" if $DEBUG
-            end
-          end
-
-        ensure
-          # interp must be deleted before the thread for interp is dead.
-          # If not, raise Tcl_Panic on Tcl_AsyncDelete because async handler
-          # deleted by the wrong thread.
-          interp.delete
-        end
-      }
-
-      # check a Tcl/Tk interpreter is initialized
-      until INTERP_THREAD[:interp]
-        # Thread.pass
-        INTERP_THREAD.run
-      end
-
-      # INTERP_THREAD.run
-      raise INTERP_THREAD[:interp] if INTERP_THREAD[:interp].kind_of? Exception
-
-      # check an eventloop is running
-      while INTERP_THREAD.alive? && TclTkLib.mainloop_thread?.nil?
-        INTERP_THREAD.run
-      end
-
-      INTERP = INTERP_THREAD[:interp]
-      INTERP_THREAD_STATUS = INTERP_THREAD[:status]
-
-      # delete the interpreter and kill the eventloop thread at exit
-      END{
-        if INTERP_THREAD.alive?
-          INTERP.delete
-          INTERP_THREAD.kill
-        end
-      }
-
-      # (for safety's sake) force the eventloop to run
-      INTERP_THREAD.run
-    end
+    INTERP = TclTkIp.new(name, opts) unless self.const_defined? :INTERP
 
     def INTERP.__getip
       self
@@ -1149,11 +1017,6 @@ EOS
     end
   end
 
-  unless self.const_defined? :RUN_EVENTLOOP_ON_MAIN_THREAD
-    ### Ruby 1.9 !!!!!!!!!!!!!!!!!!!!!!!!!!
-    RUN_EVENTLOOP_ON_MAIN_THREAD = false
-  end
-
   WIDGET_DESTROY_HOOK = '<WIDGET_DESTROY_HOOK>'
   INTERP._invoke_without_enc('event', 'add',
                              "<#{WIDGET_DESTROY_HOOK}>", '<Destroy>')
@@ -1200,15 +1063,7 @@ EOS
     }
   EOL
 
-  if !WITH_RUBY_VM || RUN_EVENTLOOP_ON_MAIN_THREAD ### check Ruby 1.9 !!!!!!!
-    at_exit{ INTERP.remove_tk_procs(TclTkLib::FINALIZE_PROC_NAME) }
-  else
-    at_exit{
-      Tk.root.destroy
-      INTERP.remove_tk_procs(TclTkLib::FINALIZE_PROC_NAME)
-      INTERP_THREAD.kill.join
-    }
-  end
+  at_exit{ INTERP.remove_tk_procs(TclTkLib::FINALIZE_PROC_NAME) }
 
   EventFlag = TclTkLib::EventFlag
 
@@ -1393,75 +1248,17 @@ EOS
   end
 
   def mainloop(check_root = true)
-    if !TkCore::WITH_RUBY_VM
-      TclTkLib.mainloop(check_root)
-
-    elsif TkCore::RUN_EVENTLOOP_ON_MAIN_THREAD
-      # if TclTkLib::WINDOWING_SYSTEM == 'aqua' &&
-      #if TkCore::INTERP._invoke_without_enc('tk','windowingsystem')=='aqua' &&
-      #    Thread.current != Thread.main &&
-      #    (TclTkLib.get_version <=> [8,4,TclTkLib::RELEASE_TYPE::FINAL,9]) > 0
-      #  raise RuntimeError,
-      #       "eventloop on TkAqua ( > Tk8.4.9 ) works on the main thread only"
-      #end
-      if Thread.current != Thread.main
-        raise RuntimeError, "Tk.mainloop is allowed on the main thread only"
-      end
-      TclTkLib.mainloop(check_root)
-
-    else ### Ruby 1.9 !!!!!
-      unless TkCore::INTERP.default_master?
-        # [MultiTkIp] slave interp ?
-        return TkCore::INTERP._thread_tkwait('window', '.') if check_root
-      end
-
-      # like as 1.8, withdraw a root widget before calling Tk.mainloop
-      TkCore::INTERP._eval_without_enc('catch {unset __initial_state_of_rubytk__}')
-      INTERP_THREAD.run
-
-      begin
-        TclTkLib.set_eventloop_window_mode(true)
-
-        # force run the eventloop
-        TkCore::INTERP._eval_without_enc('update')
-        TkCore::INTERP._eval_without_enc('catch {set __initial_state_of_rubytk__}')
-        INTERP_THREAD.run
-        if check_root
-          INTERP_MUTEX.synchronize{
-            INTERP_ROOT_CHECK.wait(INTERP_MUTEX)
-            status = INTERP_THREAD_STATUS.value
-            if status && TkCore::INTERP.default_master?
-              INTERP_THREAD_STATUS.value = nil
-              raise status if status.kind_of?(Exception)
-            end
-          }
-        else
-          # INTERP_THREAD.value
-          begin
-            INTERP_THREAD.value
-          rescue Exception => e
-            raise e
-          end
-        end
-      rescue Exception => e
-        raise e
-      ensure
-        TclTkLib.set_eventloop_window_mode(false)
-      end
+    if Thread.current != Thread.main
+      raise RuntimeError, "Tk.mainloop must be called from the main thread"
     end
+    TclTkLib.mainloop(check_root)
   end
 
   def mainloop_thread?
     # true  : current thread is mainloop
     # nil   : there is no mainloop
     # false : mainloop is running on the other thread
-    #         ( At then, it is dangerous to call Tk interpreter directly. )
-    if !TkCore::WITH_RUBY_VM || TkCore::RUN_EVENTLOOP_ON_MAIN_THREAD
-      ### Ruby 1.9 !!!!!!!!!!!
-      TclTkLib.mainloop_thread?
-    else
-      Thread.current == INTERP_THREAD
-    end
+    TclTkLib.mainloop_thread?
   end
 
   def mainloop_exist?

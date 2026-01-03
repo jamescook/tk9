@@ -87,6 +87,8 @@ This fork removes legacy code that was complex, rarely used, or incompatible wit
 
 - **`thread_tk.rb`** - Removed. Allowed running Tk mainloop on a background thread, which doesn't work on macOS (Tk requires the main thread).
 
+- **`RUN_EVENTLOOP_ON_MAIN_THREAD`** - Removed. Tk now always runs on the main thread. The background thread machinery (~100 lines) that allowed running Tk in IRB on non-macOS has been removed. Run Tk code in scripts, not REPLs.
+
 ### Changed Behavior
 
 - **`TkCore::INTERP`** - Deprecated. Accessing this constant emits a warning. Use `TkCore.interp` instead, which raises an error if multiple interpreters exist (preventing ambiguous "which interpreter?" bugs).
