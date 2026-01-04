@@ -30,17 +30,18 @@ class TkVariable
   major, minor, _, _ = TclTkLib.get_version
   USE_OLD_TRACE_OPTION_STYLE = (major < 8) || (major == 8 && minor < 4)
 
-  #TkCore::INTERP.add_tk_procs('rb_var', 'args',
-  #     "ruby [format \"TkVariable.callback %%Q!%s!\" $args]")
-  TkCore::INTERP.add_tk_procs('rb_var', 'args', <<-'EOL')
-    if {[set st [catch {eval {ruby_cmd TkVariable callback} $args} ret]] != 0} {
-       set idx [string first "\n\n" $ret]
+  # Register callback for TkVariable.callback, used by rb_var Tcl proc
+  TKVARIABLE_CALLBACK_ID = TkCore::INTERP.register_callback(proc { |*args| TkVariable.callback(*args) })
+
+  TkCore::INTERP.add_tk_procs('rb_var', 'args', <<-EOL)
+    if {[set st [catch {eval {ruby_callback #{TKVARIABLE_CALLBACK_ID}} $args} ret]] != 0} {
+       set idx [string first "\\n\\n" $ret]
        if {$idx > 0} {
           global errorInfo
           set tcl_backtrace $errorInfo
-          set errorInfo [string range $ret [expr $idx + 2] \
+          set errorInfo [string range $ret [expr $idx + 2] \\
                                            [string length $ret]]
-          append errorInfo "\n" $tcl_backtrace
+          append errorInfo "\\n" $tcl_backtrace
           bgerror [string range $ret 0 [expr $idx - 1]]
        } else {
           bgerror $ret

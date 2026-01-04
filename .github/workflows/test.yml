@@ -162,6 +162,14 @@ jobs:
         LD_LIBRARY_PATH: /opt/tcltk9/lib
       run: timeout 60 xvfb-run --auto-servernum rake test
 
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-tcl9
+        path: coverage/
+        retention-days: 30
+
     - name: Upload failed screenshots
       if: failure()
       uses: actions/upload-artifact@v4
@@ -238,6 +246,14 @@ jobs:
           --with-tk-include=/usr/include/tcl8.6
     - name: Run visual regression tests
       run: timeout 60 xvfb-run --auto-servernum rake test
+
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-tcl8
+        path: coverage/
+        retention-days: 30
 
     - name: Upload failed screenshots
       if: failure()

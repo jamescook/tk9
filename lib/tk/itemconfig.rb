@@ -3,7 +3,6 @@
 # tk/itemconfig.rb : control item/tag configuration of widget
 #
 require 'tk' unless defined?(Tk)
-require 'tkutil'
 require 'tk/itemfont.rb'
 
 module TkItemConfigOptkeys
