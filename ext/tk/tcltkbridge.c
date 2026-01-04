@@ -85,6 +85,9 @@ static void interp_deleted_callback(ClientData, Tcl_Interp *);
 /* Default timer interval for thread-aware mainloop (ms) */
 #define DEFAULT_TIMER_INTERVAL_MS 5
 
+/* Global timer interval for TclTkLib.mainloop (mutable) */
+static int g_thread_timer_ms = DEFAULT_TIMER_INTERVAL_MS;
+
 /* Interp struct stored in Ruby object */
 struct tcltk_interp {
     Tcl_Interp *interp;
@@ -1005,6 +1008,97 @@ interp_mainloop(VALUE self)
 }
 
 /* ---------------------------------------------------------
+ * TclTkLib.mainloop - Global event loop (no interpreter required)
+ *
+ * Runs the Tk event loop until all windows are closed.
+ * Uses the global g_thread_timer_ms setting for thread yielding.
+ * --------------------------------------------------------- */
+
+/* Global timer handler - re-registers itself using global interval */
+static void
+global_keepalive_timer_proc(ClientData clientData)
+{
+    if (g_thread_timer_ms > 0) {
+        Tcl_CreateTimerHandler(g_thread_timer_ms, global_keepalive_timer_proc, NULL);
+    }
+}
+
+static VALUE
+lib_mainloop(int argc, VALUE *argv, VALUE self)
+{
+    int check_root = 1;  /* default: exit when no windows remain */
+
+    /* Optional check_root argument:
+     *   true (default): exit when Tk_GetNumMainWindows() == 0
+     *   false: keep running even with no windows (for timers, traces, etc.)
+     */
+    if (argc > 0 && argv[0] != Qnil) {
+        check_root = RTEST(argv[0]);
+    }
+
+    /* Start recurring timer if interval > 0 */
+    if (g_thread_timer_ms > 0) {
+        Tcl_CreateTimerHandler(g_thread_timer_ms, global_keepalive_timer_proc, NULL);
+    }
+
+    for (;;) {
+        /* Exit if check_root enabled and no windows remain */
+        if (check_root && Tk_GetNumMainWindows() <= 0) {
+            break;
+        }
+
+        Tcl_DoOneEvent(TCL_ALL_EVENTS);
+
+        if (g_thread_timer_ms > 0) {
+            rb_thread_call_without_gvl(thread_yield_func, NULL, RUBY_UBF_IO, NULL);
+        }
+
+        rb_thread_check_ints();
+    }
+
+    return Qnil;
+}
+
+static VALUE
+lib_get_thread_timer_ms(VALUE self)
+{
+    return INT2NUM(g_thread_timer_ms);
+}
+
+static VALUE
+lib_set_thread_timer_ms(VALUE self, VALUE val)
+{
+    int ms = NUM2INT(val);
+    if (ms < 0) {
+        rb_raise(rb_eArgError, "thread_timer_ms must be >= 0 (got %d)", ms);
+    }
+    g_thread_timer_ms = ms;
+    return val;
+}
+
+/* ---------------------------------------------------------
+ * TclTkLib.do_one_event(flags = ALL_EVENTS) - Process single event
+ *
+ * Global function - Tcl_DoOneEvent doesn't require an interpreter.
+ * Returns true if event was processed, false if nothing to do.
+ * --------------------------------------------------------- */
+
+static VALUE
+lib_do_one_event(int argc, VALUE *argv, VALUE self)
+{
+    int flags = TCL_ALL_EVENTS;
+    int result;
+
+    if (argc > 0) {
+        flags = NUM2INT(argv[0]);
+    }
+
+    result = Tcl_DoOneEvent(flags);
+
+    return result ? Qtrue : Qfalse;
+}
+
+/* ---------------------------------------------------------
  * Interp#thread_timer_ms / #thread_timer_ms= - Get/set timer interval
  * --------------------------------------------------------- */
 
@@ -1243,6 +1337,12 @@ Init_tcltklib(void)
 
     /* Module function for list operations */
     rb_define_module_function(mTclTkLib, "_merge_tklist", lib_merge_tklist, -1);
+
+    /* Global event loop functions - don't require an interpreter */
+    rb_define_module_function(mTclTkLib, "mainloop", lib_mainloop, -1);
+    rb_define_module_function(mTclTkLib, "do_one_event", lib_do_one_event, -1);
+    rb_define_module_function(mTclTkLib, "thread_timer_ms", lib_get_thread_timer_ms, 0);
+    rb_define_module_function(mTclTkLib, "thread_timer_ms=", lib_set_thread_timer_ms, 1);
 
     /* Callback depth detection for unsafe operation warnings */
     rb_define_module_function(mTclTkLib, "in_callback?", lib_in_callback_p, 0);

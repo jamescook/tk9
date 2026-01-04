@@ -274,10 +274,13 @@ module TclTkLib
   end
 
   class << self
-    # Delegate to C Tk_MainLoop - see tcltkbridge.c for docs
-    def mainloop(check_root = true)
-      TkCore.interp.mainloop
-    end
+    # TclTkLib.mainloop is defined in C (tcltkbridge.c)
+    # It's a global event loop that doesn't require an interpreter.
+    #
+    # TclTkLib.do_one_event is also in C - processes one event globally.
+    #
+    # TclTkLib.thread_timer_ms / thread_timer_ms= control the timer
+    # interval for Ruby thread yielding during mainloop.
 
     # Stubs for legacy thread/event loop methods
     def mainloop_abort_on_exception; @abort_on_exception; end
@@ -292,10 +295,6 @@ module TclTkLib
     def get_eventloop_weight; [800, 10]; end
     def mainloop_watchdog(check_root = true); mainloop(check_root); end
     def mainloop_thread?; nil; end
-
-    def do_one_event(flags = ALL_EVENTS)
-      TkCore.interp.do_one_event(flags)
-    end
 
     # Legacy encoding methods - no-ops since modern Tcl/Ruby use UTF-8 natively
     def _toUTF8(str, enc = nil)
