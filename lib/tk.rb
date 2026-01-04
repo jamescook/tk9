@@ -432,37 +432,7 @@ end
 
 # Tk::Encoding module loaded after TkCore is defined
 require_relative 'tk/encoding'
-
-module TkBindCore
-  def bind(context, *args, &block)
-    # if args[0].kind_of?(Proc) || args[0].kind_of?(Method)
-    if TkComm._callback_entry?(args[0]) || !block
-      cmd = args.shift
-    else
-      cmd = block
-    end
-    Tk.bind(self, context, cmd, *args)
-  end
-
-  def bind_append(context, *args, &block)
-    # if args[0].kind_of?(Proc) || args[0].kind_of?(Method)
-    if TkComm._callback_entry?(args[0]) || !block
-      cmd = args.shift
-    else
-      cmd = block
-    end
-    Tk.bind_append(self, context, cmd, *args)
-  end
-
-  def bind_remove(context)
-    Tk.bind_remove(self, context)
-  end
-
-  def bindinfo(context=nil)
-    Tk.bindinfo(self, context)
-  end
-end
-
+require_relative 'tk/bind_core'
 
 module TkTreatFont
   def __font_optkeys
