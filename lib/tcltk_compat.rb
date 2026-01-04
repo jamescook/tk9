@@ -259,6 +259,10 @@ module TclTkLib
     end
   end
 
+  # Tcl proc name for interpreter finalization cleanup.
+  # Legacy code uses this to unbind destroy hooks and avoid SEGV on shutdown.
+  FINALIZE_PROC_NAME = "INTERP_FINALIZE_HOOK".freeze
+
   # Event flags for do_one_event.
   # Values come from Tcl's tcl.h (TCL_WINDOW_EVENTS, etc).
   # Our C bridge exposes these as TclTkLib::WINDOW_EVENTS etc.

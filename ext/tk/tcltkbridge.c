@@ -1292,6 +1292,36 @@ lib_in_callback_p(VALUE self)
 }
 
 /* ---------------------------------------------------------
+ * TclTkLib.get_version - Get Tcl version as [major, minor, type, patchlevel]
+ *
+ * WHY COMPILE-TIME MACROS INSTEAD OF Tcl_GetVersion()?
+ *
+ * With stubs enabled (-DUSE_TCL_STUBS), Tcl_GetVersion() becomes a macro
+ * that dereferences tclStubsPtr->tcl_GetVersion. But tclStubsPtr is NULL
+ * until Tcl_InitStubs() is called - which requires an interpreter.
+ *
+ * So the "proper" API to get the version needs an interpreter to exist
+ * first. That's backwards - callers often want version info before
+ * deciding whether to create an interpreter.
+ *
+ * The workaround: use the compile-time macros from tcl.h directly.
+ * These are just #defines, no stubs table needed. The version reported
+ * is what we compiled against, which must match the runtime major version
+ * (stubs enforce this). Minor/patch may differ at runtime - use
+ * TclTkIp#tcl_version for the exact runtime patchlevel.
+ * --------------------------------------------------------- */
+
+static VALUE
+lib_get_version(VALUE self)
+{
+    return rb_ary_new3(4,
+        INT2NUM(TCL_MAJOR_VERSION),
+        INT2NUM(TCL_MINOR_VERSION),
+        INT2NUM(TCL_RELEASE_LEVEL),
+        INT2NUM(TCL_RELEASE_SERIAL));
+}
+
+/* ---------------------------------------------------------
  * Module initialization
  * --------------------------------------------------------- */
 
@@ -1347,9 +1377,16 @@ Init_tcltklib(void)
     /* Callback depth detection for unsafe operation warnings */
     rb_define_module_function(mTclTkLib, "in_callback?", lib_in_callback_p, 0);
 
-    /* Note: TclTkLib.get_version is defined in Ruby (lib/tcltk_version.rb)
-     * Generated at compile time to avoid stubs initialization issues.
-     * See extconf.rb for details. */
+    /* Version info - uses compile-time macros, no stubs needed */
+    rb_define_module_function(mTclTkLib, "get_version", lib_get_version, 0);
+
+    /* TclTkLib::RELEASE_TYPE module with constants */
+    {
+        VALUE mReleaseType = rb_define_module_under(mTclTkLib, "RELEASE_TYPE");
+        rb_define_const(mReleaseType, "ALPHA", INT2NUM(TCL_ALPHA_RELEASE));
+        rb_define_const(mReleaseType, "BETA", INT2NUM(TCL_BETA_RELEASE));
+        rb_define_const(mReleaseType, "FINAL", INT2NUM(TCL_FINAL_RELEASE));
+    }
 
     /* TclTkIp class (top-level for compatibility) */
     cTclTkIp = rb_define_class("TclTkIp", rb_cObject);

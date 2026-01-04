@@ -9,7 +9,6 @@
 /spec/reports/
 /tmp/
 /lib/*.so
-/lib/tcltk_version.rb
 /*.gem
 *.bundle
 *.dSYM/
