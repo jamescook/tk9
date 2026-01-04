@@ -472,8 +472,19 @@ module TkConfigMethod
   end
   private :__optkey_aliases
 
+  # Helper method to merge declared options from OptionDSL into legacy optkeys.
+  # This bridges the new declarative option system with the legacy type conversion.
+  def __merge_declared_optkeys(base_keys, declared_method)
+    if self.class.respond_to?(declared_method)
+      (base_keys + self.class.send(declared_method)).uniq
+    else
+      base_keys
+    end
+  end
+  private :__merge_declared_optkeys
+
   def __numval_optkeys
-    []
+    __merge_declared_optkeys([], :declared_numval_optkeys)
   end
   private :__numval_optkeys
 
@@ -483,23 +494,29 @@ module TkConfigMethod
   private :__numstrval_optkeys
 
   def __boolval_optkeys
-    ['exportselection', 'jump', 'setgrid', 'takefocus']
+    __merge_declared_optkeys(
+      ['exportselection', 'jump', 'setgrid', 'takefocus'],
+      :declared_boolval_optkeys
+    )
   end
   private :__boolval_optkeys
 
   def __strval_optkeys
-    [
-      'text', 'label', 'show', 'data', 'file',
-      'activebackground', 'activeforeground', 'background',
-      'disabledforeground', 'disabledbackground', 'foreground',
-      'highlightbackground', 'highlightcolor', 'insertbackground',
-      'selectbackground', 'selectforeground', 'troughcolor'
-    ]
+    __merge_declared_optkeys(
+      [
+        'text', 'label', 'show', 'data', 'file',
+        'activebackground', 'activeforeground', 'background',
+        'disabledforeground', 'disabledbackground', 'foreground',
+        'highlightbackground', 'highlightcolor', 'insertbackground',
+        'selectbackground', 'selectforeground', 'troughcolor'
+      ],
+      :declared_strval_optkeys
+    )
   end
   private :__strval_optkeys
 
   def __listval_optkeys
-    []
+    __merge_declared_optkeys([], :declared_listval_optkeys)
   end
   private :__listval_optkeys
 
@@ -712,6 +729,7 @@ module TkConfigMethod
         slot[key] = method.call(slot[key]) if slot.has_key?(key)
       }
 
+      # :nocov: __keyonly_optkeys - only overridden in BLT extensions (blt/tree.rb)
       __keyonly_optkeys.each{|defkey, undefkey|
         conf = slot.find{|kk, vv| kk == defkey.to_s}
         if conf
@@ -724,6 +742,7 @@ module TkConfigMethod
           end
         end
       }
+      # :nocov:
 
       if (slot.find{|k, v| k =~ /^(|latin|ascii|kanji)(#{__font_optkeys.join('|')})$/})
         font_configure(slot)
@@ -743,6 +762,7 @@ module TkConfigMethod
         slot = real_name.to_s
       end
 
+      # :nocov: __keyonly_optkeys - only overridden in BLT extensions (blt/tree.rb)
       if ( conf = __keyonly_optkeys.find{|k, v| k.to_s == slot} )
         defkey, undefkey = conf
         if value
@@ -750,6 +770,7 @@ module TkConfigMethod
         elsif undefkey
           tk_call(*(__config_cmd << "-#{undefkey}"))
         end
+      # :nocov:
       elsif ( method = _symbolkey2str(__ruby2val_optkeys)[slot] )
         tk_call(*(__config_cmd << "-#{slot}" << method.call(value)))
       elsif ( method = _symbolkey2str(__methodcall_optkeys)[slot] )
@@ -768,6 +789,8 @@ module TkConfigMethod
   end
   private :__configure_core
 
+  # Filters keys hash to only valid configure options for this widget.
+  # Used as fallback when __IGNORE_UNKNOWN_CONFIGURE_OPTION__ is enabled.
   def __check_available_configure_options(keys)
     availables = self.current_configinfo.keys
 
@@ -776,7 +799,9 @@ module TkConfigMethod
       [k.to_s, "latin#{k}", "ascii#{k}", "kanji#{k}"]
     }.flatten
     availables |= __methodcall_optkeys.keys.map{|k| k.to_s}
+    # :nocov: __keyonly_optkeys - only overridden in BLT extensions (blt/tree.rb)
     availables |= __keyonly_optkeys.keys.map{|k| k.to_s}
+    # :nocov:
 
     keys = _symbolkey2str(keys)
     keys.delete_if{|k, v| !(availables.include?(k))}

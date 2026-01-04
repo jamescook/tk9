@@ -2,9 +2,13 @@
 #
 # tk/menu.rb : treat menu and menubutton
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/menu.html
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/menubutton.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/itemconfig'
 require 'tk/menuspec'
+require 'tk/option_dsl'
 
 module TkMenuEntryConfig
   include TkItemConfigMethod
@@ -49,10 +53,30 @@ class Tk::Menu<TkWindow
   include Wm
   include TkMenuEntryConfig
   extend TkMenuSpec
+  extend Tk::OptionDSL
 
   TkCommandNames = ['menu'.freeze].freeze
   WidgetClassName = 'Menu'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :activebackground,   type: :color
+  option :activeborderwidth,  type: :pixels
+  option :activeforeground,   type: :color
+  option :activerelief,       type: :relief
+  option :borderwidth,        type: :pixels, aliases: [:bd]
+  option :disabledforeground, type: :color
+  option :font,               type: :string
+  option :foreground,         type: :color, aliases: [:fg]
+  option :relief,             type: :relief
+
+  # Widget-specific options
+  option :postcommand,        type: :string
+  option :selectcolor,        type: :color
+  option :tearoff,            type: :boolean
+  option :tearoffcommand,     type: :string
+  option :title,              type: :string
+  option :type,               type: :string    # menubar, tearoff, normal
 
   #def create_self(keys)
   #  if keys and keys != None
@@ -539,6 +563,12 @@ class Tk::Menubutton<Tk::Label
   TkCommandNames = ['menubutton'.freeze].freeze
   WidgetClassName = 'Menubutton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Menubutton-specific options (inherits from Tk::Label)
+  option :direction,    type: :string    # above, below, left, right, flush
+  option :indicatoron,  type: :boolean
+  option :menu,         type: :string    # menu path
+
   def create_self(keys)
     if keys and keys != None
       unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__

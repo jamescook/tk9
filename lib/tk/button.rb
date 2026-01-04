@@ -2,21 +2,22 @@
 #
 # tk/button.rb : treat button widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/button.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/label'
+require 'tk/option_dsl'
 
 class Tk::Button<Tk::Label
+  extend Tk::OptionDSL
+
   TkCommandNames = ['button'.freeze].freeze
   WidgetClassName = 'Button'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-  #def create_self(keys)
-  #  if keys and keys != None
-  #    tk_call_without_enc('button', @path, *hash_kv(keys, true))
-  #  else
-  #    tk_call_without_enc('button', @path)
-  #  end
-  #end
-  #private :create_self
+
+  # Button-specific options (inherits all other options from Tk::Label)
+  option :default,   type: :string    # normal, active, disabled
+  option :overrelief, type: :relief   # relief when cursor is over button
 
   def invoke
     _fromUTF8(tk_send_without_enc('invoke'))

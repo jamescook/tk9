@@ -3,6 +3,8 @@
 #               tk/spinbox.rb - Tk spinbox classes
 #                       by Yukihiro Matsumoto <matz@caelum.co.jp>
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/spinbox.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/entry'
 
@@ -10,6 +12,18 @@ class Tk::Spinbox<Tk::Entry
   TkCommandNames = ['spinbox'.freeze].freeze
   WidgetClassName = 'Spinbox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Spinbox-specific options (inherits from Tk::Entry)
+  option :buttonbackground,   type: :color
+  option :buttoncursor,       type: :string
+  option :buttondownrelief,   type: :relief
+  option :buttonuprelief,     type: :relief
+  option :format,             type: :string
+  option :from,               type: :float
+  option :increment,          type: :float
+  option :to,                 type: :float
+  option :values,             type: :list
+  option :wrap,               type: :boolean
 
   class SpinCommand < TkValidateCommand
     class ValidateArgs < TkUtil::CallbackSubst

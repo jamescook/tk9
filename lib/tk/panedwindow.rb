@@ -2,12 +2,37 @@
 #
 # tk/panedwindow.rb : treat panedwindow
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/panedwindow.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class Tk::PanedWindow<TkWindow
+  extend Tk::OptionDSL
+
   TkCommandNames = ['panedwindow'.freeze].freeze
   WidgetClassName = 'Panedwindow'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :borderwidth,      type: :pixels, aliases: [:bd]
+  option :orient,           type: :string    # horizontal, vertical
+  option :relief,           type: :relief
+
+  # Widget-specific options
+  option :handlepad,        type: :pixels
+  option :handlesize,       type: :pixels
+  option :height,           type: :pixels
+  option :opaqueresize,     type: :boolean
+  option :proxybackground,  type: :color
+  option :proxyborderwidth, type: :pixels
+  option :proxyrelief,      type: :relief
+  option :sashcursor,       type: :string
+  option :sashpad,          type: :pixels
+  option :sashrelief,       type: :relief
+  option :sashwidth,        type: :pixels
+  option :showhandle,       type: :boolean
+  option :width,            type: :pixels
   #def create_self(keys)
   #  if keys and keys != None
   #    tk_call_without_enc('panedwindow', @path, *hash_kv(keys, true))

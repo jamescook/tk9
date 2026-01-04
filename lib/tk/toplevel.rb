@@ -2,17 +2,40 @@
 #
 # tk/toplevel.rb : treat toplevel widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/toplevel.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/wm'
 require 'tk/menuspec'
+require 'tk/option_dsl'
 
 class Tk::Toplevel<TkWindow
   include Wm
   include TkMenuSpec
+  extend Tk::OptionDSL
 
   TkCommandNames = ['toplevel'.freeze].freeze
   WidgetClassName = 'Toplevel'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :borderwidth,        type: :pixels, aliases: [:bd]
+  option :highlightthickness, type: :pixels
+  option :padx,               type: :pixels
+  option :pady,               type: :pixels
+  option :relief,             type: :relief
+
+  # Widget-specific options
+  option :backgroundimage,    type: :string
+  option :colormap,           type: :string
+  option :container,          type: :boolean
+  option :height,             type: :pixels
+  option :menu,               type: :string
+  option :screen,             type: :string
+  option :tile,               type: :boolean
+  option :use,                type: :string
+  option :visual,             type: :string
+  option :width,              type: :pixels
 
 ################# old version
 #  def initialize(parent=nil, screen=nil, classname=nil, keys=nil)

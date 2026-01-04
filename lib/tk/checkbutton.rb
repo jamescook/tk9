@@ -2,6 +2,8 @@
 #
 # tk/checkbutton.rb : treat checkbutton widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/checkbutton.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/radiobutton'
 
@@ -9,6 +11,10 @@ class Tk::CheckButton<Tk::RadioButton
   TkCommandNames = ['checkbutton'.freeze].freeze
   WidgetClassName = 'Checkbutton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # CheckButton-specific options (inherits from Tk::RadioButton)
+  option :offvalue,  type: :string
+  option :onvalue,   type: :string
   #def create_self(keys)
   #  if keys and keys != None
   #    tk_call_without_enc('checkbutton', @path, *hash_kv(keys, true))

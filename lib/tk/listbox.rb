@@ -2,10 +2,13 @@
 #
 # tk/listbox.rb : treat listbox widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/listbox.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/itemconfig'
 require 'tk/scrollable'
 require 'tk/txtwin_abst'
+require 'tk/option_dsl'
 
 module TkListItemConfig
   include TkItemConfigMethod
@@ -17,12 +20,32 @@ module TkListItemConfig
 end
 
 class Tk::Listbox<TkTextWin
+  extend Tk::OptionDSL
   include TkListItemConfig
   include Scrollable
 
   TkCommandNames = ['listbox'.freeze].freeze
   WidgetClassName = 'Listbox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :borderwidth,        type: :pixels, aliases: [:bd]
+  option :disabledforeground, type: :color
+  option :exportselection,    type: :boolean
+  option :highlightthickness, type: :pixels
+  option :justify,            type: :string     # left, center, right
+  option :relief,             type: :relief
+  option :selectbackground,   type: :color
+  option :selectborderwidth,  type: :pixels
+  option :selectforeground,   type: :color
+  option :setgrid,            type: :boolean
+
+  # Widget-specific options
+  option :activestyle,        type: :string     # dotbox, none, underline
+  option :height,             type: :integer    # in lines
+  option :selectmode,         type: :string     # single, browse, multiple, extended
+  option :state,              type: :string     # normal, disabled
+  option :width,              type: :integer    # in characters
 
   #def create_self(keys)
   #  if keys and keys != None

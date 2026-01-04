@@ -25,6 +25,9 @@ require 'rake/clean'
 CLEAN.include('ext/tk/config_list')
 CLOBBER.include('tmp', 'lib/*.bundle', 'lib/*.so', 'ext/**/*.o', 'ext/**/*.bundle', 'ext/**/*.bundle.dSYM')
 
+# Clean coverage artifacts before test runs to prevent accumulation
+CLEAN.include('coverage/.resultset.json', 'coverage/results')
+
 Rake::ExtensionTask.new do |ext|
   ext.name = 'tcltklib'
   ext.ext_dir = 'ext/tk'
@@ -33,13 +36,31 @@ end
 
 # NOTE: tkutil C extension eliminated - now pure Ruby in lib/tk/util.rb
 
+desc "Clear stale coverage artifacts"
+task :clean_coverage do
+  require 'fileutils'
+  FileUtils.rm_f('coverage/.resultset.json')
+  FileUtils.rm_rf('coverage/results')
+  FileUtils.mkdir_p('coverage/results')
+end
+
 Rake::TestTask.new(:test) do |t|
   t.libs << 'test'
   t.test_files = FileList['test/**/test_*.rb']
   t.verbose = true
 end
 
-task test: :compile
+task test: [:compile, :clean_coverage]
+
+namespace :test do
+  Rake::TestTask.new(:widget) do |t|
+    t.libs << 'test'
+    t.test_files = FileList['test/widget/test_*.rb']
+    t.verbose = true
+  end
+
+  task widget: [:compile, :clean_coverage]
+end
 
 def detect_platform
   case RUBY_PLATFORM

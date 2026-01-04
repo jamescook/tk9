@@ -2,12 +2,33 @@
 #
 # tk/scrollbar.rb : treat scrollbar widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/scrollbar.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class Tk::Scrollbar<TkWindow
+  extend Tk::OptionDSL
+
   TkCommandNames = ['scrollbar'.freeze].freeze
   WidgetClassName = 'Scrollbar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :activebackground,    type: :color
+  option :borderwidth,         type: :pixels, aliases: [:bd]
+  option :highlightthickness,  type: :pixels
+  option :jump,                type: :boolean
+  option :orient,              type: :string    # vertical, horizontal
+  option :relief,              type: :relief
+  option :repeatdelay,         type: :integer   # milliseconds
+  option :repeatinterval,      type: :integer   # milliseconds
+  option :troughcolor,         type: :color
+
+  # Widget-specific options
+  option :activerelief,        type: :relief
+  option :elementborderwidth,  type: :pixels
+  option :width,               type: :pixels
 
   def create_self(keys)
     @assigned = []

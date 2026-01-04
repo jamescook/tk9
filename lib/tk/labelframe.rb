@@ -2,6 +2,8 @@
 #
 # tk/labelframe.rb : treat labelframe widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/labelframe.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/frame'
 
@@ -9,6 +11,13 @@ class Tk::LabelFrame<Tk::Frame
   TkCommandNames = ['labelframe'.freeze].freeze
   WidgetClassName = 'Labelframe'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # LabelFrame-specific options (inherits from Tk::Frame)
+  option :font,         type: :string
+  option :foreground,   type: :color, aliases: [:fg]
+  option :labelanchor,  type: :string    # nw, n, ne, en, e, es, se, s, sw, ws, w, wn
+  option :labelwidget,  type: :string    # widget path
+  option :text,         type: :string
   #def create_self(keys)
   #  if keys and keys != None
   #    tk_call_without_enc('labelframe', @path, *hash_kv(keys, true))

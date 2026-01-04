@@ -167,6 +167,178 @@ class TestConfigMethod < Minitest::Test
     end
   end
 
+  def test_configure_optkey_alias
+    assert_tk_test("configure should resolve __optkey_aliases") do
+      <<~RUBY
+        require 'tk'
+        require 'tkextlib/tile/tentry'
+
+        root = TkRoot.new { withdraw }
+        entry = Tk::Tile::TEntry.new(root)
+
+        # Configure using alias :vcmd instead of :validatecommand
+        # This hits __optkey_aliases.each branch in __configure_core
+        # Using a simple proc name as the validation command
+        entry.configure(vcmd: "myvalidator")
+
+        # Verify it was set via the real option name
+        result = entry.cget(:validatecommand)
+        raise "Expected 'myvalidator', got \#{result.inspect}" unless result == "myvalidator"
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_methodcall_optkeys
+    assert_tk_test("configure should use __methodcall_optkeys for method-based options") do
+      <<~RUBY
+        require 'tk'
+
+        root = TkRoot.new { withdraw }
+
+        # Configure title via hash - this hits __methodcall_optkeys.each
+        # since 'title' maps to the title() method, not a Tk option
+        root.configure(title: "Test Title")
+
+        result = root.title
+        raise "Expected 'Test Title', got \#{result.inspect}" unless result == "Test Title"
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_ruby2val_optkeys
+    assert_tk_test("configure should use __ruby2val_optkeys for value conversion") do
+      <<~RUBY
+        require 'tk'
+        require 'tk/radiobutton'
+        require 'tk/variable'
+
+        root = TkRoot.new { withdraw }
+        var = TkVariable.new
+
+        # TkRadioButton has __ruby2val_optkeys for 'variable' option
+        # The proc calls tk_trace_variable(v) to convert the Ruby object
+        rb = TkRadioButton.new(root)
+        rb.configure(variable: var)
+
+        # Should not raise - the conversion happened
+        root.destroy
+      RUBY
+    end
+  end
+
+  # Single-slot form tests: widget.configure(:slot, value)
+
+  def test_configure_single_slot_ruby2val
+    assert_tk_test("configure(:slot, value) should use __ruby2val_optkeys") do
+      <<~RUBY
+        require 'tk'
+        require 'tk/radiobutton'
+        require 'tk/variable'
+
+        root = TkRoot.new { withdraw }
+        var = TkVariable.new
+
+        rb = TkRadioButton.new(root)
+        # Single-slot form: configure(:variable, var) instead of configure(variable: var)
+        rb.configure(:variable, var)
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_single_slot_methodcall
+    assert_tk_test("configure(:slot, value) should use __methodcall_optkeys") do
+      <<~RUBY
+        require 'tk'
+
+        root = TkRoot.new { withdraw }
+
+        # Single-slot form: configure(:title, value) instead of configure(title: value)
+        root.configure(:title, "Single Slot Title")
+
+        result = root.title
+        raise "Expected 'Single Slot Title', got \#{result.inspect}" unless result == "Single Slot Title"
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_single_slot_font
+    assert_tk_test("configure(:font, value) should use font_configure") do
+      <<~RUBY
+        require 'tk'
+        require 'tk/button'
+
+        root = TkRoot.new { withdraw }
+        btn = TkButton.new(root, text: "Test")
+
+        # Single-slot form for font option
+        btn.configure(:font, "Helvetica 12")
+
+        # Verify font was set (returns a TkFont or string)
+        result = btn.cget(:font)
+        raise "Font not set" if result.nil? || result.to_s.empty?
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_single_slot_regular
+    assert_tk_test("configure(:slot, value) should use tk_call for regular options") do
+      <<~RUBY
+        require 'tk'
+        require 'tk/button'
+
+        root = TkRoot.new { withdraw }
+        btn = TkButton.new(root, text: "Original")
+
+        # Single-slot form for regular option (hits the else branch)
+        btn.configure(:text, "Updated")
+
+        result = btn.cget(:text)
+        raise "Expected 'Updated', got \#{result.inspect}" unless result == "Updated"
+
+        root.destroy
+      RUBY
+    end
+  end
+
+  def test_configure_ignore_unknown_option_fallback
+    assert_tk_test("__IGNORE_UNKNOWN_CONFIGURE_OPTION__ fallback filters invalid options") do
+      <<~RUBY
+        require 'tk'
+        require 'tk/button'
+
+        root = TkRoot.new { withdraw }
+        btn = TkButton.new(root, text: "Original")
+
+        # Save original and enable ignore mode
+        original = TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
+        begin
+          TkConfigMethod.__set_IGNORE_UNKNOWN_CONFIGURE_OPTION__!(true)
+
+          # Pass a mix of valid and invalid options - should not raise
+          # The fallback __check_available_configure_options filters out invalid ones
+          btn.configure(text: "Updated", totally_bogus_option: "ignored")
+
+          result = btn.cget(:text)
+          raise "Expected 'Updated', got \#{result.inspect}" unless result == "Updated"
+        ensure
+          TkConfigMethod.__set_IGNORE_UNKNOWN_CONFIGURE_OPTION__!(original)
+        end
+
+        root.destroy
+      RUBY
+    end
+  end
+
   # Test configinfo
   def test_configinfo_single_slot
     assert_tk_test("configinfo(slot) works in both array and hash modes") do

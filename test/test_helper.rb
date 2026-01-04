@@ -33,7 +33,8 @@ require 'minitest/autorun'
 # Collate subprocess coverage results at the very end (after all tests complete)
 if ENV['COVERAGE']
   Minitest.after_run do
-    subprocess_results = Dir["coverage/results/.resultset*.json"]
+    # Find all per-subprocess result files (each in its own pid directory)
+    subprocess_results = Dir["coverage/results/*/.resultset.json"]
     if subprocess_results.any?
       SimpleCov.collate(subprocess_results) do
         add_filter '/test/'

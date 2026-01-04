@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'method_source'
+
 # Helper for running Tk tests in isolated subprocesses.
 #
 # Why subprocesses? Tk's interpreter is a singleton - once you call
@@ -22,29 +24,49 @@ module TkTestHelper
   # Project root for absolute paths in subprocesses
   PROJECT_ROOT = File.expand_path('..', __dir__)
 
+  # Visual mode helper injected into subprocess code.
+  # When VISUAL=1, shows the window and waits for user to close it.
+  # Otherwise, destroys immediately for headless testing.
+  #
+  # Usage in test app methods:
+  #   tk_end(root)  # instead of root.destroy
+  #
+  def self.visual_mode_preamble
+    <<~RUBY
+      def tk_end(root)
+        if ENV['VISUAL']
+          root.deiconify
+          Tk.mainloop
+        else
+          root.destroy
+        end
+      end
+    RUBY
+  end
+
   # SimpleCov preamble injected into subprocess code for coverage merging
   # Only runs if ENV['COVERAGE'] is set
   #
-  # Key optimization: subprocesses write individual result files and skip
-  # merging. The main process collates all results at the end. This avoids
-  # reading/writing a 100MB+ resultset file after each subprocess.
+  # Key optimization: subprocesses write individual result files and DON'T
+  # merge with existing results. The main process collates all results at
+  # the end. This avoids the O(n²) behavior of reading/writing a growing
+  # resultset file after each subprocess.
   def self.simplecov_preamble
     <<~RUBY
       if ENV['COVERAGE']
         require 'simplecov'
+
+        # Each subprocess gets its own directory to avoid file conflicts
+        SimpleCov.coverage_dir "#{PROJECT_ROOT}/coverage/results/\#{Process.pid}"
         SimpleCov.command_name "subprocess:\#{Process.pid}"
+        SimpleCov.print_error_status = false
+        SimpleCov.formatter SimpleCov::Formatter::SimpleFormatter
+
         SimpleCov.start do
           add_filter '/test/'
           add_filter '/ext/'
           add_filter '/benchmark/'
-
-          # Track all lib files (same as main process) - absolute path required
           track_files "#{PROJECT_ROOT}/lib/**/*.rb"
-
-          # Write to individual files, don't merge (parent will collate at end)
-          self.coverage_dir "#{PROJECT_ROOT}/coverage/results"
-          # Minimal formatter - no HTML generation per subprocess
-          formatter SimpleCov::Formatter::SimpleFormatter
         end
       end
     RUBY
@@ -69,8 +91,13 @@ module TkTestHelper
     # Prepend SimpleCov setup for coverage merging
     full_code = coverage ? "#{TkTestHelper.simplecov_preamble}\n#{code}" : code
 
+    # Pass env vars to subprocess
+    env = {}
+    env['VISUAL'] = '1' if ENV['VISUAL']
+    env['COVERAGE'] = '1' if ENV['COVERAGE']
+
     stdout, stderr, status = Open3.capture3(
-      RbConfig.ruby, *load_path_args, "-e", full_code
+      env, RbConfig.ruby, *load_path_args, "-e", full_code
     )
 
     [status.success?, stdout, stderr, status]
@@ -94,8 +121,46 @@ module TkTestHelper
   #   end
   #
   def assert_tk_test(message = "Tk subprocess test failed")
+    caller_loc = caller_locations(1, 1).first
+    warn "[DEPRECATION] assert_tk_test is deprecated. Use assert_tk_app instead. " \
+         "Called from #{caller_loc.path}:#{caller_loc.lineno}"
+
     code = yield
     success, stdout, stderr, status = tk_subprocess(code)
+
+    output = []
+    output << "STDOUT:\n#{stdout}" unless stdout.empty?
+    output << "STDERR:\n#{stderr}" unless stderr.empty?
+    output << "Exit status: #{status.exitstatus}"
+
+    assert success, "#{message}\n#{output.join("\n")}"
+  end
+
+  # Assertion wrapper that extracts source from a method and runs it.
+  # This allows writing test code as regular Ruby methods with full
+  # syntax highlighting and IDE support.
+  #
+  # Example:
+  #   def test_something
+  #     assert_tk_app("should do the thing", method(:my_app))
+  #   end
+  #
+  #   def my_app
+  #     require 'tk'
+  #     root = TkRoot.new { withdraw }
+  #     # test code with full syntax highlighting...
+  #     root.destroy
+  #   end
+  #
+  def assert_tk_app(message, app_method)
+    # Extract method body (skip def line and closing end)
+    source_lines = app_method.source.lines
+    body = source_lines[1..-2].join
+
+    # Prepend visual mode helper (defines tk_end)
+    full_body = "#{TkTestHelper.visual_mode_preamble}\n#{body}"
+
+    success, stdout, stderr, status = tk_subprocess(full_body)
 
     output = []
     output << "STDOUT:\n#{stdout}" unless stdout.empty?

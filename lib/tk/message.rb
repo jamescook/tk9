@@ -2,6 +2,8 @@
 #
 # tk/message.rb : treat message widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/message.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/label'
 
@@ -9,6 +11,9 @@ class Tk::Message<Tk::Label
   TkCommandNames = ['message'.freeze].freeze
   WidgetClassName = 'Message'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Message-specific options (inherits from Tk::Label)
+  option :aspect, type: :integer
   #def create_self(keys)
   #  if keys and keys != None
   #    tk_call_without_enc('message', @path, *hash_kv(keys, true))

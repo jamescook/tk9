@@ -2,13 +2,27 @@
 #
 # tk/root.rb : treat root widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/toplevel.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/wm'
 require 'tk/menuspec'
+require 'tk/option_dsl'
 
 class Tk::Root<TkWindow
   include Wm
   include TkMenuSpec
+  extend Tk::OptionDSL
+
+  # Root shares options with Toplevel
+  option :borderwidth,        type: :pixels, aliases: [:bd]
+  option :highlightthickness, type: :pixels
+  option :padx,               type: :pixels
+  option :pady,               type: :pixels
+  option :relief,             type: :relief
+  option :height,             type: :pixels
+  option :menu,               type: :string
+  option :width,              type: :pixels
 
   def __methodcall_optkeys  # { key=>method, ... }
     TOPLEVEL_METHODCALL_OPTKEYS

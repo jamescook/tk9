@@ -1,12 +1,15 @@
 # frozen_string_literal: false
 #
-#               tk/canvas.rb - Tk canvas classes
+# tk/canvas.rb - Tk canvas classes
 #                       by Yukihiro Matsumoto <matz@caelum.co.jp>
+#
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/canvas.html
 #
 require 'tk' unless defined?(Tk)
 require 'tk/canvastag'
 require 'tk/itemconfig'
 require 'tk/scrollable'
+require 'tk/option_dsl'
 
 module TkCanvasItemConfig
   include TkItemConfigMethod
@@ -44,12 +47,36 @@ module TkCanvasItemConfig
 end
 
 class Tk::Canvas<TkWindow
+  extend Tk::OptionDSL
   include TkCanvasItemConfig
   include Tk::Scrollable
 
   TkCommandNames = ['canvas'.freeze].freeze
   WidgetClassName = 'Canvas'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Standard options
+  option :borderwidth,       type: :pixels, aliases: [:bd]
+  option :highlightthickness, type: :pixels
+  option :insertbackground,  type: :color
+  option :insertborderwidth, type: :pixels
+  option :insertofftime,     type: :integer
+  option :insertontime,      type: :integer
+  option :insertwidth,       type: :pixels
+  option :relief,            type: :relief
+  option :selectbackground,  type: :color
+  option :selectborderwidth, type: :pixels
+  option :selectforeground,  type: :color
+
+  # Widget-specific options
+  option :closeenough,       type: :float      # mouse proximity threshold
+  option :confine,           type: :boolean    # restrict view to scroll region
+  option :height,            type: :pixels
+  option :scrollregion,      type: :list       # bounding box for scrolling
+  option :state,             type: :string     # normal, disabled, hidden
+  option :width,             type: :pixels
+  option :xscrollincrement,  type: :pixels
+  option :yscrollincrement,  type: :pixels
 
   def __destroy_hook__
     TkcItem::CItemID_TBL.delete(@path)

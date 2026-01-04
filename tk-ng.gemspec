@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake-compiler", "~> 1.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
   spec.add_development_dependency "minitest", "~> 6.0"
+  spec.add_development_dependency "method_source", "~> 1.0"
 
   spec.metadata["msys2_mingw_dependencies"] = "tk"
 end
