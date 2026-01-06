@@ -9,7 +9,8 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/jamescook/tk-ng"
   spec.license       = "BSD-2-Clause"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  spec.files         = Dir.glob("{lib,ext,exe,sample}/**/*").select { |f| File.file?(f) } +
+                       %w[Rakefile LICENSE.txt README.md tk-ng.gemspec Gemfile]
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]

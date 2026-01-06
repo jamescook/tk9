@@ -153,6 +153,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     fonts-noto-color-emoji \
     fonts-noto-cjk \
     bwidget \
+    make \
     libyaml-0-2 \
     libffi8 \
     libreadline8 \
@@ -174,9 +175,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 ENV TCLLIBPATH=/usr/share/tcltk
 
-# Copy Ruby from builder (just the install, not mise itself)
-COPY --from=builder /root/.local/share/mise/installs /root/.local/share/mise/installs
-COPY --from=builder /root/.local/share/mise/shims /root/.local/share/mise/shims
+# Copy mise, its config, and Ruby from builder
+COPY --from=builder /usr/local/bin/mise /usr/local/bin/mise
+COPY --from=builder /root/.config/mise /root/.config/mise
+COPY --from=builder /root/.local/share/mise /root/.local/share/mise
 ENV PATH="/root/.local/share/mise/shims:${PATH}"
 
 # Copy gems from builder
