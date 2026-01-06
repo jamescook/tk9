@@ -74,13 +74,20 @@ jobs:
         path: coverage/
         retention-days: 30
 
-    - name: Upload failed screenshots
+    - name: Upload screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenshots-tcl9
+        path: screenshots/unverified/
+        retention-days: 30
+
+    - name: Upload screenshot diffs
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: failed-screenshots-tcl9
+        name: screenshot-diffs-tcl9
         path: |
-          screenshots/unverified/
           screenshots/diffs/
           screenshots/logs/
         retention-days: 7
@@ -134,13 +141,20 @@ jobs:
           -e TCL_VERSION=8.6 \
           tk-ci-test-8:latest
 
-    - name: Upload failed screenshots
+    - name: Upload screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenshots-tcl8
+        path: screenshots/unverified/
+        retention-days: 30
+
+    - name: Upload screenshot diffs
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: failed-screenshots-tcl8
+        name: screenshot-diffs-tcl8
         path: |
-          screenshots/unverified/
           screenshots/diffs/
           screenshots/logs/
         retention-days: 7
