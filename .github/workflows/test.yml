@@ -30,13 +30,13 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Restore build cache
-      uses: actions/download-artifact@v4
-      continue-on-error: true
+      uses: actions/cache@v4
       with:
-        name: docker-cache-tcl9
         path: cache-mount
+        key: docker-cache-tcl9-${{ hashFiles('Dockerfile.ci-test', 'Gemfile.lock') }}
+        restore-keys: |
+          docker-cache-tcl9-
 
-    # cache-dir is ignored when cache-map is provided, so we prefix paths explicitly
     - name: Inject/extract Docker cache mounts
       uses: reproducible-containers/buildkit-cache-dance@v3
       with:
@@ -46,7 +46,6 @@ jobs:
             "cache-mount/var-lib-apt": "/var/lib/apt",
             "cache-mount/bundle-cache": "/bundle-cache"
           }
-        save-always: true
         builder: ${{ steps.buildx.outputs.name }}
 
     - name: Build Docker image
@@ -60,27 +59,6 @@ jobs:
         builder: ${{ steps.buildx.outputs.name }}
         load: true
         tags: tk-ci-test-9:latest
-
-    # Debug: see what cache-dance created
-    - name: Debug cache directory
-      if: always()
-      run: |
-        echo "=== Current directory ==="
-        ls -la
-        echo "=== cache-mount directory ==="
-        ls -la cache-mount 2>/dev/null || echo "cache-mount does not exist"
-        echo "=== cache-mount contents (recursive) ==="
-        find cache-mount -type f 2>/dev/null | head -20 || echo "no files"
-
-    - name: Upload build cache
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-cache-tcl9
-        path: cache-mount
-        retention-days: 90
-        overwrite: true
-        if-no-files-found: warn
 
     - name: Run tests
       run: |
@@ -131,22 +109,15 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v3
 
-    # Try tcl9's cache first (shared apt/gems), then own cache
-    - name: Restore tcl9 build cache
-      uses: actions/download-artifact@v4
-      continue-on-error: true
+    - name: Restore build cache
+      uses: actions/cache@v4
       with:
-        name: docker-cache-tcl9
         path: cache-mount
+        key: docker-cache-tcl8-${{ hashFiles('Dockerfile.ci-test', 'Gemfile.lock') }}
+        restore-keys: |
+          docker-cache-tcl8-
+          docker-cache-tcl9-
 
-    - name: Restore own build cache
-      uses: actions/download-artifact@v4
-      continue-on-error: true
-      with:
-        name: docker-cache-tcl8
-        path: cache-mount
-
-    # cache-dir is ignored when cache-map is provided, so we prefix paths explicitly
     - name: Inject/extract Docker cache mounts
       uses: reproducible-containers/buildkit-cache-dance@v3
       with:
@@ -156,7 +127,6 @@ jobs:
             "cache-mount/var-lib-apt": "/var/lib/apt",
             "cache-mount/bundle-cache": "/bundle-cache"
           }
-        save-always: true
         builder: ${{ steps.buildx.outputs.name }}
 
     - name: Build Docker image
@@ -170,16 +140,6 @@ jobs:
         builder: ${{ steps.buildx.outputs.name }}
         load: true
         tags: tk-ci-test-8:latest
-
-    - name: Upload build cache
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-cache-tcl8
-        path: cache-mount
-        retention-days: 90
-        overwrite: true
-        if-no-files-found: warn
 
     - name: Run tests
       run: |
