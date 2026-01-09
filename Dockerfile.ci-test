@@ -43,11 +43,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
+    cmake \
+    ca-certificates \
     libyaml-dev \
     libffi-dev \
     libreadline-dev \
     zlib1g-dev \
-    libssl-dev
+    libssl-dev \
+    libx11-dev \
+    libxcursor-dev
 
 # Tcl/Tk dev packages for compilation
 ARG TCL_VERSION=9.0
@@ -99,6 +103,32 @@ RUN MAKEFLAGS="-j$(nproc)" MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) &
 # Compile trofs extension
 RUN bundle exec rake compile:trofs
 
+# Build tkdnd from source (no prebuilt binaries for Linux Tcl 9.0)
+ARG TKDND_VERSION=2.9.5
+RUN git clone --depth 1 --branch tkdnd-release-test-v${TKDND_VERSION} \
+        https://github.com/petasis/tkdnd.git /tmp/tkdnd && \
+    cd /tmp/tkdnd && \
+    mkdir build && cd build && \
+    MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
+    if [ "${TCL_VERSION}" = "8.6" ]; then \
+        cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/share/tcltk \
+            -Dwith-tcl=/usr/lib/${MULTIARCH}; \
+    else \
+        cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/share/tcltk \
+            -Dwith-tclsh=/usr/bin/tclsh9.0 \
+            -DTCL_INCLUDE_PATH=/usr/include/tcl9.0 \
+            -DTK_INCLUDE_PATH=/usr/include/tk9.0 \
+            -DTCL_LIBRARY=/usr/lib/${MULTIARCH}/libtcl9.0.so \
+            -DTK_LIBRARY=/usr/lib/${MULTIARCH}/libtk9.0.so \
+            -DTCL_STUB_LIBRARY=/usr/lib/${MULTIARCH}/libtclstub9.0.a \
+            -DTK_STUB_LIBRARY=/usr/lib/${MULTIARCH}/libtkstub9.0.a; \
+    fi && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/tkdnd
+
 #############################################
 # RUNTIME STAGE - slim image for running tests
 #############################################
@@ -128,7 +158,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libffi8 \
     libreadline8 \
     zlib1g \
-    libssl3t64 && \
+    libssl3t64 \
+    libxcursor1 && \
     if [ "${TCL_VERSION}" = "8.6" ]; then \
         apt-get install -y --no-install-recommends tcl tk libtk-img; \
     else \
@@ -148,6 +179,9 @@ ENV TCLLIBPATH=/usr/share/tcltk
 
 # Copy Ruby and gems from builder
 COPY --from=builder /usr/local /usr/local
+
+# Copy tkdnd extension built in builder stage
+COPY --from=builder /usr/share/tcltk/tkdnd* /usr/share/tcltk/
 ENV PATH="/usr/local/bin:${PATH}"
 ENV BUNDLE_PATH=/usr/local/bundle
 

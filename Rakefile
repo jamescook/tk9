@@ -201,6 +201,199 @@ namespace :trofs do
   end
 end
 
+# tkdnd - Tk drag-and-drop extension
+# Unlike trofs, tkdnd is actively maintained and supports Tcl 8.6/9.0 out of the box.
+# We don't vendor it - instead provide tasks to install from upstream prebuilt releases.
+# See: https://github.com/petasis/tkdnd
+namespace :tkdnd do
+  TKDND_REPO = 'petasis/tkdnd'
+  TKDND_BUILD_DIR = 'tmp/tkdnd'
+
+  def tkdnd_installed?
+    result = `echo 'if {[catch {package require tkdnd}]} {exit 1}; exit 0' | tclsh`
+    $?.success?
+  end
+
+  def tkdnd_version
+    `echo 'puts [package require tkdnd]; exit 0' | tclsh 2>/dev/null`.chomp
+  end
+
+  def latest_tkdnd_release
+    require 'open-uri'
+    require 'json'
+    api_url = "https://api.github.com/repos/#{TKDND_REPO}/releases/latest"
+    JSON.parse(URI.open(api_url).read)
+  end
+
+  def detect_tcl_version
+    tclsh = ENV.fetch('TCLSH', 'tclsh')
+    version = `#{tclsh} <<< 'puts [info patchlevel]' 2>/dev/null`.chomp rescue ''
+    return nil if version.empty?
+    version.split('.')[0..1].join('.')
+  end
+
+  def detect_tcl_lib_path
+    tclsh = ENV.fetch('TCLSH', 'tclsh')
+    # Get the first writable path from auto_path, or fall back to tcl_pkgPath
+    paths = `#{tclsh} <<< 'puts $tcl_pkgPath' 2>/dev/null`.chomp.split rescue []
+    paths.first
+  end
+
+  # Find prebuilt binary asset matching platform/arch/tcl version
+  def find_prebuilt_asset(release, tcl_version)
+    assets = release['assets'] || []
+
+    platform = case RUBY_PLATFORM
+               when /darwin/ then 'macOS'
+               when /linux/ then 'linux'
+               when /mingw|mswin|cygwin/ then 'windows'
+               end
+
+    arch = case RUBY_PLATFORM
+           when /arm64|aarch64/ then 'arm64'
+           when /x86_64|x64/ then 'x86_64'
+           when /i[3-6]86/ then 'i686'
+           end
+
+    tcl_pattern = "tcl#{tcl_version}"
+
+    assets.each do |asset|
+      name = asset['name']
+      next unless name.include?(platform) && name.include?(tcl_pattern)
+      return [asset['browser_download_url'], name] if name.include?(arch)
+    end
+    nil
+  end
+
+  desc "Check if tkdnd is installed"
+  task :check do
+    if tkdnd_installed?
+      puts "tkdnd is installed (version #{tkdnd_version})"
+    else
+      puts "tkdnd is NOT installed"
+      puts "Run 'rake tkdnd:install' to download prebuilt binary"
+    end
+  end
+
+  desc "Download prebuilt tkdnd from GitHub releases"
+  task :install do
+    if tkdnd_installed?
+      puts "tkdnd #{tkdnd_version} is already installed"
+      puts "Use 'rake tkdnd:install:force' to reinstall"
+      next
+    end
+
+    Rake::Task['tkdnd:install:force'].invoke
+  end
+
+  namespace :install do
+    desc "Force download tkdnd (even if installed)"
+    task :force do
+      require 'fileutils'
+      require 'open-uri'
+
+      tcl_version = detect_tcl_version
+      unless tcl_version
+        puts "Could not detect Tcl version. Set TCLSH env var to your tclsh."
+        exit 1
+      end
+
+      tcl_lib_path = detect_tcl_lib_path
+      puts "Detected Tcl #{tcl_version}"
+      puts "Tcl library path: #{tcl_lib_path || '(unknown)'}"
+      puts "Fetching latest tkdnd release info..."
+      release = latest_tkdnd_release
+      tag = release['tag_name']
+      puts "Latest release: #{tag}"
+
+      asset = find_prebuilt_asset(release, tcl_version)
+      unless asset
+        puts "\nNo prebuilt binary available for:"
+        puts "  Platform: #{RUBY_PLATFORM}"
+        puts "  Tcl: #{tcl_version}"
+        puts "\nAvailable prebuilt binaries:"
+        release['assets'].each { |a| puts "  - #{a['name']}" }
+        puts "\nYou may need to build from source. See:"
+        puts "  https://github.com/petasis/tkdnd"
+        exit 1
+      end
+
+      url, name = asset
+      puts "Downloading #{name}..."
+
+      FileUtils.rm_rf(TKDND_BUILD_DIR)
+      FileUtils.mkdir_p(TKDND_BUILD_DIR)
+
+      archive_path = "#{TKDND_BUILD_DIR}/#{name}"
+      URI.open(url) do |remote|
+        File.open(archive_path, 'wb') { |f| f.write(remote.read) }
+      end
+
+      puts "Extracting..."
+      Dir.chdir(TKDND_BUILD_DIR) do
+        if name.end_with?('.zip')
+          sh "unzip -q #{name}"
+        else
+          sh "tar xzf #{name}"
+        end
+      end
+
+      # Find extracted directory (usually tkdnd2.9.5 or similar)
+      pkg_dir = Dir.glob("#{TKDND_BUILD_DIR}/tkdnd*").reject { |f| f == archive_path }.first
+      unless pkg_dir
+        fail "Could not find extracted tkdnd directory"
+      end
+
+      pkg_dir = File.expand_path(pkg_dir)
+      pkg_name = File.basename(pkg_dir)
+
+      # Try to install to Tcl library path
+      if tcl_lib_path
+        dest = File.join(tcl_lib_path, pkg_name)
+        if File.writable?(tcl_lib_path)
+          puts "Installing to #{dest}..."
+          FileUtils.rm_rf(dest)
+          FileUtils.cp_r(pkg_dir, dest)
+          puts "Done! tkdnd #{tag} installed successfully."
+        else
+          puts "\nExtracted to: #{pkg_dir}"
+          puts "\nTo install (requires write access to #{tcl_lib_path}):"
+          puts "  sudo cp -r #{pkg_dir} #{tcl_lib_path}/"
+        end
+      else
+        puts "\nExtracted to: #{pkg_dir}"
+        puts "\nCould not detect Tcl library path."
+        puts "Copy #{pkg_dir} to your Tcl library path manually."
+      end
+    end
+  end
+
+  desc "Clean tkdnd build directory"
+  task :clean do
+    require 'fileutils'
+    FileUtils.rm_rf(TKDND_BUILD_DIR)
+    puts "Cleaned #{TKDND_BUILD_DIR}"
+  end
+
+  desc "Run tkdnd tests"
+  task test: :compile do
+    unless tkdnd_installed?
+      puts "tkdnd is not installed. Run 'rake tkdnd:install' first."
+      exit 1
+    end
+
+    test_dir = 'lib/tkextlib/tkDND/test'
+    test_files = Dir.glob("#{test_dir}/test_*.rb")
+    if test_files.any?
+      test_files.each do |f|
+        sh "ruby -Ilib -Itest #{f}"
+      end
+    else
+      puts "No tkdnd tests found in #{test_dir}"
+    end
+  end
+end
+
 # Convenience alias
 namespace :compile do
   desc "Build trofs Tcl extension"
@@ -266,6 +459,20 @@ namespace :docker do
       cmd += " #{image_name}"
       # exec replaces bash so SIGINT (Ctrl+C) goes directly to rake
       cmd += " bash -c 'Xvfb :99 -screen 0 1024x768x24 & sleep 1 && exec env DISPLAY=:99 bundle exec rake test:widget'"
+
+      sh cmd
+    end
+
+    desc "Run tkdnd tests in Docker (TCL_VERSION=9.0|8.6)"
+    task tkdnd: 'docker:build' do
+      tcl_version = tcl_version_from_env
+      image_name = docker_image_name(tcl_version)
+
+      puts "Running tkdnd tests in Docker (Tcl #{tcl_version})..."
+      cmd = "docker run --rm --init"
+      cmd += " -e TCL_VERSION=#{tcl_version}"
+      cmd += " #{image_name}"
+      cmd += " bash -c 'Xvfb :99 -screen 0 1024x768x24 & sleep 1 && exec env DISPLAY=:99 bundle exec rake tkdnd:test'"
 
       sh cmd
     end
