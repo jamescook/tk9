@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/style.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -60,3 +61,4 @@ module Tk::Tcllib
     end
   end
 end
+# :nocov:

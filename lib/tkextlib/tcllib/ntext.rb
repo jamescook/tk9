@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/ntext.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -145,3 +146,4 @@ class << Tk::Tcllib::Ntext
     @tcl_match_startOfPreviousWord.value = val
   end
 end
+# :nocov:

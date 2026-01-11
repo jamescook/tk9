@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/tkpiechart.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -7,6 +8,7 @@
 #   * Create 2D or 3D pies with labels in Tcl canvases
 #
 
+# NOTE: Broken with removal of TkConfigMethod
 require 'tk' unless defined?(Tk)
 require 'tk/canvas'
 require 'tkextlib/tcllib.rb'
@@ -313,3 +315,4 @@ module Tk::Tcllib::Tkpiechart
     private :create_self
   end
 end
+# :nocov:

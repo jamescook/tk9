@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/ctext.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -159,3 +160,4 @@ class Tk::Tcllib::CText
     bool(tk_call('ctext::modified', @path, mode))
   end
 end
+# :nocov:

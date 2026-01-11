@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/crosshair.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -116,3 +117,4 @@ module Tk::Tcllib::Crosshair
     Tk::Tcllib::Crosshair.cget(self, slot)
   end
 end
+# :nocov:

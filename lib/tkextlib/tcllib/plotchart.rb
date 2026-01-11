@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/plotchart.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -1403,3 +1404,4 @@ module Tk::Tcllib::Plotchart
     end
   end
 end
+# :nocov:

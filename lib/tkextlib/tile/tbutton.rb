@@ -3,6 +3,8 @@
 #  tbutton widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_button.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -24,6 +26,10 @@ class Tk::Tile::TButton < Tk::Button
   end
   WidgetClassName = 'TButton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Ttk-specific options (inherits from Tk::Button)
+  option :style,   type: :string
+  option :default, type: :string  # normal, active, disabled
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/getstring.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -133,3 +134,4 @@ class Tk::Tcllib::GetString_Dialog
     end
   end
 end
+# :nocov:

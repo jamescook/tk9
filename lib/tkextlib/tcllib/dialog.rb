@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/dialog.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -83,3 +84,4 @@ class Tk::Tcllib::Widget::Dialog
     self
   end
 end
+# :nocov:

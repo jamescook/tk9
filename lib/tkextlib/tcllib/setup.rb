@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  setup.rb   --   setup script before calling TkPackage.require()
 #
@@ -7,3 +8,4 @@
 #    wrapped by Ruby scripts in this directory, please write the setup
 #    operations in this file.
 #
+# :nocov:

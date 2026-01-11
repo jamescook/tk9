@@ -1,40 +1,54 @@
-#! /usr/local/bin/ruby -vd
-# frozen_string_literal: false
+#!/usr/bin/env ruby
+# frozen_string_literal: true
 
-# tcltklib ライブラリのテスト
+# Low-level tcltklib demo - shows direct TclTkIp usage
+#
+# This demonstrates:
+#   - Creating multiple Tcl interpreters
+#   - Evaluating Tcl code directly
+#   - Calling Ruby from Tcl
+#   - Running the global Tk event loop (TclTkLib.mainloop)
+
+$stdout.sync = true
 
 require "tcltklib"
 
 def test
-  # インタプリタを生成する
-  ip1 = TclTkIp.new()
+  # Create first interpreter
+  ip1 = TclTkIp.new
 
-  # 評価してみる
-  print ip1._return_value().inspect, "\n"
-  print ip1._eval("puts {abc}").inspect, "\n"
+  # Evaluate Tcl code
+  puts "Tcl puts: #{ip1.tcl_eval('puts {abc}').inspect}"
 
-  # ボタンを作ってみる
-  print ip1._return_value().inspect, "\n"
-  print ip1._eval("button .lab -text exit -command \"destroy .\"").inspect,
-    "\n"
-  print ip1._return_value().inspect, "\n"
-  print ip1._eval("pack .lab").inspect, "\n"
-  print ip1._return_value().inspect, "\n"
+  # Create a button
+  ip1.tcl_eval('button .lab -text exit -command "destroy ."')
+  ip1.tcl_eval('pack .lab')
 
-  # インタプリタから ruby コマンドを評価してみる
-#  print ip1._eval(%q/ruby {print "print by ruby\n"}/).inspect, "\n"
-  print ip1._eval(%q+puts [ruby {print "print by ruby\n"; "puts by tcl/tk"}]+).inspect, "\n"
-  print ip1._return_value().inspect, "\n"
+  # Call Ruby from Tcl - the 'ruby' command executes Ruby code
+  result = ip1.tcl_eval('puts [ruby {print "Ruby says hello\n"; "returned to Tcl"}]')
+  puts "Ruby->Tcl result: #{result.inspect}"
 
-  # もう一つインタプリタを生成してみる
-  ip2 = TclTkIp.new()
-  ip2._eval("button .lab -text test -command \"puts test ; destroy .\"")
-  ip2._eval("pack .lab")
+  # Create second interpreter with its own window
+  ip2 = TclTkIp.new
+  ip2.tcl_eval('button .lab -text "test (ip2)" -command "puts test; destroy ."')
+  ip2.tcl_eval('pack .lab')
+
+  puts "Two windows created."
+
+  # Smoke test support - auto-click and exit when running under test harness
+  if (fd_str = ENV.delete('TK_READY_FD'))
+    # Schedule button clicks to auto-close windows
+    ip1.tcl_eval('after 50 {.lab invoke}')
+    ip2.tcl_eval('after 100 {.lab invoke}')
+
+    # Signal ready immediately so test harness knows we're up
+    IO.for_fd(fd_str.to_i).tap { |io| io.write("1"); io.close } rescue nil
+  else
+    puts "Click buttons to close."
+  end
 
   TclTkLib.mainloop
 end
 
 test
-GC.start
-
-print "exit\n"
+puts "exit"

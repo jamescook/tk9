@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/ruler.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -64,3 +65,4 @@ class Tk::Tcllib::Widget::Ruler
     tk_send('shade', org, dest, frac)
   end
 end
+# :nocov:

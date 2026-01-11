@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/tablelist_core.rb
 #
@@ -1071,3 +1072,4 @@ class << Tk::Tcllib::Tablelist
     Tk.tk_call('::tablelist::addIPAddrMentry', name)
   end
 end
+# :nocov:

@@ -1,16 +1,59 @@
 # frozen_string_literal: false
 #
-#               tk/entry.rb - Tk entry classes
+# tk/entry.rb - Tk entry classes
 #                       by Yukihiro Matsumoto <matz@caelum.co.jp>
-
+#
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/entry.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/label'
 require 'tk/scrollable'
 require 'tk/validation'
+require 'tk/option_dsl'
 
 class Tk::Entry<Tk::Label
   include X_Scrollable
   include TkValidation
+  include Tk::Generated::Entry
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :background
+  #   :borderwidth
+  #   :cursor
+  #   :disabledbackground
+  #   :disabledforeground
+  #   :exportselection
+  #   :font
+  #   :foreground
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :insertbackground
+  #   :insertborderwidth
+  #   :insertofftime
+  #   :insertontime
+  #   :insertwidth
+  #   :invalidcommand
+  #   :justify
+  #   :placeholder
+  #   :placeholderforeground
+  #   :readonlybackground
+  #   :relief
+  #   :selectbackground
+  #   :selectborderwidth
+  #   :selectforeground
+  #   :show
+  #   :state
+  #   :takefocus
+  #   :textvariable (tkvariable)
+  #   :validate
+  #   :validatecommand
+  #   :width
+  #   :xscrollcommand
+  # @generated:options:end
+
+
 
   TkCommandNames = ['entry'.freeze].freeze
   WidgetClassName = 'Entry'.freeze
@@ -21,10 +64,7 @@ class Tk::Entry<Tk::Label
   #end
   #private :create_self
 
-  def __strval_optkeys
-    super() + ['show', 'disabledbackground', 'readonlybackground']
-  end
-  private :__strval_optkeys
+  # NOTE: __strval_optkeys override for 'show', 'disabledbackground', 'readonlybackground' removed - now declared via OptionDSL
 
   def bbox(index)
     list(tk_send_without_enc('bbox', index))

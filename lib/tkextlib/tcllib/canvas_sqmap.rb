@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/canvas.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -35,3 +36,4 @@ module Tk::Tcllib
     end
   end
 end
+# :nocov:

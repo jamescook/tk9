@@ -59,57 +59,39 @@ Tcllib       1.11.1
 Tklib        0.5     http://sourceforge.net/projects/tcllib      ==> tcllib
                        ( partial support; primary support target is Tklib)
 
-IWidgets     4.0.2   http://sourceforge.net/projects/incrtcl     ==> iwidgets
-
 BWidget      1.8 [ CVS/Hd(2009-07-02) ]
                      http://sourceforge.net/projects/tcllib      ==> bwidget
 
-TkTable      2.10    http://sourceforge.net/projects/tktable     ==> tktable
-                         * see also <http://www.korus.hu/~fery/ruby/tktable.rb>
-                                    written by Ferenc Engard (ferenc@engard.hu)
-
-Vu widgets   2.3.0   http://sourceforge.net/projects/tktable     ==> vu
-
-TkHTML       2.0     http://www.hwaci.com/sw/tkhtml/             ==> tkHTML
-
-ICONS        1.0     http://www.satisoft.com/tcltk/icons/        ==> ICONS
-
 TkImg        1.3     http://sourceforge.net/projects/tkimg       ==> tkimg
-
-
-BLT          2.4z    http://sourceforge.net/projects/blt         ==> blt
-
-TkTreeCtrl   2.2.9
-                     http://tktreectrl.sourceforge.net/          ==> treectrl
 
 Tile         0.8.3/8.6b1
                      http://sourceforge.net/projects/tktable     ==> tile
 
 
+===< DEPRECATED (removed January 2025) >======================================
 
-===< support (may be alpha or beta quality) >=================================
+IWidgets     4.0.2   ==> iwidgets (REMOVED - see iwidgets/DEPRECATED.md)
+IncrTcl              ==> itcl, itk (REMOVED - see itcl/DEPRECATED.md, itk/DEPRECATED.md)
+BLT          2.4z    ==> blt (REMOVED - see blt/DEPRECATED.md)
+Vu widgets   2.3.0   ==> vu (REMOVED - see vu/DEPRECATED.md)
+TkHTML       2.0     ==> tkHTML (REMOVED - see tkHTML/DEPRECATED.md)
+TkTreeCtrl   2.2.9   ==> treectrl (REMOVED - see treectrl/DEPRECATED.md)
+TkTable      2.10    ==> tktable (REMOVED - see tktable/DEPRECATED.md)
+winico       0.6     ==> winico (REMOVED - see winico/DEPRECATED.md)
+ICONS        1.0     ==> ICONS (REMOVED - see ICONS/DEPRECATED.md)
+TkTrans              ==> tktrans (REMOVED - see tktrans/DEPRECATED.md)
+                         Obsolete since Tk 8.4.16 (use wm attributes -transparentcolor)
+TclX                 ==> tclx (REMOVED - see tclx/DEPRECATED.md)
+                         Use Ruby's Signal.trap for signals, Ruby i18n for message catalogs
 
-IncrTcl      CVS/Hd(2008-12-15)
-                     http://sourceforge.net/projects/incrtcl     ==> itcl, itk
 
-TclX         CVS/Hd(2008-12-15)
-                     http://sourceforge.net/projects/tclx
-                       ==> tclx (partial support; infox command and
-                                                   XPG/3 message catalogs only)
+===< support (may be alpha or beta quality) >================================
 
 Trofs        0.4.4   http://math.nist.gov/~DPorter/tcltk/trofs/
 
 
 
 ===< possibly available (not tested; alpha quality) >=========================
-
-winico       0.6
-                     http://sourceforge.net/projects/tktable
-                       ==> winico (win32 only)
-
-TkTrans      latest(2004-10-11)
-                     http://www2.cmp.uea.ac.uk/~fuzz/tktrans/default.html
-                       ==>  tktrans (win32 only)
 
 TkDND        1.0a2   http://sourceforge.net/projects/tkdnd       ==> tkDND
 

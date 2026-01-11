@@ -20,11 +20,6 @@ class Tk::BWidget::PanedWindow
   WidgetClassName = 'PanedWindow'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'activator'
-  end
-  private :__strval_optkeys
-
   def add(keys={})
     window(tk_send('add', *hash_kv(keys)))
   end

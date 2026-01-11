@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/menuentry.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -46,3 +47,4 @@ class Tk::Tcllib::Widget::Menuentry
   end
   private :create_self
 end
+# :nocov:

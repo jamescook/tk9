@@ -2,9 +2,40 @@
 #
 # tk/scrollbar.rb : treat scrollbar widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/scrollbar.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class Tk::Scrollbar<TkWindow
+  include Tk::Generated::Scrollbar
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :activerelief
+  #   :background
+  #   :bd
+  #   :bg
+  #   :borderwidth
+  #   :command (callback)
+  #   :cursor
+  #   :elementborderwidth
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :jump
+  #   :orient
+  #   :relief
+  #   :repeatdelay
+  #   :repeatinterval
+  #   :takefocus
+  #   :troughcolor
+  #   :width
+  # @generated:options:end
+
+
+
   TkCommandNames = ['scrollbar'.freeze].freeze
   WidgetClassName = 'Scrollbar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
@@ -20,33 +51,9 @@ class Tk::Scrollbar<TkWindow
     }
 
     if keys and keys != None
-      unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-        #tk_call_without_enc('scrollbar', @path, *hash_kv(keys, true))
-        tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                            *hash_kv(keys, true))
-      else
-        begin
-          tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                              *hash_kv(keys, true))
-        rescue
-          tk_call_without_enc(self.class::TkCommandNames[0], @path)
-          keys = __check_available_configure_options(keys)
-          unless keys.empty?
-            begin
-              tk_call_without_enc('destroy', @path)
-            rescue
-              # cannot destroy
-              configure(keys)
-            else
-              # re-create widget
-              tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                                  *hash_kv(keys, true))
-            end
-          end
-        end
-      end
+      tk_call_without_enc(self.class::TkCommandNames[0], @path,
+                          *hash_kv(keys, true))
     else
-      #tk_call_without_enc('scrollbar', @path)
       tk_call_without_enc(self.class::TkCommandNames[0], @path)
     end
   end

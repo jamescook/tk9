@@ -3,6 +3,8 @@
 #  tscrollbar widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_scrollbar.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -24,6 +26,9 @@ class Tk::Tile::TScrollbar < Tk::Scrollbar
   end
   WidgetClassName = 'TScrollbar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Ttk-specific options (inherits orient, command from Tk::Scrollbar)
+  option :style, type: :string
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

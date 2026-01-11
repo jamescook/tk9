@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/tablelist_tile.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -42,3 +43,4 @@ module Tk
     TableList_Tile = Tablelist
   end
 end
+# :nocov:

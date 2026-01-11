@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/tablelist.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -27,3 +28,4 @@ else
 
   require 'tkextlib/tcllib/tablelist_core'
 end
+# :nocov:

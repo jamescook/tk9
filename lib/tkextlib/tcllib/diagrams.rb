@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/diagrams.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -223,3 +224,4 @@ class << Tk::Tcllib::Diagrams
   end
   alias move_object moveobject
 end
+# :nocov:

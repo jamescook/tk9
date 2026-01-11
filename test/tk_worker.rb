@@ -1,0 +1,218 @@
+# frozen_string_literal: true
+
+# Persistent Tk worker process for fast test execution.
+#
+# Instead of spawning a new Ruby process for each test this class keeps a single Tk interpreter
+# alive and resets state between tests. Trad-off is dealing with tests/code that mutate
+# global state.
+#
+# Uses pipe-based IPC (no threads) to avoid Tk threading issues.
+#
+# Usage:
+#   TkWorker.start
+#   result = TkWorker.run_test("label = TkLabel.new(root); ...")
+#   TkWorker.stop
+
+require 'stringio'
+require 'fileutils'
+require 'tmpdir'
+require 'json'
+
+class TkWorker
+  SOCKET_DIR = File.join(Dir.tmpdir, 'tk_worker')
+  PID_FILE = File.join(SOCKET_DIR, 'worker.pid')
+  READY_FILE = File.join(SOCKET_DIR, 'ready')
+
+  class << self
+    def start
+      return if running?
+
+      FileUtils.mkdir_p(SOCKET_DIR)
+      cleanup_stale_files
+
+      # Build load path args
+      load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(File.dirname(__FILE__))) }
+      load_path_args = load_paths.flat_map { |p| ["-I", p] }
+
+      # Spawn worker with pipes
+      @stdin_w, @stdout_r, @stderr_r, @wait_thread = Open3.popen3(
+        RbConfig.ruby, *load_path_args, __FILE__, 'server'
+      )
+
+      File.write(PID_FILE, @wait_thread.pid.to_s)
+
+      # Wait for ready signal
+      wait_for_ready
+    end
+
+    def stop
+      return unless running?
+
+      begin
+        send_command('shutdown')
+      rescue
+        # Already dead
+      end
+
+      @stdin_w&.close
+      @stdout_r&.close
+      @stderr_r&.close
+      @wait_thread&.value rescue nil
+
+      @stdin_w = @stdout_r = @stderr_r = @wait_thread = nil
+      cleanup_stale_files
+    end
+
+    def run_test(code)
+      start unless running?
+      send_command('run', code)
+    end
+
+    def running?
+      @wait_thread&.alive? && @stdin_w && !@stdin_w.closed?
+    end
+
+    private
+
+    def send_command(cmd, data = nil)
+      msg = JSON.generate({ cmd: cmd, data: data })
+      @stdin_w.puts(msg)
+      @stdin_w.flush
+
+      response = @stdout_r.gets
+      unless response
+        # Try to get error info
+        err = @stderr_r.read_nonblock(4096) rescue "[no output]"
+        err_text = "Worker died: #{err}"
+
+        raise err_text
+      end
+
+      JSON.parse(response, symbolize_names: true)
+    end
+
+    def wait_for_ready(timeout: 10)
+      deadline = Time.now + timeout
+
+      until File.exist?(READY_FILE)
+        raise "TkWorker failed to start within #{timeout}s" if Time.now > deadline
+        sleep 0.05
+      end
+    end
+
+    def cleanup_stale_files
+      File.unlink(PID_FILE) if File.exist?(PID_FILE)
+      File.unlink(READY_FILE) if File.exist?(READY_FILE)
+    end
+  end
+
+  # Server-side: runs in subprocess
+  class Server
+    def initialize
+      require 'tk'
+      @root = TkRoot.new { withdraw }
+      @test_count = 0
+    end
+
+    def run
+      # Signal ready
+      File.write(READY_FILE, '')
+
+      # Main loop - read commands from stdin
+      while (line = $stdin.gets)
+        msg = JSON.parse(line, symbolize_names: true)
+
+        result = case msg[:cmd]
+        when 'run'
+          run_test(msg[:data])
+        when 'shutdown'
+          shutdown
+          break
+        when 'ping'
+          { pong: true }
+        else
+          { error: "Unknown command: #{msg[:cmd]}" }
+        end
+
+        $stdout.puts(JSON.generate(result))
+        $stdout.flush
+      end
+    end
+
+    def run_test(code)
+      @test_count += 1
+      # Use instance variable to avoid shadowing by test code's local variables
+      @_test_result = { success: true, stdout: "", stderr: "", test_number: @test_count }
+
+      begin
+        # Capture stdout/stderr
+        old_stdout, old_stderr = $stdout, $stderr
+        captured_out = StringIO.new
+        captured_err = StringIO.new
+        $stdout = captured_out
+        $stderr = captured_err
+
+        # Make root available to the test code
+        b = binding
+        b.local_variable_set(:root, @root)
+
+        # Execute the test code
+        eval(code, b, "(test)", 1)
+
+        @_test_result[:stdout] = captured_out.string
+        @_test_result[:stderr] = captured_err.string
+      rescue Exception => e
+        @_test_result[:success] = false
+        @_test_result[:error_class] = e.class.name
+        @_test_result[:error_message] = e.message
+        @_test_result[:backtrace] = e.backtrace&.first(10) || []
+        @_test_result[:stderr] = captured_err.string if captured_err
+      ensure
+        $stdout, $stderr = old_stdout, old_stderr
+        reset_tk_state!
+      end
+
+      @_test_result
+    end
+
+    def shutdown
+      @root.destroy
+      { shutdown: true }
+    end
+
+    private
+
+    def reset_tk_state!
+      @root.winfo_children.each do |child|
+        child.destroy rescue nil
+      end
+      @root.withdraw
+    end
+  end
+end
+
+# Run as server if executed with 'server' argument
+if ARGV[0] == 'server'
+  require 'open3'
+
+  # Set up SimpleCov for coverage collection in the worker process
+  if ENV['COVERAGE']
+    require 'simplecov'
+
+    project_root = File.expand_path('..', __dir__)
+    SimpleCov.coverage_dir "#{project_root}/coverage/results/#{Process.pid}"
+    SimpleCov.command_name "tk_worker:#{Process.pid}"
+    SimpleCov.print_error_status = false
+    SimpleCov.formatter SimpleCov::Formatter::SimpleFormatter
+
+    SimpleCov.start do
+      add_filter '/test/'
+      add_filter '/ext/'
+      add_filter '/benchmark/'
+      track_files "#{project_root}/lib/**/*.rb"
+    end
+  end
+
+  FileUtils.mkdir_p(TkWorker::SOCKET_DIR)
+  TkWorker::Server.new.run
+end

@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/khim.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -67,3 +68,4 @@ end
 class Tk::Tcllib::KHIM::Help < TkToplevel
   TkCommandNames = ['::khim::showHelp'.freeze].freeze
 end
+# :nocov:

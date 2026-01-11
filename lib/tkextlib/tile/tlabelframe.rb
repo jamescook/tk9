@@ -3,6 +3,8 @@
 #  tlabelframe widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_labelframe.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -26,6 +28,11 @@ class Tk::Tile::TLabelframe < Tk::Tile::TFrame
   end
   WidgetClassName = 'TLabelframe'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options (inherits from TFrame)
+  option :labelanchor, type: :string    # nw, n, ne, en, e, es, se, s, sw, ws, w, wn
+  option :text,        type: :string    # label text
+  option :underline,   type: :integer   # mnemonic character index
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

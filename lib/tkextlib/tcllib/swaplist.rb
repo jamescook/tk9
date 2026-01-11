@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/swaplist.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -149,3 +150,4 @@ class Tk::Tcllib::Swaplist_Dialog
     end
   end
 end
+# :nocov:

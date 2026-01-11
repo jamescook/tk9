@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/datefield.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -56,3 +57,4 @@ class Tk::Tcllib::Datefield
   end
   private :create_self
 end
+# :nocov:

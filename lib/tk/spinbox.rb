@@ -3,10 +3,65 @@
 #               tk/spinbox.rb - Tk spinbox classes
 #                       by Yukihiro Matsumoto <matz@caelum.co.jp>
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/spinbox.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/entry'
 
 class Tk::Spinbox<Tk::Entry
+  include Tk::Generated::Spinbox
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :background
+  #   :borderwidth
+  #   :buttonbackground
+  #   :buttoncursor
+  #   :buttondownrelief
+  #   :buttonuprelief
+  #   :command (callback)
+  #   :cursor
+  #   :disabledbackground
+  #   :disabledforeground
+  #   :exportselection
+  #   :font
+  #   :foreground
+  #   :format
+  #   :from
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :increment
+  #   :insertbackground
+  #   :insertborderwidth
+  #   :insertofftime
+  #   :insertontime
+  #   :insertwidth
+  #   :invalidcommand
+  #   :justify
+  #   :placeholder
+  #   :placeholderforeground
+  #   :readonlybackground
+  #   :relief
+  #   :repeatdelay
+  #   :repeatinterval
+  #   :selectbackground
+  #   :selectborderwidth
+  #   :selectforeground
+  #   :state
+  #   :takefocus
+  #   :textvariable (tkvariable)
+  #   :to
+  #   :validate
+  #   :validatecommand
+  #   :values
+  #   :width
+  #   :wrap
+  #   :xscrollcommand
+  # @generated:options:end
+
+
   TkCommandNames = ['spinbox'.freeze].freeze
   WidgetClassName = 'Spinbox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
@@ -82,20 +137,9 @@ class Tk::Spinbox<Tk::Entry
   #end
   #private :create_self
 
-  def __boolval_optkeys
-    super() << 'wrap'
-  end
-  private :__boolval_optkeys
-
-  def __strval_optkeys
-    super() << 'buttonbackground' << 'format'
-  end
-  private :__strval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
+  # NOTE: __boolval_optkeys override for 'wrap' removed - now declared via OptionDSL
+  # NOTE: __strval_optkeys override for 'buttonbackground', 'format' removed - now declared via OptionDSL
+  # NOTE: __listval_optkeys override for 'values' removed - now declared via OptionDSL
 
   def identify(x, y)
     tk_send_without_enc('identify', x, y)

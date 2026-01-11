@@ -16,11 +16,15 @@ module Tk
 end
 
 class Tk::BWidget::NoteBook
+  extend Tk::OptionDSL
   include TkItemConfigMethod
 
   TkCommandNames = ['NoteBook'.freeze].freeze
   WidgetClassName = 'NoteBook'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # BWidget NoteBook options
+  option :homogeneous, type: :boolean
 
   class Event_for_Tabs < TkEvent::Event
     def self._get_extra_args_tbl
@@ -29,11 +33,6 @@ class Tk::BWidget::NoteBook
       ]
     end
   end
-
-  def __boolval_optkeys
-    super() << 'homogeneous'
-  end
-  private :__boolval_optkeys
 
   def tagid(id)
     if id.kind_of?(TkWindow)

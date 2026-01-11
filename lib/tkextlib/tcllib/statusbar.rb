@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/statusbar.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -78,3 +79,4 @@ class Tk::Tcllib::Widget::Statusbar
     tk_split_list(tk_send('items', pat))
   end
 end
+# :nocov:

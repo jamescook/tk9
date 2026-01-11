@@ -3,6 +3,8 @@
 #  tframe widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_frame.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -24,6 +26,10 @@ class Tk::Tile::TFrame < Tk::Frame
   end
   WidgetClassName = 'TFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Ttk-specific options (inherits from Tk::Frame)
+  option :style,   type: :string
+  option :padding, type: :string
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

@@ -2,39 +2,58 @@
 #
 # tk/radiobutton.rb : treat radiobutton widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/radiobutton.html
+#
 require 'tk' unless defined?(Tk)
 require 'tk/button'
 
 class Tk::RadioButton<Tk::Button
+  include Tk::Generated::Radiobutton
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :activeforeground
+  #   :anchor
+  #   :background
+  #   :bitmap
+  #   :borderwidth
+  #   :command (callback)
+  #   :compound
+  #   :cursor
+  #   :disabledforeground
+  #   :font
+  #   :foreground
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :image
+  #   :indicatoron
+  #   :justify
+  #   :offrelief
+  #   :overrelief
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :selectcolor
+  #   :selectimage
+  #   :state
+  #   :takefocus
+  #   :text
+  #   :textvariable (tkvariable)
+  #   :tristateimage
+  #   :tristatevalue
+  #   :underline
+  #   :value
+  #   :variable (tkvariable)
+  #   :width
+  #   :wraplength
+  # @generated:options:end
+
   TkCommandNames = ['radiobutton'.freeze].freeze
   WidgetClassName = 'Radiobutton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-  #def create_self(keys)
-  #  if keys and keys != None
-  #    tk_call_without_enc('radiobutton', @path, *hash_kv(keys, true))
-  #  else
-  #    tk_call_without_enc('radiobutton', @path)
-  #  end
-  #end
-  #private :create_self
-
-  def __boolval_optkeys
-    super() << 'indicatoron'
-  end
-  private :__boolval_optkeys
-
-  def __strval_optkeys
-    super() << 'selectcolor'
-  end
-  private :__strval_optkeys
-
-  def __ruby2val_optkeys  # { key=>proc, ... }
-    {
-      'variable'=>proc{|v| tk_trace_variable(v)}  # for backward compatibility
-    }
-  end
-  private :__ruby2val_optkeys
-
 
   def deselect
     tk_send_without_enc('deselect')

@@ -2,9 +2,38 @@
 #
 # tk/frame.rb : treat frame widget
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/frame.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class Tk::Frame<TkWindow
+  include Tk::Generated::Frame
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :background
+  #   :backgroundimage
+  #   :borderwidth
+  #   :class
+  #   :colormap
+  #   :container
+  #   :cursor
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :takefocus
+  #   :tile
+  #   :visual
+  #   :width
+  # @generated:options:end
+
+
+
   TkCommandNames = ['frame'.freeze].freeze
   WidgetClassName = 'Frame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
@@ -31,10 +60,7 @@ class Tk::Frame<TkWindow
 #  end
 #################
 
-  def __boolval_optkeys
-    super() << 'container'
-  end
-  private :__boolval_optkeys
+  # NOTE: __boolval_optkeys override for 'container' removed - now declared via OptionDSL
 
   def initialize(parent=nil, keys=nil)
     my_class_name = nil

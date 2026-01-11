@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/toolbar.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -174,3 +175,4 @@ class Tk::Tcllib::Widget::Toolbar
     self
   end
 end
+# :nocov:

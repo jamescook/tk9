@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/scrolledwindow.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -56,3 +57,4 @@ class Tk::Tcllib::Widget::ScrolledWindow
   end
   alias set_widget setwidget
 end
+# :nocov:

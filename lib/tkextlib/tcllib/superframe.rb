@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/superframe.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -50,3 +51,4 @@ class Tk::Tcllib::Widget::SuperFrame
     window(tk_send('labelwidget'))
   end
 end
+# :nocov:

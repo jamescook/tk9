@@ -3,6 +3,8 @@
 #  tcombobox widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_combobox.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -25,15 +27,10 @@ class Tk::Tile::TCombobox < Tk::Tile::TEntry
   WidgetClassName = 'TCombobox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __boolval_optkeys
-    super() << 'exportselection'
-  end
-  private :__boolval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
+  # Widget-specific options (inherits from TEntry)
+  option :height,      type: :integer    # popup listbox rows
+  option :postcommand, type: :string     # script before showing listbox
+  option :values,      type: :list       # dropdown values
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

@@ -3,6 +3,8 @@
 #  tcheckbutton widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_checkbutton.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -26,6 +28,9 @@ class Tk::Tile::TCheckButton < Tk::CheckButton
   end
   WidgetClassName = 'TCheckbutton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Ttk-specific options (inherits from Tk::CheckButton)
+  option :style, type: :string
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

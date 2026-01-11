@@ -3,7 +3,11 @@
 #  treeview widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_treeview.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
+require 'tk/item_option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -24,7 +28,7 @@ module Tk::Tile::TreeviewConfig
   private :__item_configinfo_struct
 
   def __itemconfiginfo_core(tagOrId, slot = nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
         fontkey  = $2
         return [slot.to_s, tagfontobj(tagid(tagOrId), fontkey)]
@@ -195,7 +199,7 @@ module Tk::Tile::TreeviewConfig
         end
       end
 
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
+    else # ! true
       if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
         fontkey  = $2
         return {slot.to_s => tagfontobj(tagid(tagOrId), fontkey)}
@@ -485,7 +489,7 @@ module Tk::Tile::TreeviewConfig
   end
 
   def current_itemconfiginfo(tagOrId, slot = nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       if slot
         org_slot = slot
         begin
@@ -508,7 +512,7 @@ module Tk::Tile::TreeviewConfig
         }
         ret
       end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
+    else # ! true
       ret = {}
       __itemconfiginfo_core(tagOrId, slot).each{|key, conf|
         ret[key] = conf[-1] if conf.kind_of?(Array)
@@ -601,25 +605,7 @@ module Tk::Tile::TreeviewConfig
     end
   end
   def headingcget(tagOrId, option)
-    unless TkItemConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      headingcget_strict(tagOrId, option)
-    else
-      begin
-        headingcget_strict(tagOrId, option)
-      rescue => e
-        begin
-          if current_headingconfiginfo(tagOrId).has_key?(option.to_s)
-            # not tag error & option is known -> error on known option
-            fail e
-          else
-            # not tag error & option is unknown
-            nil
-          end
-        rescue
-          fail e  # tag error
-        end
-      end
-    end
+    headingcget_strict(tagOrId, option)
   end
   def headingconfigure(tagOrId, slot, value=None)
     if slot.kind_of?(Hash)
@@ -1055,6 +1041,8 @@ end
 ########################
 
 class Tk::Tile::Treeview < TkWindow
+  extend Tk::OptionDSL
+  extend Tk::ItemOptionDSL
   include Tk::Tile::TileWidget
   include Scrollable
 
@@ -1067,6 +1055,43 @@ class Tk::Tile::Treeview < TkWindow
   end
   WidgetClassName = 'Treeview'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options
+  option :columns,        type: :list     # column identifiers
+  option :displaycolumns, type: :list     # columns to display (or "#all")
+  option :height,         type: :integer  # visible rows
+  option :selectmode,     type: :string   # extended, browse, none
+  option :show,           type: :list     # tree, headings
+  option :style,          type: :string   # ttk style
+
+  # Tk 9.0+ options (TIP 552)
+  option :striped,        type: :boolean, min_version: 9  # zebra striping
+  option :selecttype,     type: :string,  min_version: 9  # item, cell
+  option :titlecolumns,   type: :integer, min_version: 9  # non-scrolling columns
+  option :titleitems,     type: :integer, min_version: 9  # non-scrolling items
+
+  # ================================================================
+  # Item options (flattened for items, columns, headings, and tags)
+  # ================================================================
+
+  # Item options
+  item_option :open,          type: :boolean   # item expanded state
+  item_option :values,        type: :list      # item column values
+  item_option :tags,          type: :list      # item tags
+
+  # Column options
+  item_option :width,         type: :integer   # column width
+  item_option :minwidth,      type: :integer   # column minimum width
+  item_option :stretch,       type: :boolean   # column resizable
+  item_option :anchor,        type: :string    # content alignment
+
+  # Heading options
+  item_option :text,          type: :string    # heading text
+
+  # Tag options (for styling)
+  item_option :foreground,    type: :string    # text color
+  item_option :background,    type: :string    # background color
+  item_option :image,         type: :string    # icon image
 
   def __destroy_hook__
     Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{

@@ -16,17 +16,13 @@ module Tk
 end
 
 class Tk::BWidget::Button
+  extend Tk::OptionDSL
+
   TkCommandNames = ['Button'.freeze].freeze
   WidgetClassName = 'Button'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext'
-  end
-  private :__strval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget Button options
+  option :helptext, type: :string
+  option :helpvar, type: :tkvariable
 end

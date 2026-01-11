@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/panelframe.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -77,3 +78,4 @@ class Tk::Tcllib::Widget::PanelFrame
     simplelist(tk_send('items')).collect!{|w| window(w)}
   end
 end
+# :nocov:

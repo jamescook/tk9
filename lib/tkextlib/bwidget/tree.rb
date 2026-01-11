@@ -33,22 +33,6 @@ class Tk::BWidget::Tree
     end
   end
 
-  def __strval_optkeys
-    super() << 'crossfill' << 'linesfill'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled' <<
-      'redraw' << 'selectfill' << 'showlines'
-  end
-  private :__boolval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
-
   def tagid(tag)
     if tag.kind_of?(Tk::BWidget::Tree::Node)
       tag.id

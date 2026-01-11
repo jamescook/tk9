@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/tooltip.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -103,3 +104,4 @@ module Tk::Tcllib::Tooltip
     tk_call_without_enc('::tooltip::tooltip', widget.path, '')
   end
 end
+# :nocov:

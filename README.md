@@ -53,7 +53,7 @@ Note: You still `require 'tk'` - the gem name is `tk-ng` but the library interfa
 
 If you want to use Ruby/Tk (tk.rb and so on), you must have tcltklib.so
 which is working correctly. When you have some troubles on compiling,
-please read [README.tcltklib] and [README.ActiveTcl].
+please read [README.tcltklib].
 
 Even if there is a tcltklib.so on your Ruby library directory, it will not
 work without Tcl/Tk libraries (e.g. libtcl9.0.so) on your environment.
@@ -72,15 +72,135 @@ You must also check that your Tcl/Tk is installed properly.
 [README.macosx-aqua] is about MacOS X Aqua usage.
 
 [README.tcltklib]: README.tcltklib
-[README.ActiveTcl]: README.ActiveTcl
 [README.fork]: README.fork
 [README.macosx-aqua]: README.macosx-aqua
 
 ## Backwards Incompatible Changes
 
-This fork removes some methods that existed in the original ruby/tk but were unused, undocumented, or relied on fragile internal hacks:
+This fork removes legacy code that was complex, rarely used, or incompatible with modern systems.
 
-- **`TclTkIp#_make_menu_embeddable`** - Removed. This was a 2006-era hack that accessed Tk's private internal structs to convert a menubar into an embeddable widget. No public Tk API exists for this because it's not a supported use case. Use `TkMenubutton` widgets for packable menu buttons, or the standard `-menu` option for menubars.
+### Removed Libraries
+
+- **`multi-tk.rb`** - Removed. The ThreadGroup-based multi-interpreter dispatch (~3500 lines) added significant complexity. For multiple interpreters, use explicit calls: `interp.after(1000) { }` instead of relying on magic dispatch.
+
+- **`remote-tk.rb`** - Removed. Depended on multi-tk.rb for controlling Tk interpreters in other processes.
+
+- **`thread_tk.rb`** - Removed. Allowed running Tk mainloop on a background thread, which doesn't work on macOS (Tk requires the main thread).
+
+- **`RUN_EVENTLOOP_ON_MAIN_THREAD`** - Removed. Tk now always runs on the main thread. The background thread machinery (~100 lines) that allowed running Tk in IRB on non-macOS has been removed. Run Tk code in scripts, not REPLs.
+
+### Changed Behavior
+
+- **`TkCore::INTERP`** - Deprecated. Accessing this constant emits a warning. Use `TkCore.interp` instead, which raises an error if multiple interpreters exist (preventing ambiguous "which interpreter?" bugs).
+
+- **Encoding machinery** - Simplified. Modern Tcl (8.1+) and Ruby use UTF-8 natively, so the complex encoding conversion code was removed.
+
+### Removed Methods
+
+- **`TclTkIp#encoding_table`** - Removed. Raises `NotImplementedError` with explanation.
+
+- **`TclTkIp#_make_menu_embeddable`** - Removed. This was a 2006-era workaround that accessed Tk's private internal structs. Use `TkMenubutton` for packable menu buttons.
+
+### Removed: Japanized Tk Support and TkFont Class
+
+The `JAPANIZED_TK` constant and all related code has been removed. This was for a patched "Japanized Tcl/Tk" distribution (Tcl 7.6/Tk 4.2 - see `sample/demos-en/doc.org/README.JP`) that added a `kanji` command for Japanese text support before Tcl/Tk had proper Unicode handling.
+
+The entire `TkFont` class and related font handling infrastructure has been removed. Modern Tcl/Tk handles fonts as simple strings (e.g., `"TkDefaultFont"`, `"{Helvetica 12 bold}"`), so the Ruby wrapper class added unnecessary complexity.
+
+Removed files:
+- `lib/tk/font.rb` - TkFont class (2340 lines)
+- `lib/tk/treat_font.rb` - font_configure methods
+- `lib/tk/itemfont.rb` - canvas/text item font handling
+- `lib/tk/fontchooser.rb` - font chooser dialog
+- `lib/tkfont.rb` - wrapper
+
+Removed APIs:
+- `Tk::JAPANIZED_TK` constant
+- `TkFont`, `TkNamedFont` classes
+- `Tk.show_kinsoku`, `Tk.add_kinsoku`, `Tk.delete_kinsoku` methods
+- `latinfont`, `asciifont`, `kanjifont` pseudo-options
+- `font_configure`, `latinfont_configure`, `kanjifont_configure` methods
+
+**Migration**: Use font strings directly:
+```ruby
+# Old way (no longer works)
+font = TkFont.new('family' => 'Helvetica', 'size' => 12)
+button.configure('font' => font)
+
+# New way - use Tcl/Tk font strings directly
+button.configure('font' => '{Helvetica 12}')
+button.configure('font' => 'TkDefaultFont')
+```
+
+Tcl 8.1 (April 1999) added native Unicode support ([Tcl chronology](https://wiki.tcl-lang.org/page/Tcl+chronology)). Use standard `font` options with UTF-8 strings.
+
+### Deprecated Internal APIs
+
+The `__*_optkeys` methods in `TkConfigMethod` are deprecated and will be removed:
+
+- `__numval_optkeys`, `__boolval_optkeys`, `__strval_optkeys`, `__listval_optkeys`
+- `__val2ruby_optkeys`, `__ruby2val_optkeys`
+- `__tkvariable_optkeys`, `__font_optkeys`
+
+**Migration**: Use the declarative `option` DSL instead:
+
+```ruby
+# Old way (deprecated)
+class MyWidget < TkWindow
+  def __boolval_optkeys
+    super() + ['myoption']
+  end
+end
+
+# New way
+class MyWidget < TkWindow
+  option :myoption, type: :boolean
+end
+```
+
+The public API (`cget`, `configure`, `configinfo`) is unchanged.
+
+### Removed: `__IGNORE_UNKNOWN_CONFIGURE_OPTION__`
+
+The global flag `TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__` has been removed. This flag silently swallowed errors when `configure` or `cget` encountered unknown widget options - a design that hid bugs and made debugging difficult.
+
+New design:
+
+```ruby
+class MyWidget < TkWindow
+  # This option only exists in Tk 9.0+
+  option :placeholder, type: :string, min_version: 9
+end
+```
+
+Options with `min_version` are automatically filtered out on older Tk versions, with a warning. This is a better solution - declare what you need, and the system handles compatibility.
+
+3. **Truly optional error handling** - If you absolutely need to ignore errors for a specific call, use standard Ruby:
+
+```ruby
+# Not recommended, but if you must:
+begin
+  widget.configure(maybe_invalid: value)
+rescue TclTkLib::TclError
+  # handle or ignore
+end
+```
+
+### Removed: `GET_CONFIGINFO_AS_ARRAY` constant
+
+The `TkComm::GET_CONFIGINFO_AS_ARRAY` and `TkComm::GET_CONFIGINFOwoRES_AS_ARRAY` constants have been removed. These controlled whether `configinfo` returned arrays or hashes - unnecessary complexity since arrays were the default and hash mode was rarely used.
+
+`configinfo` now always returns arrays:
+```ruby
+widget.configinfo(:text)  # => ["text", "text", "Text", "", "Hello"]
+widget.configinfo         # => [["text", ...], ["width", ...], ...]
+```
+
+Use `current_configinfo` for a hash of current values:
+```ruby
+widget.current_configinfo(:text)  # => {"text" => "Hello"}
+widget.current_configinfo         # => {"text" => "Hello", "width" => 100, ...}
+```
 
 ## Development
 

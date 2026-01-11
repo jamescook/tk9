@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/validator.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -64,3 +65,4 @@ module Tk::Tcllib::Validator
   end
   alias validate_validator invoke_validator
 end
+# :nocov:

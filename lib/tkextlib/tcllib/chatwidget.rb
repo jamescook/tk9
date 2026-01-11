@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/chatwidget.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -150,3 +151,4 @@ class Tk::Tcllib::ChatWidget
     window(tk_send('chat'))
   end
 end
+# :nocov:

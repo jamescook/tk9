@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/dateentry.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -61,3 +62,4 @@ class Tk::Tcllib::Widget::Dateentry
     self
   end
 end
+# :nocov:

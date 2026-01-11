@@ -3,6 +3,8 @@
 #  ttk::spinbox widget  (Tcl/Tk 8.6b1 or later)
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_spinbox.html
+#
 require 'tk' unless defined?(Tk)
 require 'tkextlib/tile.rb'
 
@@ -24,6 +26,14 @@ class Tk::Tile::TSpinbox < Tk::Tile::TEntry
   end
   WidgetClassName = 'TSpinbox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options (inherits from TEntry)
+  option :from,             type: :float       # lowest value
+  option :to,               type: :float       # highest value
+  option :increment,        type: :float       # step value
+  option :format,           type: :string      # printf-style format for floats
+  option :values,           type: :list        # discrete values (overrides from/to)
+  option :wrap,             type: :boolean     # wrap around at boundaries
 
   class SpinCommand < TkValidateCommand
     class ValidateArgs < TkUtil::CallbackSubst
@@ -69,21 +79,6 @@ class Tk::Tile::TSpinbox < Tk::Tile::TEntry
   end
 
   Tk::ValidateConfigure.__def_validcmd(binding, SpinCommand)
-
-  def __boolval_optkeys
-    super() << 'wrap'
-  end
-  private :__boolval_optkeys
-
-  def __strval_optkeys
-    super() << 'buttonbackground' << 'format'
-  end
-  private :__strval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

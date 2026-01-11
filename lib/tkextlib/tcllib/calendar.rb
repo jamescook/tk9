@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/calendar.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -54,3 +55,4 @@ class Tk::Tcllib::Widget::Calendar
     tk_send('get', what)
   end
 end
+# :nocov:

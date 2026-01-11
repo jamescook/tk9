@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/history.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -72,3 +73,4 @@ module Tk::Tcllib::History
     tk_call('::history::configure', @path, opt)
   end
 end
+# :nocov:

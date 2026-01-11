@@ -1,0 +1,9 @@
+  module <%= widget_name %>
+    def self.included(base)
+      base.class_eval do
+<% options_with_aliases.each do |opt| -%>
+        <%= opt[:entry].to_dsl(aliases: opt[:aliases]) %>
+<% end -%>
+      end
+    end
+  end

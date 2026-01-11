@@ -49,4 +49,27 @@ menubar.pack('side'=>'top', 'fill'=>'x')
 
 TkText.new(:wrap=>'word').pack.insert('1.0', 'Please read the sample source, and check how to override default configure options of menu entries on a menu_spec. Maybe, on windows, this menubar does not work properly about keyboard shortcuts. Then, please use "menu" option of root/toplevel widget (see sample/menubar2.rb).')
 
+# Smoke test support
+if ENV['TK_READY_FD']
+  Tk.after(100) {
+    puts "UI loaded"
+
+    # Get the File menu and invoke some entries
+    file_menu = menubar[0][1]  # [menubutton, menu] pair
+    file_menu.invoke(0)  # Open
+    puts "radio_var: #{radio_var.value}"
+
+    # Get Edit menu and invoke
+    edit_menu = menubar[1][1]
+    edit_menu.invoke(0)  # Cut
+    edit_menu.invoke(1)  # Copy
+
+    $stdout.flush
+
+    if (fd = ENV.delete('TK_READY_FD'))
+      IO.for_fd(fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+    end
+  }
+end
+
 Tk.mainloop

@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# :nocov:
 #
 #  tkextlib/tcllib/screenruler.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -67,3 +68,4 @@ class Tk::Tcllib::Widget::ScreenRuler
     self
   end
 end
+# :nocov:

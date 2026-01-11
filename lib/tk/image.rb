@@ -4,6 +4,7 @@
 #
 
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class TkImage<TkObject
   include Tk
@@ -117,10 +118,12 @@ class TkImage<TkObject
 end
 
 class TkBitmapImage<TkImage
-  def __strval_optkeys
-    super() + ['maskdata', 'maskfile']
-  end
-  private :__strval_optkeys
+  extend Tk::OptionDSL
+
+  option :maskdata, type: :string
+  option :maskfile, type: :string
+
+  # NOTE: __strval_optkeys override for 'maskdata', 'maskfile' removed - now declared via OptionDSL
 
   def initialize(*args)
     @type = 'bitmap'
@@ -213,21 +216,7 @@ class TkPhotoImage<TkImage
   # Example, display name of the file from which <tt>image</tt> was created:
   # 	puts image.cget :file
   def cget(option)
-    unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      cget_strict(option)
-    else
-      begin
-        cget_strict(option)
-      rescue => e
-        if current_configinfo.has_key?(option.to_s)
-          # error on known option
-          fail e
-        else
-          # unknown option
-          nil
-        end
-      end
-    end
+    cget_strict(option)
   end
 
   # Copies a region from the image called source to the image called

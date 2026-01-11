@@ -333,10 +333,27 @@ EOD
   end
   private :_state_control
 
-  def __methodcall_optkeys  # { key=>method, ... }
-    {'state' => :_state_control}
+  # Override cget to intercept 'state' option
+  def cget(slot)
+    slot.to_s == 'state' ? _state_control : super
   end
-  private :__methodcall_optkeys
+
+  # Override configure to intercept 'state' option
+  def configure(slot, value = None)
+    if slot.is_a?(Hash)
+      slot = _symbolkey2str(slot)
+      if slot.key?('state')
+        _state_control(slot.delete('state'))
+      end
+      super(slot) unless slot.empty?
+      self
+    elsif slot.to_s == 'state'
+      _state_control(value)
+      self
+    else
+      super
+    end
+  end
 
   #----------------------------------------------------
 

@@ -3,7 +3,10 @@
 #  tpaned widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_panedwindow.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -15,6 +18,7 @@ module Tk
 end
 
 class Tk::Tile::TPaned < TkWindow
+  extend Tk::OptionDSL
   include Tk::Tile::TileWidget
 
   if Tk::Tile::USE_TTK_NAMESPACE
@@ -28,6 +32,12 @@ class Tk::Tile::TPaned < TkWindow
   end
   WidgetClassName = 'TPaned'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options
+  option :orient, type: :string     # vertical, horizontal
+  option :width,  type: :pixels
+  option :height, type: :pixels
+  option :style,  type: :string     # ttk style
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')
@@ -76,25 +86,7 @@ class Tk::Tile::TPaned < TkWindow
   alias pane_cget_strict panecget_strict
 
   def panecget(pane, slot)
-    unless TkItemConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      panecget_strict(pane, slot)
-    else
-      begin
-        panecget_strict(pane, slot)
-      rescue => e
-        begin
-          if current_paneconfiginfo(pane).has_key?(slot.to_s)
-            # not tag error & option is known -> error on known option
-            fail e
-          else
-            # not tag error & option is unknown
-            nil
-          end
-        rescue
-          fail e  # tag error
-        end
-      end
-    end
+    panecget_strict(pane, slot)
   end
   alias pane_cget panecget
 
@@ -119,7 +111,7 @@ class Tk::Tile::TPaned < TkWindow
   alias pane_configure paneconfigure
 
   def paneconfiginfo(win)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       win = _epath(win)
       if key
         conf = tk_split_list(tk_send_without_enc('pane', win, "-#{key}"))
@@ -156,7 +148,7 @@ class Tk::Tile::TPaned < TkWindow
           conf
         }
       end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
+    else # ! true
       win = _epath(win)
       if key
         conf = tk_split_list(tk_send_without_enc('pane', win, "-#{key}"))
@@ -203,7 +195,7 @@ class Tk::Tile::TPaned < TkWindow
   alias pane_configinfo paneconfiginfo
 
   def current_paneconfiginfo(win, key=nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       if key
         conf = paneconfiginfo(win, key)
         {conf[0] => conf[4]}
@@ -214,7 +206,7 @@ class Tk::Tile::TPaned < TkWindow
         }
         ret
       end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
+    else # ! true
       ret = {}
       paneconfiginfo(win, key).each{|k, conf|
         ret[k] = conf[-1] if conf.kind_of?(Array)

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'open3'
 require_relative 'perceptualdiff'
-require_relative 'widget_showcase'
 
 module VisualRegression
   # Orchestrates visual regression testing:
@@ -17,8 +17,17 @@ module VisualRegression
     def initialize(threshold: Perceptualdiff::DEFAULT_THRESHOLD)
       @threshold = threshold
       @results = []
-      @tcl_version = "tcl#{Tk::TCL_VERSION}"
+      @tcl_version = detect_tcl_version
       @platform = detect_platform
+    end
+
+    def detect_tcl_version
+      # Get Tcl version via subprocess to avoid loading Tk in main process
+      load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(File.dirname(__dir__))) }
+      load_path_args = load_paths.flat_map { |p| ["-I", p] }.join(" ")
+      script = "require 'tk'; puts Tk::TCL_VERSION"
+      version = `#{RbConfig.ruby} #{load_path_args} -e "#{script}" 2>/dev/null`.strip
+      version.empty? ? "tcl_unknown" : "tcl#{version}"
     end
 
     def detect_platform
@@ -70,7 +79,23 @@ module VisualRegression
 
     def generate_screenshots
       puts "Generating screenshots for #{tcl_version}..."
-      WidgetShowcase.new(output_dir: unverified_dir).run
+
+      # Run widget showcase in a subprocess to avoid Tk singleton issues
+      # when other tests have already initialized Tk in this process
+      showcase_script = File.expand_path('widget_showcase.rb', __dir__)
+      load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(File.dirname(__dir__))) }
+      load_path_args = load_paths.flat_map { |p| ["-I", p] }
+
+      stdout, stderr, status = Open3.capture3(
+        RbConfig.ruby, *load_path_args, showcase_script, unverified_dir
+      )
+
+      puts stdout unless stdout.empty?
+      unless status.success?
+        warn "Widget showcase failed:"
+        warn stderr
+        raise "Screenshot generation failed with exit code #{status.exitstatus}"
+      end
     end
 
     def compare_screenshots

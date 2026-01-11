@@ -3,7 +3,11 @@
 #  tnotebook widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_notebook.html
+#
 require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
+require 'tk/item_option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -15,6 +19,8 @@ module Tk
 end
 
 class Tk::Tile::TNotebook < TkWindow
+  extend Tk::OptionDSL
+  extend Tk::ItemOptionDSL
   ################################
   include TkItemConfigMethod
 
@@ -27,11 +33,6 @@ class Tk::Tile::TNotebook < TkWindow
     [self.path, 'tab', id]
   end
   private :__item_config_cmd
-
-  def __item_listval_optkeys(id)
-    []
-  end
-  private :__item_listval_optkeys
 
   def __item_methodcall_optkeys(id)  # { key=>method, ... }
     {}
@@ -51,25 +52,7 @@ class Tk::Tile::TNotebook < TkWindow
     tabconfiginfo(tagOrId, option)[-1]
   end
   def tabcget(tagOrId, option)
-    unless TkItemConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      tabcget_strict(tagOrId, option)
-    else
-      begin
-        tabcget_strict(tagOrId, option)
-      rescue => e
-        begin
-          if current_tabconfiginfo(tagOrId).has_key?(option.to_s)
-            # not tag error & option is known -> error on known option
-            fail e
-          else
-            # not tag error & option is unknown
-            nil
-          end
-        rescue
-          fail e  # tag error
-        end
-      end
-    end
+    tabcget_strict(tagOrId, option)
   end
   ################################
 
@@ -82,6 +65,27 @@ class Tk::Tile::TNotebook < TkWindow
   end
   WidgetClassName = 'TNotebook'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options
+  option :height,  type: :pixels     # pane area height
+  option :padding, type: :string     # outer padding
+  option :width,   type: :pixels     # pane area width
+  option :style,   type: :string     # ttk style
+
+  # ================================================================
+  # Item options (for notebook tabs)
+  # ================================================================
+
+  # String options
+  item_option :text,      type: :string    # tab label
+  item_option :image,     type: :string    # tab icon
+  item_option :compound,  type: :string    # text/image position (none, text, image, center, top, bottom, left, right)
+  item_option :state,     type: :string    # normal, disabled, hidden
+  item_option :sticky,    type: :string    # child widget sticky (n, s, e, w combinations)
+  item_option :padding,   type: :string    # internal padding
+
+  # Integer options
+  item_option :underline, type: :integer   # underline character index
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')
