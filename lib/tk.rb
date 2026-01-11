@@ -562,38 +562,6 @@ module TkConfigMethod
   private :__ruby2val_optkeys
 
 
-  def __keyonly_optkeys  # { def_key=>undef_key or nil, ... }
-    {}
-  end
-  private :__keyonly_optkeys
-
-  def __conv_keyonly_opts(keys)
-    return keys unless keys.kind_of?(Hash)
-    keyonly = __keyonly_optkeys
-    keys2 = {}
-    keys.each{|k, v|
-      optkey = keyonly.find{|kk,vv| kk.to_s == k.to_s}
-      if optkey
-        defkey, undefkey = optkey
-        if v
-          keys2[defkey.to_s] = None
-        elsif undefkey
-          keys2[undefkey.to_s] = None
-        else
-          # remove key
-        end
-      else
-        keys2[k.to_s] = v
-      end
-    }
-    keys2
-  end
-  private :__conv_keyonly_opts
-
-  def config_hash_kv(keys, enc_mode = nil, conf = nil)
-    hash_kv(__conv_keyonly_opts(keys), enc_mode, conf)
-  end
-
   ################################
 
   def [](id)
@@ -682,21 +650,6 @@ module TkConfigMethod
         slot[key] = method.call(slot[key]) if slot.has_key?(key)
       }
 
-      # :nocov: __keyonly_optkeys - only overridden in BLT extensions (blt/tree.rb)
-      __keyonly_optkeys.each{|defkey, undefkey|
-        conf = slot.find{|kk, vv| kk == defkey.to_s}
-        if conf
-          k, v = conf
-          if v
-            slot[k] = None
-          else
-            slot[undefkey.to_s] = None if undefkey
-            slot.delete(k)
-          end
-        end
-      }
-      # :nocov:
-
       if (slot.find{|k, v| k =~ /^(|latin|ascii|kanji)(#{__font_optkeys.join('|')})$/})
         font_configure(slot)
       elsif slot.size > 0
@@ -718,16 +671,7 @@ module TkConfigMethod
       # Check version restriction before attempting to configure
       return self if __skip_version_restricted_option?(slot)
 
-      # :nocov: __keyonly_optkeys - only overridden in BLT extensions (blt/tree.rb)
-      if ( conf = __keyonly_optkeys.find{|k, v| k.to_s == slot} )
-        defkey, undefkey = conf
-        if value
-          tk_call(*(__config_cmd << "-#{defkey}"))
-        elsif undefkey
-          tk_call(*(__config_cmd << "-#{undefkey}"))
-        end
-      # :nocov:
-      elsif ( method = _symbolkey2str(__ruby2val_optkeys)[slot] )
+      if ( method = _symbolkey2str(__ruby2val_optkeys)[slot] )
         tk_call(*(__config_cmd << "-#{slot}" << method.call(value)))
       elsif (slot =~ /^(|latin|ascii|kanji)(#{__font_optkeys.join('|')})$/)
         if value == None

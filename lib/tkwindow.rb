@@ -32,37 +32,6 @@ class TkWindow<TkObject
   end
   private :__ruby2val_optkeys
 
-  def __keyonly_optkeys
-    # Override in subclasses for key-only options
-    # Returns hash { def_key => undef_key or nil }
-    {}
-  end
-  private :__keyonly_optkeys
-
-  def __conv_keyonly_opts(keys)
-    return keys unless keys.kind_of?(Hash)
-    keyonly = __keyonly_optkeys
-    return keys if keyonly.empty?
-
-    keys2 = {}
-    keys.each do |k, v|
-      optkey = keyonly.find { |kk, _| kk.to_s == k.to_s }
-      if optkey
-        defkey, undefkey = optkey
-        if v
-          keys2[defkey.to_s] = None
-        elsif undefkey
-          keys2[undefkey.to_s] = None
-        end
-        # else: remove key (don't add to keys2)
-      else
-        keys2[k.to_s] = v
-      end
-    end
-    keys2
-  end
-  private :__conv_keyonly_opts
-
   @@WIDGET_INSPECT_FULL = false
   def TkWindow._widget_inspect_full_?
     @@WIDGET_INSPECT_FULL
@@ -145,11 +114,9 @@ class TkWindow<TkObject
         }
       end
       if without_creating && keys
-        #configure(keys)
-        configure(__conv_keyonly_opts(keys))
+        configure(keys)
       else
-        #create_self(keys)
-        create_self(__conv_keyonly_opts(keys))
+        create_self(keys)
       end
       font_configure(fontkeys) unless fontkeys.empty?
     end

@@ -221,10 +221,6 @@ class TkObject<TkKernel
     end
   end
 
-  def config_hash_kv(keys, enc_mode = nil, conf = nil)
-    hash_kv(keys, enc_mode, conf)
-  end
-
   private
 
   # Config command array for Tcl calls - used by TkTreatFont

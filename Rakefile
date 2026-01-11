@@ -489,6 +489,7 @@ namespace :docker do
     cmd += " -e TCL_VERSION=#{tcl_version}"
     # Pass TEST env var to run a single test file
     cmd += " -e TEST=#{ENV['TEST']}" if ENV['TEST']
+    cmd += " -e COVERAGE=1" if ENV['COVERAGE'] == '1'
     cmd += " #{image_name}"
 
     sh cmd
