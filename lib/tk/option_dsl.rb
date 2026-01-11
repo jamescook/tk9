@@ -17,26 +17,11 @@ module Tk
   #   MyWidget.options[:text]      # => Tk::Option
   #   MyWidget.resolve_option(:bg) # => Tk::Option (same as :background)
   #
-  # Bridge Integration:
-  #   When mixed into a class that also includes TkConfigMethod, the DSL
-  #   automatically feeds into the legacy __*_optkeys methods so existing
-  #   configure/cget code keeps working during migration.
+  # Integration:
+  #   TkObject's cget/configure/configinfo use resolve_option to look up
+  #   type converters and aliases declared via this DSL.
   #
   module OptionDSL
-    # Maps our type names to the legacy __*_optkeys method categories
-    LEGACY_TYPE_MAP = {
-      integer: :numval,
-      float: :numval,
-      boolean: :boolval,
-      string: :strval,
-      color: :strval,    # colors treated as strings in legacy system
-      relief: :strval,   # relief values treated as strings
-      pixels: :strval,   # pixel values treated as strings (can be "10" or "10p")
-      anchor: :strval,   # anchor values treated as strings
-      list: :listval,
-      widget: :strval,   # widget paths are strings, but from_tcl converts to objects
-    }.freeze
-
     # Called when module is extended into a class
     # Merge with existing options (from parent) instead of resetting
     def self.extended(base)
@@ -117,25 +102,6 @@ module Tk
       opt.version_required
     end
 
-    # Bridge methods for legacy __*_optkeys compatibility
-    # These return arrays of option names matching each legacy category
-
-    def declared_numval_optkeys
-      options_by_legacy_type(:numval)
-    end
-
-    def declared_boolval_optkeys
-      options_by_legacy_type(:boolval)
-    end
-
-    def declared_strval_optkeys
-      options_by_legacy_type(:strval)
-    end
-
-    def declared_listval_optkeys
-      options_by_legacy_type(:listval)
-    end
-
     def declared_optkey_aliases
       _options.values.uniq.each_with_object({}) do |opt, hash|
         opt.aliases.each { |a| hash[a] = opt.name }
@@ -166,23 +132,6 @@ module Tk
 
     def _options
       @_options ||= {}
-    end
-
-    def options_by_legacy_type(legacy_type)
-      all_options_with_ancestors.select do |opt|
-        LEGACY_TYPE_MAP[opt.type.name] == legacy_type
-      end.map { |opt| opt.tcl_name }
-    end
-
-    def all_options_with_ancestors
-      result = _options.values
-      ancestors.each do |ancestor|
-        next if ancestor == self
-        if ancestor.respond_to?(:_options, true) && ancestor.instance_variable_defined?(:@_options)
-          result += ancestor.instance_variable_get(:@_options).values
-        end
-      end
-      result.uniq
     end
   end
 end

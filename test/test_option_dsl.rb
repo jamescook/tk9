@@ -132,53 +132,6 @@ class TestOptionDSL < Minitest::Test
     refute @base_class.options.key?(:grandchild_opt)
   end
 
-  # Bridge method tests
-
-  def test_declared_boolval_optkeys
-    klass = Class.new do
-      extend Tk::OptionDSL
-      option :enabled, type: :boolean
-      option :visible, type: :boolean
-      option :name, type: :string
-    end
-
-    assert_equal %w[enabled visible], klass.declared_boolval_optkeys.sort
-  end
-
-  def test_declared_numval_optkeys
-    klass = Class.new do
-      extend Tk::OptionDSL
-      option :width, type: :integer
-      option :height, type: :integer
-      option :ratio, type: :float
-      option :name, type: :string
-    end
-
-    assert_equal %w[height ratio width], klass.declared_numval_optkeys.sort
-  end
-
-  def test_declared_strval_optkeys
-    klass = Class.new do
-      extend Tk::OptionDSL
-      option :text, type: :string
-      option :label, type: :string
-      option :count, type: :integer
-    end
-
-    assert_equal %w[label text], klass.declared_strval_optkeys.sort
-  end
-
-  def test_declared_listval_optkeys
-    klass = Class.new do
-      extend Tk::OptionDSL
-      option :items, type: :list
-      option :tags, type: :list
-      option :name, type: :string
-    end
-
-    assert_equal %w[items tags], klass.declared_listval_optkeys.sort
-  end
-
   def test_declared_optkey_aliases
     klass = Class.new do
       extend Tk::OptionDSL
@@ -191,15 +144,6 @@ class TestOptionDSL < Minitest::Test
     assert_equal :background, aliases[:bg]
     assert_equal :foreground, aliases[:fg]
     assert_equal :foreground, aliases[:fgcolor]
-  end
-
-  def test_bridge_uses_tcl_name
-    klass = Class.new do
-      extend Tk::OptionDSL
-      option :active, type: :boolean, tcl_name: 'isactive'
-    end
-
-    assert_equal ['isactive'], klass.declared_boolval_optkeys
   end
 
   # min_version tests
