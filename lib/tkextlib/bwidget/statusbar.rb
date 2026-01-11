@@ -20,11 +20,6 @@ class Tk::BWidget::StatusBar
   WidgetClassName = 'StatusBar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __boolval_optkeys
-    super() << 'showresize' << 'showseparator' << 'showresizesep'
-  end
-  private :__boolval_optkeys
-
   def add(win, keys={})
     tk_send('add', win, keys)
     self

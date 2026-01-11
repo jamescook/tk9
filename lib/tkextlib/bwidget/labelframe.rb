@@ -21,16 +21,6 @@ class Tk::BWidget::LabelFrame
   WidgetClassName = 'LabelFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled'
-  end
-  private :__boolval_optkeys
-
   def __tkvariable_optkeys
     super() << 'helpvar'
   end

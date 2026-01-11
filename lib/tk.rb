@@ -478,17 +478,6 @@ module TkConfigMethod
   end
   private :__optkey_aliases
 
-  # Helper method to merge declared options from OptionDSL into legacy optkeys.
-  # This bridges the new declarative option system with the legacy type conversion.
-  def __merge_declared_optkeys(base_keys, declared_method)
-    if self.class.respond_to?(declared_method)
-      (base_keys + self.class.send(declared_method)).uniq
-    else
-      base_keys
-    end
-  end
-  private :__merge_declared_optkeys
-
   # Look up a declared option and convert value using its from_tcl converter.
   # Returns [converted_value, true] if option is declared, [original_value, false] otherwise.
   def __convert_from_tcl(slot, value)
@@ -508,38 +497,6 @@ module TkConfigMethod
     [opt.to_tcl(value, widget: self), true]
   end
   private :__convert_to_tcl
-
-  def __numval_optkeys
-    __merge_declared_optkeys([], :declared_numval_optkeys)
-  end
-  private :__numval_optkeys
-
-  def __numstrval_optkeys
-    []
-  end
-  private :__numstrval_optkeys
-
-  def __boolval_optkeys
-    # NOTE: Hardcoded defaults moved to TkWindow via OptionDSL
-    __merge_declared_optkeys([], :declared_boolval_optkeys)
-  end
-  private :__boolval_optkeys
-
-  def __strval_optkeys
-    # NOTE: Hardcoded defaults moved to TkWindow via OptionDSL
-    __merge_declared_optkeys([], :declared_strval_optkeys)
-  end
-  private :__strval_optkeys
-
-  def __listval_optkeys
-    __merge_declared_optkeys([], :declared_listval_optkeys)
-  end
-  private :__listval_optkeys
-
-  def __numlistval_optkeys
-    []
-  end
-  private :__numlistval_optkeys
 
   def __tkvariable_optkeys
     ['variable', 'textvariable']

@@ -29,11 +29,6 @@ class Tk::BWidget::ComboBox
   option :autocomplete, type: :boolean
   option :autopost, type: :boolean
 
-  def __boolval_optkeys
-    super() << 'autocomplete' << 'autopost'
-  end
-  private :__boolval_optkeys
-
   def get_listbox(&b)
     win = window(tk_send_without_enc('getlistbox'))
     win.instance_exec(self, &b) if b

@@ -21,11 +21,6 @@ class Tk::BWidget::MainFrame
   WidgetClassName = 'MainFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'progressfg'
-  end
-  private :__strval_optkeys
-
   def __tkvariable_optkeys
     super() << 'progressvar'
   end

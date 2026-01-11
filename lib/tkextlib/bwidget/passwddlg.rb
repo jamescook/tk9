@@ -20,17 +20,6 @@ class Tk::BWidget::PasswdDlg
   WidgetClassName = 'PasswdDlg'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'loginhelptext' << 'loginlabel' << 'logintext' <<
-      'passwdlabel' << 'passwdtext'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'passwdeditable' << 'homogeneous'
-  end
-  private :__boolval_optkeys
-
   def __tkvariable_optkeys
     super() << 'loginhelpvar' << 'logintextvariable' <<
       'passwdhelpvar' << 'passwdtextvariable'

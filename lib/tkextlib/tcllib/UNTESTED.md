@@ -7,8 +7,7 @@
 These Ruby wrappers for Tcl's tklib widgets cannot be properly tested:
 
 1. **tklib not in Homebrew** - No easy local installation on macOS
-2. **Upstream ruby/tk is abandoned** - Doesn't support Tcl 8.6+ or 9.x, can't verify if wrappers ever worked
-3. **Known bugs** - Some wrappers have issues (e.g., `WidgetClassNames` not accessible in modules that `extend TkCore`)
+2. **Known bugs** - Some wrappers have issues (e.g., `WidgetClassNames` not accessible in modules that `extend TkCore`)
 
 ## Widgets Affected
 

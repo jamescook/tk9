@@ -30,16 +30,6 @@ class Tk::BWidget::Entry
   option :dragenabled, type: :boolean
   option :dropenabled, type: :boolean
 
-  def __strval_optkeys
-    super() << 'helptext' << 'insertbackground'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled' << 'editable'
-  end
-  private :__boolval_optkeys
-
   def __tkvariable_optkeys
     super() << 'helpvar'
   end

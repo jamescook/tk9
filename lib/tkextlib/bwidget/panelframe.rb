@@ -20,11 +20,6 @@ class Tk::BWidget::PanelFrame
   WidgetClassName = 'PanelFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() + ['panelforeground', 'panelbackground']
-  end
-  private :__strval_optkeys
-
   def add(win, keys={})
     tk_send('add', win, keys)
     self

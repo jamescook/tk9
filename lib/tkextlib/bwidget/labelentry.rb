@@ -24,11 +24,6 @@ class Tk::BWidget::LabelEntry
   WidgetClassName = 'LabelEntry'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext' << 'insertbackground' << 'entryfg' << 'entrybg'
-  end
-  private :__strval_optkeys
-
   def __tkvariable_optkeys
     super() << 'helpvar'
   end
