@@ -46,6 +46,12 @@ class TestBWidgetLabel < Minitest::Test
     errors << "foreground failed" if label.cget(:foreground).to_s.empty?
     errors << "background failed" if label.cget(:background).to_s.empty?
 
+    # --- helpvar (TkVariable) ---
+    helpvar = TkVariable.new("label help variable")
+    label.configure(helpvar: helpvar)
+    hv = label.cget(:helpvar)
+    errors << "helpvar cget failed" if hv.nil?
+
     raise "BWidget Label test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

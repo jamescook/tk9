@@ -26,6 +26,7 @@ class Tk::BWidget::SpinBox
 
   # BWidget SpinBox options
   option :helptext, type: :string
+  option :helpvar, type: :tkvariable
   option :insertbackground, type: :string
   option :entryfg, type: :string
   option :entrybg, type: :string
@@ -33,11 +34,6 @@ class Tk::BWidget::SpinBox
   option :dropenabled, type: :boolean
   option :editable, type: :boolean
   option :values, type: :list
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
 
   def entrybind(context, *args, &block)
     #if args[0].kind_of?(Proc) || args[0].kind_of?(Method)

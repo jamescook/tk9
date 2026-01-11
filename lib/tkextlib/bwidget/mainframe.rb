@@ -17,14 +17,14 @@ module Tk
 end
 
 class Tk::BWidget::MainFrame
+  extend Tk::OptionDSL
+
   TkCommandNames = ['MainFrame'.freeze].freeze
   WidgetClassName = 'MainFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __tkvariable_optkeys
-    super() << 'progressvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget MainFrame options
+  option :progressvar, type: :tkvariable
 
   def __val2ruby_optkeys  # { key=>proc, ... }
     # The method is used to convert a opt-value to a ruby's object.

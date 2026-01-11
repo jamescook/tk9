@@ -16,15 +16,17 @@ module Tk
 end
 
 class Tk::BWidget::PasswdDlg
+  extend Tk::OptionDSL
+
   TkCommandNames = ['PasswdDlg'.freeze].freeze
   WidgetClassName = 'PasswdDlg'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __tkvariable_optkeys
-    super() << 'loginhelpvar' << 'logintextvariable' <<
-      'passwdhelpvar' << 'passwdtextvariable'
-  end
-  private :__tkvariable_optkeys
+  # BWidget PasswdDlg options
+  option :loginhelpvar, type: :tkvariable
+  option :logintextvariable, type: :tkvariable
+  option :passwdhelpvar, type: :tkvariable
+  option :passwdtextvariable, type: :tkvariable
 
   def create
     login, passwd = simplelist(tk_call(self.class::TkCommandNames[0],

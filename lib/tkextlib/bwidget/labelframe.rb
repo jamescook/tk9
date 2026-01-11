@@ -17,14 +17,14 @@ module Tk
 end
 
 class Tk::BWidget::LabelFrame
+  extend Tk::OptionDSL
+
   TkCommandNames = ['LabelFrame'.freeze].freeze
   WidgetClassName = 'LabelFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget LabelFrame options
+  option :helpvar, type: :tkvariable
 
   def self.align(*args)
     tk_call('LabelFrame::align', *args)

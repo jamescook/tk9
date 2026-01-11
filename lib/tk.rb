@@ -498,11 +498,6 @@ module TkConfigMethod
   end
   private :__convert_to_tcl
 
-  def __tkvariable_optkeys
-    ['variable', 'textvariable']
-  end
-  private :__tkvariable_optkeys
-
   def __val2ruby_optkeys  # { key=>proc, ... }
     # The method is used to convert a opt-value to a ruby's object.
     # When get the value of the option "key", "proc.call(value)" is called.
@@ -548,12 +543,6 @@ module TkConfigMethod
     if slot =~ /^(#{__font_optkeys.join('|')})$/
       fnt = tk_tcl2ruby(tk_call_without_enc(*(__cget_cmd << "-#{slot}")), true)
       return fnt.kind_of?(TkFont) ? fnt : fontobj(slot)
-    end
-
-    # TkVariable options
-    if __tkvariable_optkeys.include?(slot)
-      v = tk_call_without_enc(*(__cget_cmd << "-#{slot}"))
-      return v.empty? ? nil : TkVarAccess.new(v)
     end
 
     # Get raw value from Tcl
@@ -705,17 +694,6 @@ module TkConfigMethod
       _, real_name = __optkey_aliases.find { |k, _| k.to_s == slot }
       slot = real_name.to_s if real_name
 
-      # TkVariable options
-      if __tkvariable_optkeys.include?(slot)
-        conf = tk_split_simplelist(tk_call_without_enc(*(__confinfo_cmd << "-#{slot}")), false, true)
-        conf[__configinfo_struct[:key]] = conf[__configinfo_struct[:key]][1..-1]
-        [__configinfo_struct[:default_value], __configinfo_struct[:current_value]].each do |idx|
-          next unless idx && conf[idx]
-          conf[idx] = conf[idx].empty? ? nil : TkVarAccess.new(conf[idx])
-        end
-        return __strip_alias_dash(conf)
-      end
-
       # Try Option registry first
       opt = self.class.respond_to?(:resolve_option) && self.class.resolve_option(slot)
       if opt
@@ -741,11 +719,6 @@ module TkConfigMethod
         opt = self.class.respond_to?(:resolve_option) && self.class.resolve_option(optkey)
         if opt
           conf = __apply_configinfo_conversion(conf, optkey)
-        elsif __tkvariable_optkeys.include?(optkey)
-          [__configinfo_struct[:default_value], __configinfo_struct[:current_value]].each do |idx|
-            next unless idx && conf[idx]
-            conf[idx] = conf[idx].empty? ? nil : TkVarAccess.new(conf[idx])
-          end
         else
           # No Option declared - leave raw values (warn once per class)
           @__undeclared_options_warned ||= {}
@@ -800,17 +773,6 @@ module TkConfigMethod
       _, real_name = __optkey_aliases.find { |k, _| k.to_s == slot }
       slot = real_name.to_s if real_name
 
-      # TkVariable options
-      if __tkvariable_optkeys.include?(slot)
-        conf = tk_split_simplelist(tk_call_without_enc(*(__confinfo_cmd << "-#{slot}")), false, true)
-        conf[__configinfo_struct[:key]] = conf[__configinfo_struct[:key]][1..-1]
-        [__configinfo_struct[:default_value], __configinfo_struct[:current_value]].each do |idx|
-          next unless idx && conf[idx]
-          conf[idx] = conf[idx].empty? ? nil : TkVarAccess.new(conf[idx])
-        end
-        return __format_hash_result(conf)
-      end
-
       # Try Option registry
       opt = self.class.respond_to?(:resolve_option) && self.class.resolve_option(slot)
       if opt
@@ -835,11 +797,6 @@ module TkConfigMethod
         opt = self.class.respond_to?(:resolve_option) && self.class.resolve_option(optkey)
         if opt
           conf = __apply_configinfo_conversion(conf, optkey)
-        elsif __tkvariable_optkeys.include?(optkey)
-          [__configinfo_struct[:default_value], __configinfo_struct[:current_value]].each do |idx|
-            next unless idx && conf[idx]
-            conf[idx] = conf[idx].empty? ? nil : TkVarAccess.new(conf[idx])
-          end
         else
           # No Option declared - leave raw values (warn once per class)
           @__undeclared_options_warned ||= {}

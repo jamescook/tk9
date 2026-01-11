@@ -18,16 +18,15 @@ module Tk
 end
 
 class Tk::BWidget::LabelEntry
+  extend Tk::OptionDSL
   include Scrollable
 
   TkCommandNames = ['LabelEntry'.freeze].freeze
   WidgetClassName = 'LabelEntry'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget LabelEntry options
+  option :helpvar, type: :tkvariable
 
   def __font_optkeys
     super() << 'labelfont'

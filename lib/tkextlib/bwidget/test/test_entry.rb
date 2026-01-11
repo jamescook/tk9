@@ -62,6 +62,12 @@ class TestBWidgetEntry < Minitest::Test
     entry.insert(0, "Hello World")
     errors << "insert/get failed" unless entry.get == "Hello World"
 
+    # --- helpvar (TkVariable) ---
+    helpvar = TkVariable.new("entry help variable")
+    entry.configure(helpvar: helpvar)
+    hv = entry.cget(:helpvar)
+    errors << "helpvar cget failed" if hv.nil?
+
     raise "BWidget Entry test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

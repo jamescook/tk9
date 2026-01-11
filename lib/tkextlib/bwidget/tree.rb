@@ -33,11 +33,6 @@ class Tk::BWidget::Tree
     end
   end
 
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
-
   def tagid(tag)
     if tag.kind_of?(Tk::BWidget::Tree::Node)
       tag.id

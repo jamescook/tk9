@@ -24,13 +24,9 @@ class Tk::BWidget::Label
 
   # BWidget Label options
   option :helptext, type: :string
+  option :helpvar, type: :tkvariable
   option :dragenabled, type: :boolean
   option :dropenabled, type: :boolean
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
 
   def set_focus
     tk_send_without_enc('setfocus')

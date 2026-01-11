@@ -56,6 +56,12 @@ class TestBWidgetSpinBox < Minitest::Test
     idx = spinbox.get_index_of_value
     errors << "set/get value index failed" unless idx == 2
 
+    # --- helpvar (TkVariable) ---
+    helpvar = TkVariable.new("spinbox help variable")
+    spinbox.configure(helpvar: helpvar)
+    hv = spinbox.cget(:helpvar)
+    errors << "helpvar cget failed" if hv.nil?
+
     raise "BWidget SpinBox test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

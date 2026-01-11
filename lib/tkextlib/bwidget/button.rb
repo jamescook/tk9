@@ -24,9 +24,5 @@ class Tk::BWidget::Button
 
   # BWidget Button options
   option :helptext, type: :string
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  option :helpvar, type: :tkvariable
 end
