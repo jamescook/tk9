@@ -13,18 +13,6 @@ class TkWindow<TkObject
   # Each widget class includes its generated module (e.g., Tk::Generated::Button).
   # See: rake tk:generate_options
 
-  # Private helper methods for widget initialization
-  # These bridge the OptionDSL system with the initialization code
-
-  def __optkey_aliases
-    if self.class.respond_to?(:declared_optkey_aliases)
-      self.class.declared_optkey_aliases
-    else
-      {}
-    end
-  end
-  private :__optkey_aliases
-
   @@WIDGET_INSPECT_FULL = false
   def TkWindow._widget_inspect_full_?
     @@WIDGET_INSPECT_FULL
@@ -75,38 +63,22 @@ class TkWindow<TkObject
       end
     else
       p 'create_self has args' if $DEBUG
-      fontkeys = {}
       if keys
-        #['font', 'kanjifont', 'latinfont', 'asciifont'].each{|key|
-        #  fontkeys[key] = keys.delete(key) if keys.key?(key)
-        #}
-        __font_optkeys.each{|key|
-          fkey = key.to_s
-          fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-          fkey = "kanji#{key}"
-          fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-          fkey = "latin#{key}"
-          fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-          fkey = "ascii#{key}"
-          fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-        }
-
-        __optkey_aliases.each{|alias_name, real_name|
-          alias_name = alias_name.to_s
-          if keys.has_key?(alias_name)
-            keys[real_name.to_s] = keys.delete(alias_name)
+        # Resolve aliases via OptionDSL
+        if self.class.respond_to?(:declared_optkey_aliases)
+          self.class.declared_optkey_aliases.each do |alias_name, real_name|
+            alias_name = alias_name.to_s
+            if keys.has_key?(alias_name)
+              keys[real_name.to_s] = keys.delete(alias_name)
+            end
           end
-        }
+        end
       end
       if without_creating && keys
         configure(keys)
       else
         create_self(keys)
       end
-      font_configure(fontkeys) unless fontkeys.empty?
     end
   end
 

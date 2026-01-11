@@ -155,16 +155,11 @@ autoload :TkWarningObj,       'tk/dialog'
 
 autoload :TkEvent,            'tk/event'
 
-autoload :TkFont,             'tk/font'
-autoload :TkNamedFont,        'tk/font'
-
 autoload :TkImage,            'tk/image'
 autoload :TkBitmapImage,      'tk/image'
 autoload :TkPhotoImage,       'tk/image'
 
 autoload :TkItemConfigMethod, 'tk/itemconfig'
-
-autoload :TkTreatItemFont,    'tk/itemfont'
 
 autoload :TkKinput,           'tk/kinput'
 

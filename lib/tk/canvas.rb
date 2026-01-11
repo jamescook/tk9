@@ -697,7 +697,6 @@ Tk.__set_loaded_toplevel_aliases__('tk/canvas.rb', :Tk, Tk::Canvas, :TkCanvas)
 class TkcItem<TkObject
   extend Tk
   include TkcTagAccess
-  extend TkItemFontOptkeys
   extend TkItemConfigOptkeys
 
   CItemTypeName = nil
@@ -737,22 +736,7 @@ class TkcItem<TkObject
         end
       end
 
-      #['font', 'kanjifont', 'latinfont', 'asciifont'].each{|key|
-      #  fontkeys[key] = keys.delete(key) if keys.key?(key)
-      #}
-      __item_font_optkeys(nil).each{|key|
-        fkey = key.to_s
-        fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-        fkey = "kanji#{key}"
-        fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-        fkey = "latin#{key}"
-        fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-
-        fkey = "ascii#{key}"
-        fontkeys[fkey] = keys.delete(fkey) if keys.key?(fkey)
-      }
+      # Font is now a regular option - no special extraction needed
 
       __item_optkey_aliases(nil).each{|alias_name, real_name|
         alias_name = alias_name.to_s

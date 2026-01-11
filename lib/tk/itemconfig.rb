@@ -3,7 +3,6 @@
 # tk/itemconfig.rb : control item/tag configuration of widget
 #
 require 'tk' unless defined?(Tk)
-require 'tk/itemfont.rb'
 
 module TkItemConfigOptkeys
   include TkUtil
@@ -59,6 +58,13 @@ module TkItemConfigOptkeys
     )
   end
   private :__item_strval_optkeys
+
+  # Stub for backwards compatibility - font is now a regular option
+  def __item_font_optkeys(id)
+    warn "Warning: __item_font_optkeys is deprecated - font is now a regular option"
+    []
+  end
+  private :__item_font_optkeys
 
   def __item_listval_optkeys(id)
     __merge_declared_item_optkeys([], :declared_item_listval_optkeys)
@@ -137,7 +143,6 @@ end
 
 module TkItemConfigMethod
   include TkUtil
-  include TkTreatItemFont
   include TkItemConfigOptkeys
 
   def __item_cget_cmd(id)
@@ -244,19 +249,6 @@ module TkItemConfigMethod
     when /^(#{__item_strval_optkeys(tagid(tagOrId)).join('|')})$/
       _fromUTF8(tk_call_without_enc(*(__item_cget_cmd(tagid(tagOrId)) << "-#{option}")))
 
-    when /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/
-      fontcode = $1
-      fontkey  = $2
-      fnt = tk_tcl2ruby(tk_call_without_enc(*(__item_cget_cmd(tagid(tagOrId)) << "-#{fontkey}")), true)
-      unless fnt.kind_of?(TkFont)
-        fnt = tagfontobj(tagid(tagOrId), fontkey)
-      end
-      if fontcode == 'kanji' && JAPANIZED_TK && TK_VERSION =~ /^4\.*/
-        # obsolete; just for compatibility
-        fnt.kanji_font
-      else
-        fnt
-      end
     else
       tk_tcl2ruby(tk_call_without_enc(*(__item_cget_cmd(tagid(tagOrId)) << "-#{option}")), true)
     end
@@ -302,11 +294,7 @@ module TkItemConfigMethod
         end
       }
 
-      if (slot.find{|k, v| k =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/})
-        tagfont_configure(tagid(tagOrId), slot)
-      elsif slot.size > 0
-        tk_call(*(__item_config_cmd(tagid(tagOrId)).concat(hash_kv(slot))))
-      end
+      tk_call(*(__item_config_cmd(tagid(tagOrId)).concat(hash_kv(slot)))) if slot.size > 0
 
     else
       orig_slot = slot
@@ -331,12 +319,6 @@ module TkItemConfigMethod
         tk_call(*(__item_config_cmd(tagid(tagOrId)) << "-#{slot}" << method.call(tagOrId, value)))
       elsif ( method = _symbolkey2str(__item_methodcall_optkeys(tagid(tagOrId)))[slot] )
         self.__send__(method, tagOrId, value)
-      elsif (slot =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
-        if value == None
-          tagfontobj(tagid(tagOrId), $2)
-        else
-          tagfont_configure(tagid(tagOrId), {slot=>value})
-        end
       else
         tk_call(*(__item_config_cmd(tagid(tagOrId)) << "-#{slot}" << value))
       end
@@ -351,27 +333,6 @@ module TkItemConfigMethod
 
   def __itemconfiginfo_core(tagOrId, slot = nil)
     if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
-        fontkey  = $2
-        # conf = tk_split_simplelist(_fromUTF8(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{fontkey}"))))
-        conf = tk_split_simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{fontkey}")), false, true)
-        conf[__item_configinfo_struct(tagid(tagOrId))[:key]] =
-          conf[__item_configinfo_struct(tagid(tagOrId))[:key]][1..-1]
-        if ( ! __item_configinfo_struct(tagid(tagOrId))[:alias] \
-            || conf.size > __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 )
-          fnt = conf[__item_configinfo_struct(tagid(tagOrId))[:default_value]]
-          if TkFont.is_system_font?(fnt)
-            conf[__item_configinfo_struct(tagid(tagOrId))[:default_value]] = TkNamedFont.new(fnt)
-          end
-          conf[__item_configinfo_struct(tagid(tagOrId))[:current_value]] = tagfontobj(tagid(tagOrId), fontkey)
-        elsif ( __item_configinfo_struct(tagid(tagOrId))[:alias] \
-               && conf.size == __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 \
-               && conf[__item_configinfo_struct(tagid(tagOrId))[:alias]][0] == ?- )
-          conf[__item_configinfo_struct(tagid(tagOrId))[:alias]] =
-            conf[__item_configinfo_struct(tagid(tagOrId))[:alias]][1..-1]
-        end
-        conf
-      else
         if slot
           slot = slot.to_s
 
@@ -700,55 +661,14 @@ module TkItemConfigMethod
             conf
           }
 
-          __item_font_optkeys(tagid(tagOrId)).each{|optkey|
-            optkey = optkey.to_s
-            fontconf = ret.assoc(optkey)
-            if fontconf && fontconf.size > 2
-              ret.delete_if{|inf| inf[0] =~ /^(|latin|ascii|kanji)#{optkey}$/}
-              fnt = fontconf[__item_configinfo_struct(tagid(tagOrId))[:default_value]]
-              if TkFont.is_system_font?(fnt)
-                fontconf[__item_configinfo_struct(tagid(tagOrId))[:default_value]] = TkNamedFont.new(fnt)
-              end
-              fontconf[__item_configinfo_struct(tagid(tagOrId))[:current_value]] = tagfontobj(tagid(tagOrId), optkey)
-              ret.push(fontconf)
-            end
-          }
-
           __item_methodcall_optkeys(tagid(tagOrId)).each{|optkey, method|
             ret << [optkey.to_s, '', '', '', self.__send__(method, tagOrId)]
           }
 
           ret
         end
-      end
 
     else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
-        fontkey  = $2
-        # conf = tk_split_simplelist(_fromUTF8(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{fontkey}"))))
-        conf = tk_split_simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{fontkey}")), false, true)
-        conf[__item_configinfo_struct(tagid(tagOrId))[:key]] =
-          conf[__item_configinfo_struct(tagid(tagOrId))[:key]][1..-1]
-
-        if ( ! __item_configinfo_struct(tagid(tagOrId))[:alias] \
-            || conf.size > __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 )
-          fnt = conf[__item_configinfo_struct(tagid(tagOrId))[:default_value]]
-          if TkFont.is_system_font?(fnt)
-            conf[__item_configinfo_struct(tagid(tagOrId))[:default_value]] = TkNamedFont.new(fnt)
-          end
-          conf[__item_configinfo_struct(tagid(tagOrId))[:current_value]] = tagfontobj(tagid(tagOrId), fontkey)
-          { conf.shift => conf }
-        elsif ( __item_configinfo_struct(tagid(tagOrId))[:alias] \
-               && conf.size == __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 )
-          if conf[__item_configinfo_struct(tagid(tagOrId))[:alias]][0] == ?-
-            conf[__item_configinfo_struct(tagid(tagOrId))[:alias]] =
-              conf[__item_configinfo_struct(tagid(tagOrId))[:alias]][1..-1]
-          end
-          { conf[0] => conf[1] }
-        else
-          { conf.shift => conf }
-        end
-      else
         if slot
           slot = slot.to_s
 
@@ -1082,30 +1002,12 @@ module TkItemConfigMethod
             end
           }
 
-          __item_font_optkeys(tagid(tagOrId)).each{|optkey|
-            optkey = optkey.to_s
-            fontconf = ret[optkey]
-            if fontconf.kind_of?(Array)
-              ret.delete(optkey)
-              ret.delete('latin' << optkey)
-              ret.delete('ascii' << optkey)
-              ret.delete('kanji' << optkey)
-              fnt = fontconf[__item_configinfo_struct(tagid(tagOrId))[:default_value]]
-              if TkFont.is_system_font?(fnt)
-                fontconf[__item_configinfo_struct(tagid(tagOrId))[:default_value]] = TkNamedFont.new(fnt)
-              end
-              fontconf[__item_configinfo_struct(tagid(tagOrId))[:current_value]] = tagfontobj(tagid(tagOrId), optkey)
-              ret[optkey] = fontconf
-            end
-          }
-
           __item_methodcall_optkeys(tagid(tagOrId)).each{|optkey, method|
             ret[optkey.to_s] = ['', '', '', self.__send__(method, tagOrId)]
           }
 
           ret
         end
-      end
     end
   end
   private :__itemconfiginfo_core

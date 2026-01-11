@@ -207,26 +207,14 @@ class TestTkTcl2Ruby < Minitest::Test
     assert_equal "i99999", result
   end
 
-  # --- Font conversion (mock the lookup table) ---
+  # --- Font conversion removed ---
+  # TkFont class was removed - fonts are now just strings passed through to Tcl/Tk.
+  # The @fontXXX pattern is no longer handled specially.
 
-  def test_font_reference
-    mock_font = Object.new
-    TkFont::Tk_FontNameTBL.mutex.synchronize do
-      TkFont::Tk_FontNameTBL["@font12345"] = mock_font
-    end
-
+  def test_font_string_passthrough
+    # Font strings are now returned as-is (no TkFont lookup)
     result = tk_tcl2ruby("@font12345")
-    assert_same mock_font, result
-  ensure
-    TkFont::Tk_FontNameTBL.mutex.synchronize do
-      TkFont::Tk_FontNameTBL.delete("@font12345")
-    end
-  end
-
-  def test_unregistered_font_returns_nil
-    # Font pattern but not in table - returns nil
-    result = tk_tcl2ruby("@font99999")
-    assert_nil result
+    assert_equal "@font12345", result
   end
 
   # --- Edge cases ---

@@ -4,7 +4,6 @@ class TkObject<TkKernel
   extend  TkCore
   include Tk
   include TkUtil
-  include TkTreatFont
   include TkBindCore
 
   # Global flag to ignore unknown configure options (for compatibility)
@@ -125,12 +124,6 @@ class TkObject<TkKernel
     opt = self.class.respond_to?(:resolve_option) && self.class.resolve_option(slot)
     slot = opt.tcl_name if opt
 
-    # Font options (complex, keep special handling)
-    if _font_optkey?(slot)
-      fnt = tk_tcl2ruby(tk_call_without_enc(path, 'cget', "-#{slot}"), true)
-      return fnt.kind_of?(TkFont) ? fnt : fontobj(slot)
-    end
-
     # Get raw value from Tcl
     raw_value = tk_call_without_enc(path, 'cget', "-#{slot}")
 
@@ -163,13 +156,7 @@ class TkObject<TkKernel
         end
       end
 
-      # Font options
-      font_keys = slot.select { |k, _| k =~ /^(|latin|ascii|kanji)(#{_font_optkeys.join('|')})$/ }
-      if font_keys.any?
-        font_configure(slot)
-      elsif slot.size > 0
-        tk_call(path, 'configure', *hash_kv(slot))
-      end
+      tk_call(path, 'configure', *hash_kv(slot)) if slot.size > 0
     else
       orig_slot = slot
       slot = slot.to_s
@@ -183,11 +170,18 @@ class TkObject<TkKernel
 
       return self if _skip_version_restricted?(slot)
 
-      if slot =~ /^(|latin|ascii|kanji)(#{_font_optkeys.join('|')})$/
-        value == None ? fontobj($2) : font_configure({slot => value})
-      else
-        tk_call(path, 'configure', "-#{slot}", value)
-      end
+      tk_call(path, 'configure', "-#{slot}", value)
+    end
+    self
+  end
+
+  # Backwards compatibility stub - font_configure used to handle compound
+  # latin/kanji fonts for JAPANIZED_TK. Now just passes through to configure.
+  def font_configure(slot)
+    if slot.kind_of?(Hash)
+      tk_call(path, 'configure', *hash_kv(slot))
+    else
+      tk_call(path, 'configure', "-#{slot}")
     end
     self
   end
@@ -223,22 +217,13 @@ class TkObject<TkKernel
 
   private
 
-  # Config command array for Tcl calls - used by TkTreatFont
+  # Config command array for Tcl calls
   def __config_cmd
     [self.path, 'configure']
   end
 
   def __confinfo_cmd
     __config_cmd
-  end
-
-  # Font option keys - override in subclasses if needed
-  def _font_optkeys
-    ['font']
-  end
-
-  def _font_optkey?(slot)
-    slot =~ /^(|latin|ascii|kanji)(#{_font_optkeys.join('|')})$/
   end
 
   def _skip_version_restricted?(option_name)
@@ -258,16 +243,6 @@ class TkObject<TkKernel
         slot = real_name.to_s if real_name
       end
 
-      # Font options
-      if _font_optkey?(slot)
-        fontkey = slot.sub(/^(latin|ascii|kanji)/, '')
-        conf = tk_split_simplelist(tk_call_without_enc(path, 'configure', "-#{fontkey}"), false, true)
-        conf[0] = conf[0][1..-1]
-        conf[-1] = fontobj(fontkey)
-        return conf
-      end
-
-      # Regular option
       conf = tk_split_simplelist(tk_call_without_enc(path, 'configure', "-#{slot}"), false, true)
       conf[0] = conf[0][1..-1]
 

@@ -186,11 +186,6 @@ module TkComm
       end
     end
 
-    # Font: "@fontXXX"
-    if first_char == 64 && val.start_with?('@font') # '@'
-      return TkFont.get_obj(val)
-    end
-
     # Widget path: "." or ".something" (but not ".5" which is a float)
     if first_char == 46 # '.'
       second_char = val.getbyte(1)

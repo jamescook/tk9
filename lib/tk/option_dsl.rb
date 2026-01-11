@@ -142,6 +142,26 @@ module Tk
       end
     end
 
+    # Resolve aliases in a hash of options. Modifies hash in place.
+    # Call as: self.class.resolve_option_aliases(options_hash)
+    def resolve_option_aliases(hash)
+      declared_optkey_aliases.each do |alias_name, real_name|
+        alias_name = alias_name.to_s
+        if hash.key?(alias_name)
+          hash[real_name.to_s] = hash.delete(alias_name)
+        end
+      end
+      hash
+    end
+
+    # Resolve a single option name, returning canonical name if alias.
+    # Call as: self.class.resolve_option_alias(name)
+    def resolve_option_alias(name)
+      name = name.to_s
+      _, real_name = declared_optkey_aliases.find { |k, _| k.to_s == name }
+      real_name ? real_name.to_s : name
+    end
+
     private
 
     def _options

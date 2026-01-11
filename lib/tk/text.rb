@@ -6,7 +6,6 @@
 # See: https://www.tcl-lang.org/man/tcl/TkCmd/text.html
 #
 require 'tk' unless defined?(Tk)
-require 'tk/itemfont'
 require 'tk/itemconfig'
 require 'tk/scrollable'
 require 'tk/txtwin_abst'
@@ -14,7 +13,6 @@ require 'tk/option_dsl'
 require 'tk/item_option_dsl'
 
 module TkTextTagConfig
-  include TkTreatItemFont
   include TkItemConfigMethod
 
   def __item_cget_cmd(id)  # id := [ type, tagOrId ]

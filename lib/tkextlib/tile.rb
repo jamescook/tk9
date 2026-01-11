@@ -289,12 +289,6 @@ module Tk
       Menu         = 'TkMenuFont'
       SmallCaption = 'TkSmallCaptionFont'
       Icon         = 'TkIconFont'
-
-      TkFont::SYSTEM_FONT_NAMES.add [
-        'TkDefaultFont', 'TkTextFont', 'TkHeadingFont',
-        'TkCaptionFont', 'TkTooltipFont', 'TkFixedFont',
-        'TkMenuFont', 'TkSmallCaptionFont', 'TkIconFont'
-      ]
     end
 
     module ParseStyleLayout

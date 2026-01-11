@@ -40,7 +40,6 @@ Pack = TkPack
 Grid = TkGrid
 Place = TkPlace
 Variable = TkVariable
-Font = TkFont
 VirtualEvent = TkVirtualEvent
 
 def Mainloop
