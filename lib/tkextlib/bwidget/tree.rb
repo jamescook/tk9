@@ -18,7 +18,7 @@ module Tk
 end
 
 class Tk::BWidget::Tree
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
   include Scrollable
 
   TkCommandNames = ['Tree'.freeze].freeze

@@ -13,30 +13,6 @@ require 'tk/item_option_dsl'
 
 module TkCanvasItemConfig
   include Tk::ItemOptionDSL::InstanceMethods
-
-  # NOTE: __item_strval_optkeys override for fill/outline colors removed - now declared via ItemOptionDSL
-
-  def __item_methodcall_optkeys(id)
-    {'coords'=>'coords'}
-  end
-  private :__item_methodcall_optkeys
-
-  def __item_val2ruby_optkeys(id)  # { key=>proc, ... }
-    super(id).update('window'=>proc{|i, v| window(v)},
-                     'tags'=>proc{|i, v|
-                       simplelist(v).collect{|tag| TkcTag.id2obj(self, tag)}
-                     })
-  end
-  private :__item_val2ruby_optkeys
-
-  def __item_pathname(tagOrId)
-    if tagOrId.kind_of?(TkcItem) || tagOrId.kind_of?(TkcTag)
-      self.path + ';' + tagOrId.id.to_s
-    else
-      self.path + ';' + tagOrId.to_s
-    end
-  end
-  private :__item_pathname
 end
 
 class Tk::Canvas<TkWindow

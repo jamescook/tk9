@@ -39,7 +39,7 @@ module Tk
 end
 
 module Tk::Tcllib::TablelistItemConfig
-  include TkItemConfigMethod
+  include Tk::ItemOptionDSL::InstanceMethods
 
   def _to_idx(idx)
     if idx.kind_of?(Array)

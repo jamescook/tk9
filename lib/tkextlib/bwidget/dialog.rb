@@ -21,7 +21,7 @@ class Tk::BWidget::Dialog
   WidgetClassName = 'Dialog'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
 
   def initialize(parent=nil, keys=nil)
     @relative = ''

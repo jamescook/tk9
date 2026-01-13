@@ -26,25 +26,46 @@ class Tk::Tile::TNotebook < TkWindow
   # Declare item command structure (notebook tabs use 'tab' for both cget and configure)
   item_commands cget: 'tab', configure: 'tab'
 
-  def __item_methodcall_optkeys(id)  # { key=>method, ... }
-    {}
-  end
-  private :__item_methodcall_optkeys
-
-  #alias tabcget itemcget
-  #alias tabcget_strict itemcget_strict
   alias tabconfigure itemconfigure
-  alias tabconfiginfo itemconfiginfo
-  alias current_tabconfiginfo current_itemconfiginfo
 
   def tabcget_tkstring(tagOrId, option)
-    tk_split_simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{option}")), false, true)[-1]
-  end
-  def tabcget_strict(tagOrId, option)
-    tabconfiginfo(tagOrId, option)[-1]
+    itemcget_tkstring(tagOrId, option)
   end
   def tabcget(tagOrId, option)
-    tabcget_strict(tagOrId, option)
+    itemcget(tagOrId, option)
+  end
+  alias tabcget_strict tabcget
+
+  # Override configinfo methods - notebook 'tab' command returns dict format, not 5-element list
+  def tabconfiginfo(tagOrId, slot = nil)
+    if slot
+      # Single option: return [option, dbname, dbclass, default, current]
+      slot = slot.to_s
+      [slot, '', '', '', tabcget(tagOrId, slot)]
+    else
+      # All options: parse dict from 'tab tabid' command
+      dict = tk_split_simplelist(tk_call_without_enc(self.path, 'tab', tagOrId))
+      result = []
+      dict.each_slice(2) do |opt, val|
+        opt = opt[1..-1] if opt.to_s.start_with?('-')
+        result << [opt, '', '', '', _fromUTF8(val)]
+      end
+      result
+    end
+  end
+
+  def current_tabconfiginfo(tagOrId, slot = nil)
+    if slot
+      { slot.to_s => tabcget(tagOrId, slot) }
+    else
+      dict = tk_split_simplelist(tk_call_without_enc(self.path, 'tab', tagOrId))
+      result = {}
+      dict.each_slice(2) do |opt, val|
+        opt = opt[1..-1] if opt.to_s.start_with?('-')
+        result[opt] = _fromUTF8(val)
+      end
+      result
+    end
   end
   ################################
 

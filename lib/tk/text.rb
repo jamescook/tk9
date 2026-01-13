@@ -14,20 +14,6 @@ require 'tk/item_option_dsl'
 module TkTextTagConfig
   include Tk::ItemOptionDSL::InstanceMethods
 
-  # Item command configuration moved to DSL (pattern-based):
-  #   item_id_structure :type, :tag_or_id
-  #   item_cget_pattern ':path :type cget :tag_or_id'
-  #   item_configure_pattern ':path :type configure :tag_or_id'
-  # Set on Tk::Text class after extending Tk::ItemOptionDSL
-
-  def __item_pathname(id)
-    if id.kind_of?(Array)
-      id = tagid(id[1])
-    end
-    [self.path, id].join(';')
-  end
-  private :__item_pathname
-
   def tag_cget_tkstring(tagOrId, option)
     itemcget_tkstring(['tag', tagOrId], option)
   end

@@ -32,7 +32,7 @@ module Tk::Tcllib
     end
 
     module ToolbarItemConfig
-      include TkItemConfigMethod
+      include Tk::ItemOptionDSL::InstanceMethods
     end
   end
 end

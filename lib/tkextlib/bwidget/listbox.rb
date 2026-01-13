@@ -21,7 +21,7 @@ module Tk
 end
 
 class Tk::BWidget::ListBox
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
   include Scrollable
 
   TkCommandNames = ['ListBox'.freeze].freeze

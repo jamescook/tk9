@@ -47,8 +47,8 @@ class TestTreeviewWidget < Minitest::Test
     tree.heading_configure("modified", text: "Modified")
 
     # Verify heading text
-    heading_text = tree.tk_send('heading', 'name', '-text')
-    errors << "heading text failed" unless heading_text == "Name"
+    heading_text = tree.headingcget('name', :text)
+    errors << "headingcget text failed" unless heading_text == "Name"
 
     # --- Configure column widths ---
     tree.column_configure("#0", width: 150)

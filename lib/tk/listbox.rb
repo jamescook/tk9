@@ -10,14 +10,8 @@ require 'tk/txtwin_abst'
 require 'tk/option_dsl'
 require 'tk/item_option_dsl'
 
-module TkListItemConfig
-
-  # NOTE: __item_listval_optkeys override removed - base returns [] when no list options declared via ItemOptionDSL
-end
-
 class Tk::Listbox<TkTextWin
   extend Tk::ItemOptionDSL
-  include TkListItemConfig
   include Scrollable
   include Tk::Generated::Listbox
   # @generated:options:start

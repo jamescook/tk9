@@ -64,8 +64,8 @@ class TestTNotebookWidget < Minitest::Test
 
     # --- Tab configuration ---
     notebook.tabconfigure(tab1, text: "Settings")
-    tab_text = notebook.tk_send('tab', tab1, '-text')
-    errors << "tabconfigure failed" unless tab_text == "Settings"
+    tab_text = notebook.tabcget(tab1, :text)
+    errors << "tabcget text failed" unless tab_text == "Settings"
 
     # --- Hide/forget tabs ---
     notebook.hide(tab3)
@@ -92,42 +92,50 @@ class TestTNotebookWidget < Minitest::Test
     # ========================================
 
     # --- tabcget text ---
-    text = notebook.tk_send('tab', tab1, '-text')
-    errors << "tabcget text failed" unless text == "Settings"
+    text = notebook.tabcget(tab1, :text)
+    errors << "tabcget text failed: got #{text.inspect}" unless text == "Settings"
 
     # --- tabconfigure/tabcget sticky ---
     notebook.tabconfigure(tab1, sticky: "nsew")
-    sticky = notebook.tk_send('tab', tab1, '-sticky')
-    errors << "tabconfigure sticky failed" unless sticky == "nesw" || sticky == "nsew"
+    sticky = notebook.tabcget(tab1, :sticky)
+    errors << "tabcget sticky failed: got #{sticky.inspect}" unless sticky == "nesw" || sticky == "nsew"
 
     # --- tabconfigure/tabcget padding ---
     notebook.tabconfigure(tab2, padding: "5 10")
-    padding = notebook.tk_send('tab', tab2, '-padding')
-    errors << "tabconfigure padding failed" if padding.to_s.empty?
+    padding = notebook.tabcget(tab2, :padding)
+    errors << "tabcget padding failed" if padding.to_s.empty?
 
-    # --- tabconfigure state ---
+    # --- tabconfigure/tabcget state ---
     notebook.tabconfigure(tab2, state: "disabled")
-    state = notebook.tk_send('tab', tab2, '-state')
-    errors << "tabconfigure state disabled failed" unless state == "disabled"
+    state = notebook.tabcget(tab2, :state)
+    errors << "tabcget state disabled failed: got #{state.inspect}" unless state == "disabled"
 
     notebook.tabconfigure(tab2, state: "normal")
-    state = notebook.tk_send('tab', tab2, '-state')
-    errors << "tabconfigure state normal failed" unless state == "normal"
+    state = notebook.tabcget(tab2, :state)
+    errors << "tabcget state normal failed: got #{state.inspect}" unless state == "normal"
 
-    # --- tabconfigure underline ---
+    # --- tabconfigure/tabcget underline ---
     notebook.tabconfigure(tab1, underline: 0)
-    underline = notebook.tk_send('tab', tab1, '-underline')
-    errors << "tabconfigure underline failed" unless underline.to_i == 0
+    underline = notebook.tabcget(tab1, :underline)
+    errors << "tabcget underline failed: got #{underline.inspect}" unless underline.to_i == 0
 
-    # --- tabconfigure compound ---
+    # --- tabconfigure/tabcget compound ---
     notebook.tabconfigure(tab1, compound: "left")
-    compound = notebook.tk_send('tab', tab1, '-compound')
-    errors << "tabconfigure compound failed" unless compound == "left"
+    compound = notebook.tabcget(tab1, :compound)
+    errors << "tabcget compound failed: got #{compound.inspect}" unless compound == "left"
+
+    # --- tabconfiginfo returns array with option details ---
+    info = notebook.tabconfiginfo(tab1, :text)
+    errors << "tabconfiginfo failed: got #{info.inspect}" unless info.is_a?(Array) && info[0] == "text"
+
+    # --- current_tabconfiginfo returns hash ---
+    current = notebook.current_tabconfiginfo(tab1, :text)
+    errors << "current_tabconfiginfo failed: got #{current.inspect}" unless current.is_a?(Hash) && current["text"] == "Settings"
 
     # --- Test hidden tab state ---
     notebook.tabconfigure(tab3, state: "hidden")
-    state = notebook.tk_send('tab', tab3, '-state')
-    errors << "tabconfigure state hidden failed" unless state == "hidden"
+    state = notebook.tabcget(tab3, :state)
+    errors << "tabcget state hidden failed: got #{state.inspect}" unless state == "hidden"
 
     notebook.tabconfigure(tab3, state: "normal")
 

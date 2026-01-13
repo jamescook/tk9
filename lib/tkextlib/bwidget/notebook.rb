@@ -17,7 +17,7 @@ end
 
 class Tk::BWidget::NoteBook
   extend Tk::OptionDSL
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
 
   TkCommandNames = ['NoteBook'.freeze].freeze
   WidgetClassName = 'NoteBook'.freeze

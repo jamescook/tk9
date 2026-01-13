@@ -223,12 +223,12 @@ class TestMenuWidget < Minitest::Test
     idx = entry_menu.index("Another Entry")
     errors << "menu index failed" unless idx == 1
 
-    # --- entry type (use tk_send to avoid method conflicts) ---
-    type = entry_menu.tk_send('type', 0)
-    errors << "menu type failed" unless type == "command"
+    # --- entry type ---
+    type = entry_menu.menutype(0)
+    errors << "menutype command failed" unless type == "command"
 
-    type = entry_menu.tk_send('type', 2)
-    errors << "menu separator type failed" unless type == "separator"
+    type = entry_menu.menutype(2)
+    errors << "menutype separator failed" unless type == "separator"
 
     # Check errors before tk_end
     unless errors.empty?
