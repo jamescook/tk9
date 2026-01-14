@@ -44,6 +44,37 @@ task :clean_coverage do
   FileUtils.mkdir_p('coverage/results')
 end
 
+namespace :coverage do
+  desc "Collate coverage results from multiple test runs into a single report"
+  task :collate do
+    require 'simplecov'
+
+    # Find all result files from named test runs
+    result_files = Dir['coverage/results/*/.resultset.json']
+    if result_files.empty?
+      puts "No coverage results found in coverage/results/"
+      next
+    end
+
+    puts "Collating coverage from: #{result_files.map { |f| File.dirname(f).split('/').last }.join(', ')}"
+
+    SimpleCov.collate(result_files) do
+      coverage_dir 'coverage'
+
+      add_filter '/test/'
+      add_filter '/ext/'
+      add_filter '/benchmark/'
+
+      add_group 'Core', 'lib/tk.rb'
+      add_group 'Widgets', 'lib/tk'
+      add_group 'Extensions', 'lib/tkextlib'
+      add_group 'Utilities', ['lib/tkutil.rb', 'lib/tk/util.rb']
+    end
+
+    puts "Coverage report generated: coverage/index.html"
+  end
+end
+
 Rake::TestTask.new(:test) do |t|
   t.libs << 'test'
   t.test_files = FileList['test/**/test_*.rb']
@@ -419,22 +450,17 @@ namespace :bwidget do
     end
   end
 
-  desc "Run bwidget tests"
+  Rake::TestTask.new(:test) do |t|
+    t.libs << 'test'
+    t.test_files = FileList['lib/tkextlib/bwidget/test/test_*.rb']
+    t.verbose = true
+  end
+
   task test: :compile do
     unless bwidget_installed?
       puts "bwidget is NOT installed"
       puts "Install via package manager (e.g., 'brew install bwidget' or 'apt install bwidget')"
       exit 1
-    end
-
-    test_dir = 'lib/tkextlib/bwidget/test'
-    test_files = Dir.glob("#{test_dir}/test_*.rb")
-    if test_files.any?
-      test_files.each do |f|
-        sh "ruby -Ilib -Itest #{f}"
-      end
-    else
-      puts "No bwidget tests found in #{test_dir}"
     end
   end
 end
@@ -489,7 +515,10 @@ namespace :docker do
     cmd += " -e TCL_VERSION=#{tcl_version}"
     # Pass TEST env var to run a single test file
     cmd += " -e TEST=#{ENV['TEST']}" if ENV['TEST']
-    cmd += " -e COVERAGE=1" if ENV['COVERAGE'] == '1'
+    if ENV['COVERAGE'] == '1'
+      cmd += " -e COVERAGE=1"
+      cmd += " -e COVERAGE_NAME=#{ENV['COVERAGE_NAME'] || 'main'}"
+    end
     cmd += " #{image_name}"
 
     sh cmd
@@ -515,9 +544,17 @@ namespace :docker do
       tcl_version = tcl_version_from_env
       image_name = docker_image_name(tcl_version)
 
+      require 'fileutils'
+      FileUtils.mkdir_p('coverage')
+
       puts "Running bwidget tests in Docker (Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
+      cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
       cmd += " -e TCL_VERSION=#{tcl_version}"
+      if ENV['COVERAGE'] == '1'
+        cmd += " -e COVERAGE=1"
+        cmd += " -e COVERAGE_NAME=bwidget"
+      end
       cmd += " #{image_name}"
       cmd += " xvfb-run -a bundle exec rake bwidget:test"
 
@@ -529,17 +566,49 @@ namespace :docker do
       tcl_version = tcl_version_from_env
       image_name = docker_image_name(tcl_version)
 
+      require 'fileutils'
+      FileUtils.mkdir_p('coverage')
+
       puts "Running tkdnd tests in Docker (Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
+      cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
       cmd += " -e TCL_VERSION=#{tcl_version}"
+      if ENV['COVERAGE'] == '1'
+        cmd += " -e COVERAGE=1"
+        cmd += " -e COVERAGE_NAME=tkdnd"
+      end
       cmd += " #{image_name}"
       cmd += " xvfb-run -a bundle exec rake tkdnd:test"
 
       sh cmd
     end
 
-    desc "Run all tests in Docker (TCL_VERSION=9.0|8.6)"
-    task all: ['docker:test', 'docker:test:bwidget', 'docker:test:tkdnd']
+    desc "Run all tests in Docker with combined coverage (TCL_VERSION=9.0|8.6)"
+    task all: :build do
+      # Clean coverage results first
+      require 'fileutils'
+      FileUtils.rm_rf('coverage')
+      FileUtils.mkdir_p('coverage/results')
+
+      # Run each test suite
+      Rake::Task['docker:test'].invoke
+      Rake::Task['docker:test:bwidget'].invoke
+      Rake::Task['docker:test:tkdnd'].invoke
+
+      # Collate coverage inside Docker (paths match)
+      if ENV['COVERAGE'] == '1'
+        tcl_version = tcl_version_from_env
+        image_name = docker_image_name(tcl_version)
+
+        puts "Collating coverage results..."
+        cmd = "docker run --rm --init"
+        cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
+        cmd += " #{image_name}"
+        cmd += " bundle exec rake coverage:collate"
+
+        sh cmd
+      end
+    end
   end
 
   desc "Run interactive shell in Docker (TCL_VERSION=9.0|8.6)"
