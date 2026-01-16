@@ -18,7 +18,7 @@ module Tk
           option :command, type: :callback
           option :cursor  # mouse cursor name
           option :digits, type: :integer
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :from, type: :float
           option :highlightbackground

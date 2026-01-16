@@ -40,6 +40,9 @@ module Tk
       # Callback options - need to register proc and return callback id
       "Command" => :callback,
 
+      # Font options - wrap in TkFont for backwards compatibility
+      "Font" => :font,
+
       # Boolean options - true/false <-> "1"/"0"
       "Boolean" => :boolean,
       "IndicatorOn" => :boolean,

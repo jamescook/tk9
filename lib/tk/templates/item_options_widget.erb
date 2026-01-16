@@ -11,10 +11,13 @@ module Tk
       def self.included(base)
         base.extend Tk::ItemOptionDSL
         base.class_eval do
+<% widget_type_sym = widget_name.downcase.to_sym -%>
 <% options_with_aliases.each do |opt| -%>
-<%   item_type = Tk::ItemTypeRegistry.type_for(opt[:entry].name) -%>
+<%   item_type = Tk::ItemTypeRegistry.type_for(opt[:entry].name, widget_type: widget_type_sym) -%>
+<%   ruby_aliases = Tk::ItemTypeRegistry.ruby_aliases_for(opt[:entry].name) -%>
+<%   all_aliases = (opt[:aliases] + ruby_aliases).uniq.sort -%>
 <%   type_arg = (item_type != :string) ? item_type : nil -%>
-          <%= opt[:entry].to_item_dsl(aliases: opt[:aliases], type_override: type_arg) %>
+          <%= opt[:entry].to_item_dsl(aliases: all_aliases, type_override: type_arg) %>
 <% end -%>
         end
       end

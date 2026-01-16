@@ -19,7 +19,7 @@ module Tk
           option :borderwidth, type: :integer, alias: :bd
           option :cursor  # mouse cursor name
           option :disabledforeground
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :postcommand, type: :callback
           option :relief  # flat, raised, sunken, groove, ridge, solid

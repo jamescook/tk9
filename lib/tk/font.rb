@@ -58,6 +58,32 @@ class TkFont
     @font
   end
 
+  # Font modifier methods - return new TkFont with modified attributes
+  # Uses Tcl's font system to properly derive fonts from named fonts like TkDefaultFont
+  def weight(w)
+    TkFont.new(_derive_font('-weight', w))
+  end
+
+  def slant(s)
+    TkFont.new(_derive_font('-slant', s))
+  end
+
+  def size(s)
+    TkFont.new(_derive_font('-size', s))
+  end
+
+  private
+
+  # Derive a new font spec by getting actual font attributes and modifying one
+  def _derive_font(option, value)
+    actual = Tk.tk_call('font', 'actual', @font)
+    attrs = Hash[*TkCore::INTERP._split_tklist(actual)]
+    attrs[option] = value.to_s
+    "{#{attrs['-family']} #{attrs['-size']} #{attrs['-weight']} #{attrs['-slant']}}"
+  end
+
+  public
+
   # TkFont.families - list available font families
   def self.families
     warn_deprecation

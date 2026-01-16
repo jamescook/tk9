@@ -21,7 +21,7 @@ module Tk
           option :compound  # none, bottom, top, left, right, center
           option :cursor  # mouse cursor name
           option :disabledforeground
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :height, type: :integer
           option :highlightbackground

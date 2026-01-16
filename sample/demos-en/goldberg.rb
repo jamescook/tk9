@@ -1787,6 +1787,11 @@ class TkGoldberg_Demo
 
     if step >= 3
       @canvas.delete('I24', 'I26')
+      if ENV['TK_RECORD']
+        # Auto-exit after animation completes (for recording)
+        Tk.after(500) { Tk.exit }
+        return 4
+      end
       TkcText.new(@canvas, 430, 740, :anchor=>:s, :tag=>'I26',
                   :text=>'click to continue',
                   :font=>['Times Roman', 24, :bold])
@@ -2004,4 +2009,13 @@ class TkGoldberg_Demo
   end
 end
 
-TkGoldberg_Demo.new(base_frame)
+$goldberg_instance = TkGoldberg_Demo.new(base_frame)
+
+# Auto-start for recording (TK_RECORD=1 ruby ... goldberg.rb)
+# CODEC=vp9 SCREEN_SIZE=850x700 ./scripts/docker-record.sh sample/demos-en/goldberg.rb
+if ENV['TK_RECORD']
+  Tk.root.withdraw  # Hide root window, we use a Toplevel
+  $goldberg_demo.geometry('+0+0')  # Position at top-left for screen capture
+  Tk.after(1000) { $goldberg_instance.start }
+  Tk.mainloop
+end

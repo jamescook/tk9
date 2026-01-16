@@ -17,7 +17,7 @@ module Tk
           option :cursor  # mouse cursor name
           option :disabledforeground
           option :exportselection, type: :boolean  # export selection to X clipboard
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :height, type: :integer
           option :highlightbackground

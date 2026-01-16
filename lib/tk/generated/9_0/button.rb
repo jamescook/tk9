@@ -22,7 +22,7 @@ module Tk
           option :cursor  # mouse cursor name
           option :default  # normal, active, disabled
           option :disabledforeground
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :height, type: :integer
           option :highlightbackground

@@ -46,7 +46,7 @@ module Tk
           item_option :state
           item_option :stipple
           item_option :style
-          item_option :tags
+          item_option :tags, type: :canvas_tags, alias: :tag
           item_option :text
           item_option :underline, type: :integer
           item_option :width, type: :float

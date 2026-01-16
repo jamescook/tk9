@@ -294,4 +294,11 @@ if ENV['TK_READY_FD']
   }
 end
 
+# Auto-record mode (TK_RECORD=1 ruby ... 24hr_clock.rb)
+if ENV['TK_RECORD']
+  # SCREEN_SIZE=420x450 ./scripts/docker-record.sh sample/24hr_clock.rb
+  Tk.root.geometry('+0+0')  # Position at top-left for screen capture
+  Tk.after(10000) { Tk.exit }  # Exit after N seconds
+end
+
 Tk.mainloop

@@ -401,10 +401,6 @@ class TkcItem<TkObject
   include TkcTagAccess
   include Tk::Generated::CanvasItems
 
-  # Override tags to return TkcTag objects
-  extend Tk::ItemOptionDSL
-  item_option :tags, type: :canvas_tags
-
   CItemTypeName = nil
   CItemTypeToClass = {}
 
@@ -440,7 +436,7 @@ class TkcItem<TkObject
         end
       end
 
-      # Resolve aliases (e.g., :bg -> :background)
+      # Resolve aliases (e.g., :tag -> :tags)
       declared_item_optkey_aliases.each do |alias_name, real_name|
         alias_name = alias_name.to_s
         keys[real_name.to_s] = keys.delete(alias_name) if keys.key?(alias_name)

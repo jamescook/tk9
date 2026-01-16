@@ -17,7 +17,7 @@ module Tk
           option :colormap
           option :container, type: :boolean  # embed other windows
           option :cursor  # mouse cursor name
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :height, type: :integer
           option :highlightbackground

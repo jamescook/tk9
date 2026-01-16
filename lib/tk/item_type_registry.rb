@@ -54,7 +54,28 @@ module Tk
       ].freeze,
     }.freeze
 
-    def self.type_for(option_name)
+    # Ruby-side convenience aliases (not in Tk itself).
+    # These provide friendlier names that Ruby/Tk users expect.
+    # Format: { "canonical_option" => ["alias1", "alias2", ...] }
+    RUBY_ALIASES = {
+      "tags" => ["tag"],  # Canvas items use -tags (plural)
+    }.freeze
+
+    # Widget-specific type overrides.
+    # Some options need different types depending on the widget context.
+    # Format: { widget_type => { "option_name" => :type } }
+    WIDGET_TYPE_OVERRIDES = {
+      canvas: {
+        "tags" => :canvas_tags,  # Returns TkcTag objects
+      },
+    }.freeze
+
+    def self.type_for(option_name, widget_type: nil)
+      # Check widget-specific override first
+      if widget_type && WIDGET_TYPE_OVERRIDES[widget_type]
+        override = WIDGET_TYPE_OVERRIDES[widget_type][option_name.to_s]
+        return override if override
+      end
       MAPPINGS[option_name.to_s] || :string
     end
 
@@ -64,6 +85,10 @@ module Tk
 
     def self.known_options_for(widget_type)
       KNOWN_OPTIONS[widget_type] || []
+    end
+
+    def self.ruby_aliases_for(option_name)
+      RUBY_ALIASES[option_name.to_s] || []
     end
   end
 end

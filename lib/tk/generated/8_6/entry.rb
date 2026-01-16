@@ -17,7 +17,7 @@ module Tk
           option :disabledbackground
           option :disabledforeground
           option :exportselection, type: :boolean  # export selection to X clipboard
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :highlightbackground
           option :highlightcolor

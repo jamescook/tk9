@@ -124,6 +124,13 @@ module Tk
         from_tcl: ->(v) { v.to_s.empty? ? nil : TkVarAccess.new(v) }
       )
 
+      # Font - wraps font string in TkFont for backwards compatibility
+      # Allows font.weight('bold') style method chaining
+      Font = OptionType.new(:font,
+        to_tcl: ->(v) { v.to_s },
+        from_tcl: ->(v) { v.to_s.empty? ? nil : TkFont.new(v) }
+      )
+
       # Callback - Tcl command string, typically registered via install_cmd
       # to_tcl: proc/lambda gets registered and returns callback ID
       # from_tcl: returns the raw Tcl command string (can't recover proc)

@@ -155,6 +155,8 @@ ENV TCL_VERSION=${TCL_VERSION}
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
+    xdotool \
+    ffmpeg \
     imagemagick \
     perceptualdiff \
     fonts-noto-color-emoji \

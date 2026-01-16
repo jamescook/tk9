@@ -82,10 +82,14 @@ module TkTestHelper
   #     end
   #   end
   #
+  @_subprocess_warned = false
+
   def assert_tk_subprocess(message = "Tk subprocess test failed")
-    caller_loc = caller_locations(1, 1).first
-    warn "[DEPRECATION] assert_tk_subprocess is slow. Use assert_tk_app instead when possible. " \
-         "Called from #{caller_loc.path}:#{caller_loc.lineno}"
+    unless TkTestHelper.instance_variable_get(:@_subprocess_warned)
+      TkTestHelper.instance_variable_set(:@_subprocess_warned, true)
+      warn "Note: assert_tk_subprocess spawns a new process per test (slow). " \
+           "Use assert_tk_app for most tests."
+    end
 
     code = yield
     success, stdout, stderr, status = tk_subprocess(code)

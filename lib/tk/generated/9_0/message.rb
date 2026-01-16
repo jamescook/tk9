@@ -16,7 +16,7 @@ module Tk
           option :background, alias: :bg
           option :borderwidth, type: :integer, alias: :bd
           option :cursor  # mouse cursor name
-          option :font
+          option :font, type: :font
           option :foreground, alias: :fg
           option :highlightbackground
           option :highlightcolor

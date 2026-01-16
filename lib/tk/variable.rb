@@ -1659,4 +1659,10 @@ module Tk
   LIBRARY_PATH = TCL_LIBRARY_PATH
 
   TCL_PRECISION = TkVarAccess.new('tcl_precision')
+
+  # Deprecation warning for removed constant
+  if const_defined?(:USE_TCLs_SET_VARIABLE_FUNCTIONS, false)
+    warn "WARNING: TkVariable::USE_TCLs_SET_VARIABLE_FUNCTIONS is deprecated and ignored. " \
+         "The Tcl eval code path has been removed; C API is now always used.", uplevel: 0
+  end
 end

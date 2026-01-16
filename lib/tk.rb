@@ -173,7 +173,10 @@ module Tk
   end
 
   def Tk.has_mainwindow?
-    INTERP.has_mainwindow?
+    # Check if main window "." exists using Tcl's winfo command
+    tk_call_without_enc('winfo', 'exists', '.') == '1'
+  rescue
+    false
   end
 
   def root
@@ -290,7 +293,7 @@ module Tk
   end
 
   def Tk.exit
-    TkCore::INTERP.has_mainwindow? && tk_call_without_enc('destroy', '.')
+    Tk.has_mainwindow? && tk_call_without_enc('destroy', '.')
   end
 
   ################################################

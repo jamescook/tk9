@@ -428,6 +428,13 @@ class TestTkUtil < Minitest::Test
     assert_raises(TypeError) { TkUtil.number(nil) }
   end
 
+  def test_number_empty_string_raises
+    # Empty string must raise ArgumentError (not return 0) so that
+    # TkVariable._to_default_type's rescue can return the raw string
+    # for comparisons like @var[k] == ""
+    assert_raises(ArgumentError) { TkUtil.number("") }
+  end
+
   # TkUtil.string - strip {} braces from Tcl strings
 
   def test_string_strips_braces
