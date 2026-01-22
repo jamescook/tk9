@@ -37,7 +37,7 @@ module TkSelection
     tk_call_without_enc('selection', 'get', '-displayof', win, *hash_kv(keys))
   end
   def get(keys=nil)
-    TkSelection.get_on_display(self, sel)
+    TkSelection.get_on_display(self, keys)
   end
 
   def self.handle(win, func=nil, keys=nil, &b)

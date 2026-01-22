@@ -12,7 +12,7 @@ module TkPalette
   TkCommandNames = [
     'tk_setPalette'.freeze,
     'tk_bisque'.freeze,
-    'tkDarken'.freeze
+    '::tk::Darken'.freeze
   ].freeze
 
   def TkPalette.set(*args)
@@ -28,7 +28,7 @@ module TkPalette
   end
 
   def TkPalette.darken(color, percent)
-    tk_call('tkDarken', color, percent)
+    tk_call('::tk::Darken', color, percent)
   end
 
   def TkPalette.recolorTree(win, colors)

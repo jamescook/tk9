@@ -129,7 +129,6 @@ class TkMenubar<Tk::Frame
     delegate('activeforeground', mbtn, menu, *submenus)
     delegate('activebackground', mbtn, menu, *submenus)
     delegate('font', mbtn, menu, *submenus)
-    delegate('kanjifont', mbtn, menu, *submenus)
   end
 
   def [](index)

@@ -477,36 +477,53 @@ class TestTextWidget < Minitest::Test
     errors << "lines negative failed, got '#{resolved}'" unless resolved.to_s == "1.0"
 
     # display_lines requires widget to be rendered (Tk.update)
+    # These can be flaky - display geometry may need time to settle
     Tk.update
+
+    # Helper to retry display-dependent checks (geometry may need time to settle)
+    # Waits for expected value, then does one final check to ensure stability
+    wait_for_display = ->(expected, &block) {
+      result = nil
+      10.times do
+        Tk.update
+        result = block.call
+        break if result.to_s == expected
+        sleep 0.05
+      end
+      # Final check after brief pause to ensure value is stable
+      sleep 0.02
+      Tk.update
+      block.call
+    }
 
     # display_lines - positive (else branch)
     idx_dl = idx.display_lines(1)
-    resolved = text.index(idx_dl)
+    resolved = wait_for_display.call("2.0") { text.index(idx_dl) }
     errors << "display_lines positive failed, got '#{resolved}'" unless resolved.to_s == "2.0"
 
     # display_lines - negative (if branch)
     idx_dl_neg = text.index("2.0").display_lines(-1)
-    resolved = text.index(idx_dl_neg)
+    resolved = wait_for_display.call("1.0") { text.index(idx_dl_neg) }
     errors << "display_lines negative failed, got '#{resolved}'" unless resolved.to_s == "1.0"
 
     # display_linestart - beginning of display line
     idx_dls = text.index("1.5").display_linestart
-    resolved = text.index(idx_dls)
+    resolved = wait_for_display.call("1.0") { text.index(idx_dls) }
     errors << "display_linestart failed, got '#{resolved}'" unless resolved.to_s == "1.0"
 
     # display_lineend - end of display line
     idx_dle = text.index("1.0").display_lineend
-    resolved = text.index(idx_dle)
+    resolved = wait_for_display.call("1.11") { text.index(idx_dle) }
     errors << "display_lineend failed, got '#{resolved}'" unless resolved.to_s == "1.11"
 
     # display_wordstart - beginning of display word
     idx_dws = text.index("1.3").display_wordstart
-    resolved = text.index(idx_dws)
+    resolved = wait_for_display.call("1.0") { text.index(idx_dws) }
     errors << "display_wordstart failed, got '#{resolved}'" unless resolved.to_s == "1.0"
 
     # display_wordend - end of display word
     idx_dwe = text.index("1.0").display_wordend
-    resolved = text.index(idx_dwe)
+    resolved = wait_for_display.call("1.5") { text.index(idx_dwe) }
     errors << "display_wordend failed, got '#{resolved}'" unless resolved.to_s == "1.5"
 
     # lineend modifier

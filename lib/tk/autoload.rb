@@ -163,7 +163,7 @@ autoload :TkPhotoImage,       'tk/image'
 
 # TkItemConfigMethod removed - now Tk::ItemOptionDSL::InstanceMethods
 
-autoload :TkKinput,           'tk/kinput'
+# TkKinput removed - kinput2 is obsolete (1990s X11 Japanese input)
 
 autoload :TkSystemMenu,       'tk/menu'
 

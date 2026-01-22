@@ -17,6 +17,14 @@ module SimpleCovConfig
     '/lib/tcltk.rb'  # Deprecated stub, no code to cover
   ].freeze
 
+  # Platform-specific filters
+  def self.platform_filters
+    filters = []
+    # tk_mac.rb only works on macOS
+    filters << '/lib/tk/tk_mac.rb' unless RUBY_PLATFORM =~ /darwin/
+    filters
+  end
+
   # Returns regex filter for generated files from non-current Tcl versions
   # e.g., if TCL_VERSION=9.0, filters out 8_6/, 8_5/, etc.
   def self.other_tcl_version_filter
@@ -29,6 +37,7 @@ module SimpleCovConfig
   def self.apply_filters(simplecov_context)
     FILTERS.each { |f| simplecov_context.add_filter(f) }
     simplecov_context.add_filter(other_tcl_version_filter)
+    platform_filters.each { |f| simplecov_context.add_filter(f) }
   end
 
   # Standard groups for coverage report
@@ -41,12 +50,17 @@ module SimpleCovConfig
 
   # Generate add_filter code lines from FILTERS array (for subprocess preamble)
   def self.filters_as_code
-    FILTERS.map do |f|
+    lines = FILTERS.map do |f|
       case f
       when Regexp then "add_filter #{f.inspect}"
       when String then "add_filter '#{f}'"
       end
-    end.join("\n          ")
+    end
+    # Add platform-specific filters (evaluated at generation time)
+    platform_filters.each do |f|
+      lines << "add_filter '#{f}'"
+    end
+    lines.join("\n          ")
   end
 
   # Ruby code string for subprocess SimpleCov setup (used by tk_test_helper.rb)

@@ -7,7 +7,7 @@ module Tk
   # Called by `rake tk:generate_item_options`.
   #
   class ItemOptionGenerationService
-    GENERATED_DIR = 'lib/tk/generated'
+    DEFAULT_OUTPUT_DIR = 'lib/tk/generated'
 
     # Widgets with item-level configuration
     ITEM_WIDGETS = {
@@ -17,10 +17,11 @@ module Tk
       'Listbox' => :listbox,
     }.freeze
 
-    attr_reader :tcl_version, :generator
+    attr_reader :tcl_version, :generator, :output_dir
 
-    def initialize(tcl_version:)
+    def initialize(tcl_version:, output_dir: DEFAULT_OUTPUT_DIR)
       @tcl_version = tcl_version
+      @output_dir = output_dir
       @generator = ItemOptionGenerator.new(tcl_version: tcl_version)
     end
 
@@ -28,7 +29,7 @@ module Tk
     # @param output [IO] where to write progress (default: $stdout)
     # @return [Hash] results with :files and :loader_file keys
     def call(output: $stdout)
-      version_dir = "#{GENERATED_DIR}/#{tcl_version.gsub('.', '_')}"
+      version_dir = "#{output_dir}/#{tcl_version.gsub('.', '_')}"
       FileUtils.mkdir_p(version_dir)
 
       output.puts "Introspecting Tk item options for Tcl #{tcl_version}..."
@@ -66,7 +67,7 @@ module Tk
 
         #{item_files.map { |f| "require_relative '#{tcl_version.gsub('.', '_')}/#{f}'" }.join("\n")}
       RUBY
-      loader_file = "#{GENERATED_DIR}/item_options_#{tcl_version.gsub('.', '_')}.rb"
+      loader_file = "#{output_dir}/item_options_#{tcl_version.gsub('.', '_')}.rb"
       File.write(loader_file, loader_content)
       loader_file
     end

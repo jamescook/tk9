@@ -1,10 +1,8 @@
 # frozen_string_literal: false
 #
-# tk/tk_mac.rb : Access Mac-Specific functionality on OS X from Tk
-#                (supported by Tk8.6 or later)
+# tk/tk_mac.rb : Access Mac-Specific functionality on macOS from Tk
 #
-#     ATTENTION !!
-#         This is NOT TESTED. Because I have no test-environment.
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/tk_mac.html
 #
 require 'tk' unless defined?(Tk)
 
@@ -70,25 +68,25 @@ module Tk::Mac
   end
 
 
-  # system configuration
-  def self.useCompatibilityMetrics(mode)
-    tk_call('::tk::mac::useCompatibilityMetrics', mode)
-    nil
+  # Deprecated methods - removed in modern Tcl/Tk
+  def self.useCompatibilityMetrics(*)
+    warn "Tk::Mac.useCompatibilityMetrics has been removed from Tcl/Tk", uplevel: 1
+    raise NotImplementedError, "useCompatibilityMetrics no longer exists in Tcl/Tk"
   end
 
-  def self.CGAntialiasLimit(limit)
-    tk_call('::tk::mac::CGAntialiasLimit', limit)
-    nil
+  def self.CGAntialiasLimit(*)
+    warn "Tk::Mac.CGAntialiasLimit has been removed from Tcl/Tk", uplevel: 1
+    raise NotImplementedError, "CGAntialiasLimit no longer exists in Tcl/Tk"
   end
 
-  def self.antialiasedtext(num)
-    tk_call('::tk::mac::antialiasedtext', num)
-    nil
+  def self.antialiasedtext(*)
+    warn "Tk::Mac.antialiasedtext has been removed from Tcl/Tk", uplevel: 1
+    raise NotImplementedError, "antialiasedtext no longer exists in Tcl/Tk"
   end
 
-  def self.useThemedToplevel(mode)
-    tk_call('::tk::mac::useThemedToplevel', mode)
-    nil
+  def self.useThemedToplevel(*)
+    warn "Tk::Mac.useThemedToplevel has been removed from Tcl/Tk", uplevel: 1
+    raise NotImplementedError, "useThemedToplevel no longer exists in Tcl/Tk"
   end
 
 end
