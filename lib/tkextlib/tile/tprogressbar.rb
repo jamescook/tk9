@@ -30,6 +30,11 @@ class Tk::Tile::TProgressbar
   WidgetClassName = 'TProgressbar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
+  # Override generated options with correct types
+  option :maximum, type: :float
+  option :value,   type: :float
+  option :phase,   type: :integer
+
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')
   end

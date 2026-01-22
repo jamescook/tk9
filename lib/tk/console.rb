@@ -11,12 +11,11 @@ module TkConsole
   TkCommandNames = ['console'.freeze, 'consoleinterp'.freeze].freeze
 
   def self.create
-    TkCore::INTERP._create_console
+    TkCore::INTERP.create_console
   end
-  self.create  # initialize console
 
   def self.title(str=None)
-    tk_call 'console', str
+    tk_call 'console', 'title', str
   end
   def self.hide
     tk_call_without_enc('console', 'hide')

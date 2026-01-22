@@ -210,9 +210,13 @@ class Tk::Text<TkTextWin
 
     def display_lines(mod)
       # Tk8.5 feature
+      # Note: display lines counts visual (wrapped) lines, which requires the
+      # widget to be rendered. Call Tk.update before using this method to ensure
+      # line metrics are calculated. See Tk text widget docs on async line
+      # metrics and the "sync" command for details.
       fail ArgumentError, 'expect Integer'  unless mod.kind_of?(Integer)
       if mod < 0
-        Tk::Text::IndexString.new(String.new(id) << ' ' << mod.to_s << ' display_lines')
+        Tk::Text::IndexString.new(String.new(id) << ' ' << mod.to_s << ' display lines')
       else
         Tk::Text::IndexString.new(String.new(id) << ' + ' << mod.to_s << ' display lines')
       end
@@ -223,7 +227,7 @@ class Tk::Text<TkTextWin
       # Tk8.5 feature
       fail ArgumentError, 'expect Integer'  unless mod.kind_of?(Integer)
       if mod < 0
-        Tk::Text::IndexString.new(String.new(id) << ' ' << mod.to_s << ' any_lines')
+        Tk::Text::IndexString.new(String.new(id) << ' ' << mod.to_s << ' any lines')
       else
         Tk::Text::IndexString.new(String.new(id) << ' + ' << mod.to_s << ' any lines')
       end
@@ -330,22 +334,13 @@ class Tk::Text<TkTextWin
   def self.new(*args, &block)
     obj = super(*args){}
     obj.init_instance_variable
-    obj.instance_exec(obj, &block) if defined? yield
+    obj.instance_exec(obj, &block) if block_given?
     obj
   end
 
   def init_instance_variable
-    @cmdtbl = []
-    @tags = {}
-  end
-
-  def __destroy_hook__
-    TkTextTag::TTagID_TBL.mutex.synchronize{
-      TkTextTag::TTagID_TBL.delete(@path)
-    }
-    TkTextTag::TMarkID_TBL.mutex.synchronize{
-      TkTextMark::TMarkID_TBL.delete(@path)
-    }
+    @cmdtbl ||= []
+    @tags ||= {}
   end
 
   def create_self(keys)
@@ -403,6 +398,7 @@ class Tk::Text<TkTextWin
   end
 
   def _addtag(name, obj)
+    @tags ||= {}
     @tags[name] = obj
   end
 
@@ -419,11 +415,8 @@ class Tk::Text<TkTextWin
   private :tagid
 
   def tagid2obj(tagid)
-    if @tags[tagid]
-      @tags[tagid]
-    else
-      tagid
-    end
+    return tagid unless @tags
+    @tags[tagid] || tagid
   end
 
   def tag_names(index=None)
@@ -716,17 +709,6 @@ class Tk::Text<TkTextWin
   def tag_delete(*tags)
     tk_send_without_enc('tag', 'delete',
                         *(tags.collect{|tag| _get_eval_enc_str(tag)}))
-    TkTextTag::TTagID_TBL.mutex.synchronize{
-      if TkTextTag::TTagID_TBL[@path]
-        tags.each{|tag|
-          if tag.kind_of?(TkTextTag)
-            TkTextTag::TTagID_TBL[@path].delete(tag.id)
-          else
-            TkTextTag::TTagID_TBL[@path].delete(tag)
-          end
-        }
-      end
-    }
     self
   end
   alias deltag tag_delete

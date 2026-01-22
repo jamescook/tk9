@@ -98,4 +98,44 @@ class TestTProgressbarWidget < Minitest::Test
 
     raise "TProgressbar test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
+
+  # Test that numeric options return proper types (not strings)
+  def test_tprogressbar_numeric_types
+    assert_tk_app("TProgressbar numeric types", method(:tprogressbar_numeric_types_app))
+  end
+
+  def tprogressbar_numeric_types_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    progress = Tk::Tile::TProgressbar.new(root,
+      maximum: 100,
+      value: 42
+    )
+    progress.pack
+
+    # maximum should be Float, not String
+    max = progress.cget(:maximum)
+    errors << "maximum should be Float, got #{max.class}" unless max.is_a?(Float)
+
+    # value should be Float, not String
+    val = progress.cget(:value)
+    errors << "value should be Float, got #{val.class}" unless val.is_a?(Float)
+
+    # Arithmetic should work without manual conversion
+    begin
+      result = max - val
+      errors << "arithmetic failed: expected 58.0, got #{result}" unless result == 58.0
+    rescue NoMethodError => e
+      errors << "arithmetic failed with NoMethodError: #{e.message}"
+    end
+
+    # phase should be Integer
+    phase = progress.cget(:phase)
+    errors << "phase should be Integer, got #{phase.class}" unless phase.is_a?(Integer)
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

@@ -397,3 +397,73 @@ module TkVariableCompatExtension
   # Always false - we require Tcl 8.6+ which uses modern trace syntax
   USE_OLD_TRACE_OPTION_STYLE = false
 end
+
+# ---------------------------------------------------------
+# Deprecated TkTextTag/TkTextMark global lookup tables
+#
+# TTagID_TBL and TMarkID_TBL were global tables used for id->object lookup.
+# These have been removed because:
+#   1. They duplicated data already stored in text widget's @tags instance var
+#   2. They caused memory leaks (required manual cleanup on widget destroy)
+#   3. The class-level id2obj methods were never called internally
+#
+# The text widget's @tags naturally dies with the widget - no cleanup needed.
+# Use TkTextTag.id2obj(text, id) which now delegates to text.tagid2obj(id).
+#
+# Usage: extend TkTextTagCompat in texttag.rb after class is defined
+# ---------------------------------------------------------
+module TkTextTagCompat
+  def const_missing(name)
+    if name == :TTagID_TBL
+      warn "TkTextTag::TTagID_TBL has been removed (caused memory leaks, was redundant). " \
+           "Use TkTextTag.id2obj(text, id) or text.tagid2obj(id) instead.", uplevel: 1
+      nil
+    else
+      super
+    end
+  end
+end
+
+module TkTextMarkCompat
+  def const_missing(name)
+    if name == :TMarkID_TBL
+      warn "TkTextMark::TMarkID_TBL has been removed (caused memory leaks, was redundant). " \
+           "Use TkTextMark.id2obj(text, id) or text.tagid2obj(id) instead.", uplevel: 1
+      nil
+    else
+      super
+    end
+  end
+end
+
+# ---------------------------------------------------------
+# TkcItem compat module for deprecation warnings
+# Usage: extend TkcItemCompat in canvas.rb after class is defined
+# ---------------------------------------------------------
+module TkcItemCompat
+  def const_missing(name)
+    if name == :CItemID_TBL
+      warn "TkcItem::CItemID_TBL has been removed (caused memory leaks, was redundant). " \
+           "Use TkcItem.id2obj(canvas, id) or canvas.itemid2obj(id) instead.", uplevel: 1
+      nil
+    else
+      super
+    end
+  end
+end
+
+# ---------------------------------------------------------
+# TkcTag compat module for deprecation warnings
+# Usage: extend TkcTagCompat in canvastag.rb after class is defined
+# ---------------------------------------------------------
+module TkcTagCompat
+  def const_missing(name)
+    if name == :CTagID_TBL
+      warn "TkcTag::CTagID_TBL has been removed (caused memory leaks, was redundant). " \
+           "Use TkcTag.id2obj(canvas, id) or canvas.canvastagid2obj(id) instead.", uplevel: 1
+      nil
+    else
+      super
+    end
+  end
+end

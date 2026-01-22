@@ -99,4 +99,69 @@ class TestTScaleWidget < Minitest::Test
 
     raise "TScale test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
+
+  # Test that command callback receives numeric value, not string
+  def test_tscale_command_receives_number
+    assert_tk_app("TScale command receives number", method(:tscale_command_number_app))
+  end
+
+  def tscale_command_number_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Test 1: command set during creation
+    received_value = nil
+    received_class = nil
+    scale1 = Tk::Tile::TScale.new(root,
+      orient: "horizontal",
+      from: 0,
+      to: 100,
+      command: proc { |val|
+        received_value = val
+        received_class = val.class
+      }
+    )
+    scale1.pack
+
+    # Trigger the callback by setting value
+    scale1.set(42)
+    Tk.update
+
+    if received_value.nil?
+      errors << "command callback not triggered during creation"
+    elsif received_class == String
+      errors << "command callback received String '#{received_value}' instead of Numeric"
+    elsif !received_value.is_a?(Numeric)
+      errors << "command callback received #{received_class} instead of Numeric"
+    end
+
+    # Test 2: command set via configure after creation
+    received_value2 = nil
+    received_class2 = nil
+    scale2 = Tk::Tile::TScale.new(root,
+      orient: "horizontal",
+      from: 0,
+      to: 100
+    )
+    scale2.pack
+    scale2.command { |val|
+      received_value2 = val
+      received_class2 = val.class
+    }
+
+    scale2.set(33)
+    Tk.update
+
+    if received_value2.nil?
+      errors << "command callback not triggered via configure"
+    elsif received_class2 == String
+      errors << "configure command callback received String '#{received_value2}' instead of Numeric"
+    elsif !received_value2.is_a?(Numeric)
+      errors << "configure command callback received #{received_class2} instead of Numeric"
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

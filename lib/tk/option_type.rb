@@ -147,7 +147,7 @@ module Tk
       )
 
       # Canvas tags - converts space-separated tag names to TkcTag objects
-      # Looks up registered tags in TkcTag::CTagID_TBL, returns strings for unregistered
+      # Looks up registered tags via the canvas widget's canvastagid2obj method
       CanvasTags = OptionType.new(:canvas_tags,
         to_tcl: ->(v, widget:) {
           Array(v).map { |t| t.respond_to?(:id) ? t.id : t.to_s }.join(' ')
@@ -155,13 +155,7 @@ module Tk
         from_tcl: ->(v, widget:) {
           return [] if v.to_s.empty?
           tag_names = v.to_s.split
-          canvas_path = widget.path
-          tag_names.map do |tag_name|
-            TkcTag::CTagID_TBL.mutex.synchronize do
-              table = TkcTag::CTagID_TBL[canvas_path]
-              table && table[tag_name] ? table[tag_name] : tag_name
-            end
-          end
+          tag_names.map { |tag_name| widget.canvastagid2obj(tag_name) }
         }
       )
     end

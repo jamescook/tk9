@@ -60,8 +60,36 @@ class Tk::Canvas<TkWindow
   WidgetClassName = 'Canvas'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __destroy_hook__
-    TkcItem::CItemID_TBL.delete(@path)
+  def self.new(*args, &block)
+    obj = super(*args){}
+    obj.init_instance_variable
+    obj.instance_exec(obj, &block) if block_given?
+    obj
+  end
+
+  def init_instance_variable
+    @items ||= {}
+    @canvas_tags ||= {}
+  end
+
+  def _additem(id, obj)
+    @items ||= {}
+    @items[id] = obj
+  end
+
+  def _addtag(id, obj)
+    @canvas_tags ||= {}
+    @canvas_tags[id] = obj
+  end
+
+  def itemid2obj(id)
+    return id unless @items
+    @items[id] || id
+  end
+
+  def canvastagid2obj(id)
+    return id unless @canvas_tags
+    @canvas_tags[id] || id
   end
 
   #def create_self(keys)
@@ -191,21 +219,11 @@ class Tk::Canvas<TkWindow
   end
 
   def delete(*args)
-    tbl = nil
-    TkcItem::CItemID_TBL.mutex.synchronize{
-      tbl = TkcItem::CItemID_TBL[self.path]
-    }
-    if tbl
-      args.each{|tag|
-        find('withtag', tag).each{|item|
-          if item.kind_of?(TkcItem)
-            TkcItem::CItemID_TBL.mutex.synchronize{
-              tbl.delete(item.id)
-            }
-          end
-        }
+    args.each{|tag|
+      find('withtag', tag).each{|item|
+        @items.delete(item.id) if item.respond_to?(:id)
       }
-    end
+    }
     tk_send_without_enc('delete', *args.collect{|t| tagid(t)})
     self
   end
@@ -383,10 +401,7 @@ class Tk::Canvas<TkWindow
       @parent = @c = canvas
       @path = canvas.path
       @id = id
-      TkcItem::CItemID_TBL.mutex.synchronize{
-        TkcItem::CItemID_TBL[@path] = {} unless TkcItem::CItemID_TBL[@path]
-        TkcItem::CItemID_TBL[@path][@id] = self
-      }
+      canvas._additem(@id, self)
     }
   end
 end
@@ -404,25 +419,13 @@ class TkcItem<TkObject
   CItemTypeName = nil
   CItemTypeToClass = {}
 
-  CItemID_TBL = TkCore::INTERP.create_table
-
-  TkCore::INTERP.init_ip_env{
-    CItemID_TBL.mutex.synchronize{ CItemID_TBL.clear }
-  }
-
   def TkcItem.type2class(type)
     CItemTypeToClass[type]
   end
 
+  # Look up an item by ID. Delegates to the canvas widget's itemid2obj.
   def TkcItem.id2obj(canvas, id)
-    cpath = canvas.path
-    CItemID_TBL.mutex.synchronize{
-      if CItemID_TBL[cpath]
-        CItemID_TBL[cpath][id]? CItemID_TBL[cpath][id]: id
-      else
-        id
-      end
-    }
+    canvas.itemid2obj(id)
   end
 
   ########################################
@@ -470,10 +473,7 @@ class TkcItem<TkObject
     @path = parent.path
 
     @id = create_self(*args) # an integer number as 'canvas item id'
-    CItemID_TBL.mutex.synchronize{
-      CItemID_TBL[@path] = {} unless CItemID_TBL[@path]
-      CItemID_TBL[@path][@id] = self
-    }
+    @c._additem(@id, self)
   end
   def create_self(*args)
     self.class.create(@c, *args) # return an integer number as 'canvas item id'
@@ -494,9 +494,6 @@ class TkcItem<TkObject
 
   def delete
     @c.delete @id
-    CItemID_TBL.mutex.synchronize{
-      CItemID_TBL[@path].delete(@id) if CItemID_TBL[@path]
-    }
     self
   end
   alias remove  delete
@@ -571,3 +568,6 @@ class TkcWindow<TkcItem
     super(canvas, *args)
   end
 end
+
+# Add deprecation warning for removed CItemID_TBL constant
+TkcItem.extend(TkcItemCompat)

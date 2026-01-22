@@ -227,27 +227,15 @@ end
 class TkcTag<TkObject
   include TkcTagAccess
 
-  CTagID_TBL = TkCore::INTERP.create_table
-
   (Tk_CanvasTag_ID = ['ctag'.freeze, '00000']).instance_eval{
     @mutex = Mutex.new
     def mutex; @mutex; end
     freeze
   }
 
-  TkCore::INTERP.init_ip_env{
-    CTagID_TBL.mutex.synchronize{ CTagID_TBL.clear }
-  }
-
+  # Look up a tag by ID. Delegates to the canvas widget's canvastagid2obj.
   def TkcTag.id2obj(canvas, id)
-    cpath = canvas.path
-    CTagID_TBL.mutex.synchronize{
-      if CTagID_TBL[cpath]
-        CTagID_TBL[cpath][id]? CTagID_TBL[cpath][id]: id
-      else
-        id
-      end
-    }
+    canvas.canvastagid2obj(id)
   end
 
   def initialize(parent, mode=nil, *args)
@@ -261,10 +249,7 @@ class TkcTag<TkObject
       @path = @id = Tk_CanvasTag_ID.join(TkCore::INTERP._ip_id_)
       Tk_CanvasTag_ID[1].succ!
     }
-    CTagID_TBL.mutex.synchronize{
-      CTagID_TBL[@cpath] = {} unless CTagID_TBL[@cpath]
-      CTagID_TBL[@cpath][@id] = self
-    }
+    @c._addtag(@id, self)
     if mode
       tk_call_without_enc(@c.path, "addtag", @id, mode, *args)
     end
@@ -283,9 +268,6 @@ class TkcTag<TkObject
 
   def delete
     @c.delete @id
-    CTagID_TBL.mutex.synchronize{
-      CTagID_TBL[@cpath].delete(@id) if CTagID_TBL[@cpath]
-    }
     self
   end
   alias remove  delete
@@ -336,23 +318,22 @@ end
 
 class TkcTagString<TkcTag
   def self.new(parent, name, mode=nil, *args)
-    obj = nil
-    CTagID_TBL.mutex.synchronize{
-      if CTagID_TBL[parent.path] && CTagID_TBL[parent.path][name]
-        obj = CTagID_TBL[parent.path][name]
-      else
-        # super(parent, name, *args)
-        (obj = self.allocate).instance_eval{
-          @c = parent
-          @cpath = parent.path
-          @path = @id = name
-          CTagID_TBL[@cpath] = {} unless CTagID_TBL[@cpath]
-          CTagID_TBL[@cpath][@id] = self
-        }
-      end
-    }
+    # Check if tag already exists via the canvas's @canvas_tags
+    existing = parent.canvastagid2obj(name)
+    if existing.kind_of?(TkcTag)
+      obj = existing
+    else
+      # Create new tag
+      (obj = self.allocate).instance_eval{
+        @c = parent
+        @cpath = parent.path
+        @path = @id = name
+        parent._addtag(@id, self)
+      }
+    end
+
     if obj && mode
-      tk_call_without_enc(@c.path, "addtag", @id, mode, *args)
+      tk_call_without_enc(parent.path, "addtag", obj.id, mode, *args)
     end
     obj
   end
@@ -378,40 +359,12 @@ class TkcTagAll<TkcTagString
   def self.new(parent)
     super(parent, 'all')
   end
-=begin
-  def initialize(parent)
-    #unless parent.kind_of?(TkCanvas)
-    #  fail ArgumentError, "expect TkCanvas for 1st argument"
-    #end
-    @c = parent
-    @cpath = parent.path
-    @path = @id = 'all'
-    CTagID_TBL.mutex.synchronize{
-      CTagID_TBL[@cpath] = {} unless CTagID_TBL[@cpath]
-      CTagID_TBL[@cpath][@id] = self
-    }
-  end
-=end
 end
 
 class TkcTagCurrent<TkcTagString
   def self.new(parent)
     super(parent, 'current')
   end
-=begin
-  def initialize(parent)
-    #unless parent.kind_of?(TkCanvas)
-    #  fail ArgumentError, "expect TkCanvas for 1st argument"
-    #end
-    @c = parent
-    @cpath = parent.path
-    @path = @id = 'current'
-    CTagID_TBL.mutex.synchronize{
-      CTagID_TBL[@cpath] = {} unless CTagID_TBL[@cpath]
-      CTagID_TBL[@cpath][@id] = self
-    }
-  end
-=end
 end
 
 class TkcGroup<TkcTag
@@ -433,10 +386,7 @@ class TkcGroup<TkcTag
       @path = @id = Tk_cGroup_ID.join(TkCore::INTERP._ip_id_)
       Tk_cGroup_ID[1].succ!
     }
-    CTagID_TBL.mutex.synchronize{
-      CTagID_TBL[@cpath] = {} unless CTagID_TBL[@cpath]
-      CTagID_TBL[@cpath][@id] = self
-    }
+    @c._addtag(@id, self)
     include(*args) if args != []
   end
   #private :create_self
@@ -458,3 +408,6 @@ class TkcGroup<TkcTag
     self
   end
 end
+
+# Add deprecation warning for removed CTagID_TBL constant
+TkcTag.extend(TkcTagCompat)

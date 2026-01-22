@@ -202,4 +202,88 @@ class TestCanvasWidget < Minitest::Test
     end
 
   end
+
+  # ---------------------------------------------------------
+  # Canvas subclass with items created in initialize
+  # ---------------------------------------------------------
+
+  def test_canvas_subclass_with_items
+    assert_tk_app("Canvas subclass with items", method(:canvas_subclass_app))
+  end
+
+  def canvas_subclass_app
+    require 'tk'
+    require 'tk/canvas'
+
+    errors = []
+
+    # Define a subclass that creates items in initialize
+    # Use positional args to match TkCanvas's actual signature
+    custom_canvas_class = Class.new(TkCanvas) do
+      attr_reader :rect
+
+      def initialize(parent, keys=nil)
+        super
+        # Create an item during initialization - this tests that
+        # @items is properly initialized before items are created
+        @rect = TkcRectangle.new(self, 10, 10, 50, 50, fill: "red")
+      end
+    end
+
+    # This should work without error
+    canvas = custom_canvas_class.new(root, width: 200, height: 200)
+    canvas.pack
+
+    errors << "subclass rect not created" unless canvas.rect
+    errors << "subclass rect id missing" unless canvas.rect.id
+
+    # Verify item lookup works
+    found = TkcItem.id2obj(canvas, canvas.rect.id)
+    errors << "subclass item lookup failed" unless found == canvas.rect
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Item/tag lookup via id2obj
+  # ---------------------------------------------------------
+
+  def test_canvas_id2obj_lookup
+    assert_tk_app("Canvas id2obj lookup", method(:id2obj_lookup_app))
+  end
+
+  def id2obj_lookup_app
+    require 'tk'
+    require 'tk/canvas'
+    require 'tk/canvastag'
+
+    errors = []
+
+    canvas = TkCanvas.new(root, width: 200, height: 200)
+    canvas.pack
+
+    # Create an item
+    rect = TkcRectangle.new(canvas, 10, 10, 50, 50, fill: "blue")
+    item_id = rect.id
+
+    # Create a tag
+    tag = TkcTag.new(canvas)
+    tag_id = tag.id
+
+    # Verify TkcItem.id2obj returns the Ruby object
+    found_item = TkcItem.id2obj(canvas, item_id)
+    errors << "TkcItem.id2obj should return TkcItem, got #{found_item.class}" unless found_item.kind_of?(TkcItem)
+    errors << "TkcItem.id2obj should return same object" unless found_item == rect
+
+    # Verify TkcTag.id2obj returns the Ruby object
+    found_tag = TkcTag.id2obj(canvas, tag_id)
+    errors << "TkcTag.id2obj should return TkcTag, got #{found_tag.class}" unless found_tag.kind_of?(TkcTag)
+    errors << "TkcTag.id2obj should return same object" unless found_tag == tag
+
+    # Unknown ID should return the id itself
+    unknown = TkcItem.id2obj(canvas, 99999)
+    errors << "TkcItem.id2obj should return id for unknown" unless unknown == 99999
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

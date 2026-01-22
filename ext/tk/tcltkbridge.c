@@ -1322,6 +1322,39 @@ lib_get_version(VALUE self)
 }
 
 /* ---------------------------------------------------------
+ * Interp#create_console - Create Tk console window
+ *
+ * Creates a console window for platforms without a real terminal.
+ * See: https://www.tcl-lang.org/man/tcl8.6/TkLib/CrtConsoleChan.htm
+ * --------------------------------------------------------- */
+
+static VALUE
+interp_create_console(VALUE self)
+{
+    struct tcltk_interp *tip = get_interp(self);
+
+    /*
+     * tcl_interactive is normally set by tclsh/wish at startup.
+     * When embedding Tcl in Ruby, we must set it ourselves.
+     * console.tcl checks this to decide whether to show the console window:
+     * if 0, the window starts hidden (wm withdraw); if 1, it's shown.
+     * See: https://github.com/tcltk/tk/blob/main/library/console.tcl#L144
+     */
+    if (Tcl_GetVar(tip->interp, "tcl_interactive", TCL_GLOBAL_ONLY) == NULL) {
+        Tcl_SetVar(tip->interp, "tcl_interactive", "0", TCL_GLOBAL_ONLY);
+    }
+
+    Tk_InitConsoleChannels(tip->interp);
+
+    if (Tk_CreateConsoleWindow(tip->interp) != TCL_OK) {
+        rb_raise(eTclError, "failed to create console window: %s",
+                 Tcl_GetStringResult(tip->interp));
+    }
+
+    return Qtrue;
+}
+
+/* ---------------------------------------------------------
  * Module initialization
  * --------------------------------------------------------- */
 
@@ -1411,6 +1444,7 @@ Init_tcltklib(void)
     rb_define_method(cTclTkIp, "thread_timer_ms=", interp_set_thread_timer_ms, 1);
     rb_define_method(cTclTkIp, "queue_for_main", interp_queue_for_main, 1);
     rb_define_method(cTclTkIp, "on_main_thread?", interp_on_main_thread_p, 0);
+    rb_define_method(cTclTkIp, "create_console", interp_create_console, 0);
 
     /* Aliases for legacy API compatibility */
     rb_define_alias(cTclTkIp, "_eval", "tcl_eval");

@@ -8,27 +8,15 @@ require 'tk/text'
 class TkTextMark<TkObject
   include Tk::Text::IndexModMethods
 
-  TMarkID_TBL = TkCore::INTERP.create_table
-
   (Tk_TextMark_ID = ['mark'.freeze, '00000']).instance_eval{
     @mutex = Mutex.new
     def mutex; @mutex; end
     freeze
   }
 
-  TkCore::INTERP.init_ip_env{
-    TMarkID_TBL.mutex.synchronize{ TMarkID_TBL.clear }
-  }
-
+  # Look up a mark by ID. Delegates to the text widget's tagid2obj.
   def TkTextMark.id2obj(text, id)
-    tpath = text.path
-    TMarkID_TBL.mutex.synchronize{
-      if TMarkID_TBL[tpath]
-        TMarkID_TBL[tpath][id]? TMarkID_TBL[tpath][id]: id
-      else
-        id
-      end
-    }
+    text.tagid2obj(id)
   end
 
   def initialize(parent, index)
@@ -41,11 +29,6 @@ class TkTextMark<TkObject
       # @path = @id = Tk_TextMark_ID.join('')
       @path = @id = Tk_TextMark_ID.join(TkCore::INTERP._ip_id_).freeze
       Tk_TextMark_ID[1].succ!
-    }
-    TMarkID_TBL.mutex.synchronize{
-      TMarkID_TBL[@id] = self
-      TMarkID_TBL[@tpath] = {} unless TMarkID_TBL[@tpath]
-      TMarkID_TBL[@tpath][@id] = self
     }
     tk_call_without_enc(@t.path, 'mark', 'set', @id,
                         _get_eval_enc_str(index))
@@ -142,29 +125,25 @@ TktMark = TkTextMark
 
 class TkTextNamedMark<TkTextMark
   def self.new(parent, name, index=nil)
-    TMarkID_TBL.mutex.synchronize{
-      if TMarkID_TBL[parent.path] && TMarkID_TBL[parent.path][name]
-        obj = TMarkID_TBL[parent.path][name]
-      else
-        # super(parent, name, *args)
-        (obj = self.allocate).instance_eval{
-          @parent = @t = parent
-          @tpath = parent.path
-          @path = @id = name
-          TMarkID_TBL[@id] = self
-          TMarkID_TBL[@tpath] = {} unless TMarkID_TBL[@tpath]
-          TMarkID_TBL[@tpath][@id] = self unless TMarkID_TBL[@tpath][@id]
-          @t._addtag @id, self
-        }
-        obj
-      end
+    # Check if mark already exists via the text widget's @tags
+    existing = parent.tagid2obj(name)
+    if existing.kind_of?(TkTextMark)
+      obj = existing
+    else
+      # Create new mark
+      (obj = self.allocate).instance_eval{
+        @parent = @t = parent
+        @tpath = parent.path
+        @path = @id = name
+        @t._addtag @id, self
+      }
+    end
 
-      if obj && index
-        tk_call_without_enc(parent.path, 'mark', 'set', name,
-                            _get_eval_enc_str(index))
-      end
-      obj
-    }
+    if obj && index
+      tk_call_without_enc(parent.path, 'mark', 'set', name,
+                          _get_eval_enc_str(index))
+    end
+    obj
   end
 
   def initialize(parent, name, index=nil)
@@ -203,3 +182,6 @@ class TkTextMarkAnchor<TkTextNamedMark
   end
 end
 TktMarkAnchor = TkTextMarkAnchor
+
+# Add deprecation warning for removed TMarkID_TBL constant
+TkTextMark.extend(TkTextMarkCompat)
