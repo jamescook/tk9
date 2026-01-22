@@ -1,5 +1,14 @@
 # frozen_string_literal: true
 
+# Test that removed TkOptionDB proc class methods raise helpful errors.
+#
+# The proc class feature (new_proc_class, etc.) has been removed because:
+#   - It eval'd Ruby code from resource files (security risk)
+#   - It relied on Ruby's $SAFE which was removed in Ruby 2.7
+#
+# This test documents the expected behavior when legacy code tries to
+# use these methods - they should get a clear error with migration guidance.
+
 require_relative '../test_helper'
 require 'open3'
 require_relative '../tk_test_helper'
@@ -7,7 +16,7 @@ require_relative '../tk_test_helper'
 class TestCmdResourceDemo < Minitest::Test
   include TkTestHelper
 
-  def test_option_db_proc_classes
+  def test_new_proc_class_raises_not_implemented
     sample_path = File.expand_path('../../sample/cmd_resource_demo.rb', __dir__)
     project_root = File.expand_path('../..', __dir__)
     load_paths = $LOAD_PATH.select { |p| p.include?(project_root) }
@@ -17,18 +26,14 @@ class TestCmdResourceDemo < Minitest::Test
       RbConfig.ruby, *load_path_args, sample_path
     )
 
-    assert status.success?, "Sample should run without errors\nSTDERR: #{stderr}"
+    # Should fail - new_proc_class is removed
+    refute status.success?, "Sample should fail (new_proc_class removed)"
 
-    # cmd1 uses *hello.show_msg pattern
-    assert_includes stdout, "Hello, Hello, cmd1!!"
+    # Should show helpful deprecation message
+    assert_includes stderr, "new_proc_class removed"
+    assert_includes stderr, "NotImplementedError"
 
-    # cmd2 uses *hello.ZZZ.show_msg pattern
-    assert_includes stdout, "Hello, Hello, ZZZ:cmd2!!"
-
-    # cmd3 uses *hello.ZZZ.show_msg pattern
-    assert_includes stdout, "Hello, Hello, ZZZ:cmd3!!"
-
-    # cmd4 uses *BTN_CMD.show_msg with custom __check_proc_string__
-    assert_includes stdout, "Hello, cmd4!!"
+    # Should mention migration path
+    assert_includes stderr, "define procs in Ruby code"
   end
 end

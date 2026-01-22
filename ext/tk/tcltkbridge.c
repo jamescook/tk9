@@ -910,6 +910,22 @@ interp_deleted_p(VALUE self)
 }
 
 /* ---------------------------------------------------------
+ * Interp#safe? - Check if interpreter is running in safe mode
+ *
+ * Safe interpreters have restricted access to dangerous commands
+ * like file I/O, exec, socket, etc. Created via create_slave(name, true).
+ *
+ * See: https://www.tcl-lang.org/man/tcl/TclCmd/interp.html#M30
+ * --------------------------------------------------------- */
+
+static VALUE
+interp_safe_p(VALUE self)
+{
+    struct tcltk_interp *tip = get_interp(self);
+    return Tcl_IsSafe(tip->interp) ? Qtrue : Qfalse;
+}
+
+/* ---------------------------------------------------------
  * Interp#delete - Explicitly delete interpreter
  * --------------------------------------------------------- */
 
@@ -1432,6 +1448,7 @@ Init_tcltklib(void)
     rb_define_method(cTclTkIp, "tcl_set_var", interp_tcl_set_var, 2);
     rb_define_method(cTclTkIp, "do_one_event", interp_do_one_event, -1);
     rb_define_method(cTclTkIp, "deleted?", interp_deleted_p, 0);
+    rb_define_method(cTclTkIp, "safe?", interp_safe_p, 0);
     rb_define_method(cTclTkIp, "delete", interp_delete, 0);
     rb_define_method(cTclTkIp, "tcl_version", interp_tcl_version, 0);
     rb_define_method(cTclTkIp, "tk_version", interp_tk_version, 0);

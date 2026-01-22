@@ -467,3 +467,64 @@ module TkcTagCompat
     end
   end
 end
+
+# ---------------------------------------------------------
+# TkOptionDB proc class methods - REMOVED
+#
+# These methods allowed storing Ruby code in X11 resource files and
+# eval'ing it at runtime. This was:
+#   - A security risk (arbitrary code execution from config files)
+#   - Based on Ruby's $SAFE which was removed in Ruby 2.7
+#
+# The core option database (add/get/readfile/clear) still works for
+# widget styling. Only the proc class feature is removed.
+#
+# Migration: Move proc definitions to Ruby code.
+#
+# Before (resource file + Ruby):
+#   # In resource.db:
+#   *MyApp.onClick: {|arg| puts "clicked: #{arg}"}
+#
+#   # In Ruby:
+#   cmd = TkOptionDB.new_proc_class(:MyApp, [:onClick], 4)
+#   cmd.onClick("button1")
+#
+# After (pure Ruby):
+#   module MyAppCallbacks
+#     def self.on_click(arg)
+#       puts "clicked: #{arg}"
+#     end
+#   end
+#   MyAppCallbacks.on_click("button1")
+#
+# See sample/tkoptdb_simple.rb for a working example.
+# ---------------------------------------------------------
+module TkOptionDBCompat
+  REMOVED_MESSAGE = <<~MSG.freeze
+    TkOptionDB proc class methods have been removed.
+
+    These methods (new_proc_class, new_proc_class_random, eval_under_random_base)
+    allowed eval'ing Ruby code from resource files - a security risk that relied
+    on Ruby's removed $SAFE feature.
+
+    Migration: Define procs in Ruby code instead of resource files.
+    See sample/tkoptdb_simple.rb for an example.
+
+    The core option database (add/get/readfile/clear) still works for widget styling.
+  MSG
+
+  def new_proc_class(*)
+    warn REMOVED_MESSAGE, uplevel: 1
+    raise NotImplementedError, "new_proc_class removed - define procs in Ruby code"
+  end
+
+  def new_proc_class_random(*)
+    warn REMOVED_MESSAGE, uplevel: 1
+    raise NotImplementedError, "new_proc_class_random removed - define procs in Ruby code"
+  end
+
+  def eval_under_random_base(*)
+    warn REMOVED_MESSAGE, uplevel: 1
+    raise NotImplementedError, "eval_under_random_base removed - define procs in Ruby code"
+  end
+end
