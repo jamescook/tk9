@@ -476,25 +476,12 @@ class TestTextWidget < Minitest::Test
     resolved = text.index(idx_lines_neg)
     errors << "lines negative failed, got '#{resolved}'" unless resolved.to_s == "1.0"
 
-    # display_lines requires widget to be rendered (Tk.update)
+    # display_lines requires widget to be rendered and visible
     # These can be flaky - display geometry may need time to settle
+    root.deiconify
     Tk.update
 
-    # Helper to retry display-dependent checks (geometry may need time to settle)
-    # Waits for expected value, then does one final check to ensure stability
-    wait_for_display = ->(expected, &block) {
-      result = nil
-      10.times do
-        Tk.update
-        result = block.call
-        break if result.to_s == expected
-        sleep 0.05
-      end
-      # Final check after brief pause to ensure value is stable
-      sleep 0.02
-      Tk.update
-      block.call
-    }
+    # wait_for_display helper is injected by TkWorker for display-dependent checks
 
     # display_lines - positive (else branch)
     idx_dl = idx.display_lines(1)
@@ -1069,13 +1056,14 @@ class TestTextWidget < Minitest::Test
 
     Tk.update
 
-    # xview_pickplace - scroll horizontally to show index
+    # xview_pickplace - Note: Tcl's xview never had -pickplace (only yview did).
+    # The Ruby wrapper uses 'see' internally for compatibility.
     text.xview_pickplace("1.0")
-    # No easy way to verify, just ensure no error
 
-    # yview_pickplace - scroll vertically to show index
+    # yview_pickplace - Uses 'yview -pickplace' on Tcl 8.6, 'see' on Tcl 9.0
+    # Tcl 8.6: yview -pickplace exists (scrolls to show index)
+    # Tcl 9.0: Ruby wrapper uses 'see' as fallback
     text.yview_pickplace("25.0")
-    # No easy way to verify, just ensure no error
 
     raise errors.join("\n") unless errors.empty?
   end

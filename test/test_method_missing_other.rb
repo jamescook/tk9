@@ -40,10 +40,25 @@ class TestMethodMissingOther < Minitest::Test
     require 'tk'
     require 'tk/menu'
 
-    menu = TkMenu.new(root)
+    # TIP 161 changed tearoff default: true in Tcl 8.6, false in Tcl 9.0
+    # https://core.tcl-lang.org/tips/doc/trunk/tip/161.md
+    # Verify the version-specific default behavior
+    menu_default = TkMenu.new(root)
+    if Tk::TCL_VERSION >= "9"
+      expected_tearoff = false
+    else
+      expected_tearoff = true
+    end
+    actual_tearoff = menu_default.cget(:tearoff)
+    unless actual_tearoff == expected_tearoff
+      raise "tearoff default for Tcl #{Tk::TCL_VERSION}: expected #{expected_tearoff}, got #{actual_tearoff}"
+    end
+
+    # Use explicit tearoff: false for consistent indexing in method_missing test
+    menu = TkMenu.new(root, tearoff: false)
     menu.add('command', label: 'Test')
 
-    # Configure menu entry
+    # Configure menu entry via method_missing
     menu.entryconfigure(0, label: 'Changed')
     result = menu.entrycget(0, :label)
 

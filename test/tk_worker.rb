@@ -160,6 +160,21 @@ class TkWorker
         b = binding
         b.local_variable_set(:root, @root)
 
+        # Helper for display-dependent checks that may need time to settle
+        # Retries until expected value is returned or timeout
+        wait_for_display = ->(expected, timeout: 1.0, &block) {
+          deadline = Time.now + timeout
+          result = nil
+          while Time.now < deadline
+            Tk.update
+            result = block.call
+            break if result.to_s == expected
+            sleep 0.02
+          end
+          result
+        }
+        b.local_variable_set(:wait_for_display, wait_for_display)
+
         # Execute the test code
         eval(code, b, "(test)", 1)
 

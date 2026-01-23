@@ -480,7 +480,11 @@ namespace :docker do
   end
 
   def tcl_version_from_env
-    ENV.fetch('TCL_VERSION', '9.0')
+    version = ENV.fetch('TCL_VERSION', '9.0')
+    unless ['8.6', '9.0'].include?(version)
+      abort "Invalid TCL_VERSION='#{version}'. Must be '8.6' or '9.0'."
+    end
+    version
   end
 
   desc "Build Docker image (TCL_VERSION=9.0|8.6)"
@@ -514,6 +518,8 @@ namespace :docker do
     cmd += " -e TCL_VERSION=#{tcl_version}"
     # Pass TEST env var to run a single test file
     cmd += " -e TEST=#{ENV['TEST']}" if ENV['TEST']
+    # Pass TESTOPTS for minitest options (e.g., -v for verbose)
+    cmd += " -e TESTOPTS=#{ENV['TESTOPTS']}" if ENV['TESTOPTS']
     if ENV['COVERAGE'] == '1'
       cmd += " -e COVERAGE=1"
       cmd += " -e COVERAGE_NAME=#{ENV['COVERAGE_NAME'] || 'main'}"

@@ -670,14 +670,12 @@ class Tk::Text<TkTextWin
   end
 
   def xview_pickplace(index)
-    if Tk::TCL_MAJOR_VERSION >= 9
-      Tk::Warnings.warn_once(:pickplace,
-        "xview/yview_pickplace is deprecated and removed in Tcl 9.0. " \
-        "Using 'see' instead. Update your code to use: widget.see(index)")
-      see(index)
-    else
-      tk_send_without_enc('xview', '-pickplace', _get_eval_enc_str(index))
-    end
+    # Note: xview never had -pickplace in any Tcl version (only yview did).
+    # This method exists for API compatibility - it uses 'see' which handles
+    # both horizontal and vertical scrolling to make the index visible.
+    Tk::Warnings.warn_once(:xview_pickplace,
+      "xview_pickplace uses 'see' internally. Consider using widget.see(index) directly.")
+    see(index)
     self
   end
 

@@ -122,12 +122,22 @@ class TestClipboard < Minitest::Test
 
     errors = []
 
-    # Test various unicode characters
-    test_string = "Hello \u4e16\u754c \u{1F600}"  # "Hello 世界 😀"
-    TkClipboard.set(test_string)
-
+    # Test BMP unicode characters (work on all Tcl versions)
+    bmp_string = "Hello \u4e16\u754c"  # "Hello 世界"
+    TkClipboard.set(bmp_string)
     result = TkClipboard.get
-    errors << "unicode failed: expected '#{test_string}', got '#{result}'" unless result == test_string
+    errors << "BMP unicode failed: expected '#{bmp_string}', got '#{result}'" unless result == bmp_string
+
+    # Test emoji (non-BMP) - only works correctly on Tcl 9.0+
+    # Tcl 8.6 uses UTF-16 internally and mangles characters outside the BMP into surrogate pairs.
+    # Tcl 9.0 switched to UTF-32 for full Unicode support.
+    # See: https://core.tcl-lang.org/tips/doc/trunk/tip/600.md
+    if Tk::TCL_VERSION >= "9"
+      emoji_string = "Test \u{1F600}"  # "Test 😀"
+      TkClipboard.set(emoji_string)
+      result = TkClipboard.get
+      errors << "emoji failed: expected '#{emoji_string}', got '#{result}'" unless result == emoji_string
+    end
 
     raise errors.join("\n") unless errors.empty?
   end
