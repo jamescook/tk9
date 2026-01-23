@@ -485,7 +485,12 @@ class TestTkWinfo < Minitest::Test
     root.deiconify
     btn = TkButton.new(root, text: "Test")
     btn.pack
-    root.update
+
+    # Wait for button to have non-zero dimensions (geometry may need time to settle in CI)
+    wait_for_display.call("true", timeout: 2.0) {
+      Tk.update
+      btn.winfo_width > 0 && btn.winfo_height > 0
+    }
 
     # Get button's screen position
     rx = btn.winfo_rootx
@@ -493,13 +498,15 @@ class TestTkWinfo < Minitest::Test
     w = btn.winfo_width
     h = btn.winfo_height
 
+    raise "button has zero dimensions: #{w}x#{h}" if w == 0 || h == 0
+
     # Query what's at the center of the button
     center_x = rx + w / 2
     center_y = ry + h / 2
 
     widget = TkWinfo.containing(center_x, center_y)
     # Should find the button or one of its internal components
-    raise "containing should return a widget, got #{widget.inspect}" if widget.nil?
+    raise "containing should return a widget at #{center_x},#{center_y}, got #{widget.inspect}" if widget.nil?
   end
 
   # --- Screen mm dimensions ---
