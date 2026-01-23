@@ -902,4 +902,539 @@ class TestTextWidget < Minitest::Test
 
     raise errors.join("\n") unless errors.empty?
   end
+
+  # ---------------------------------------------------------
+  # Embedded image configuration
+  # ---------------------------------------------------------
+
+  def test_text_image_config
+    assert_tk_app("Text image config", method(:image_config_app))
+  end
+
+  def image_config_app
+    require 'tk'
+    require 'tk/text'
+    require 'tk/textimage'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Before  After"
+
+    # Create a simple image
+    img = TkPhotoImage.new(width: 16, height: 16)
+    img.put("red", to: [0, 0, 16, 16])
+
+    # Embed the image
+    TkTextImage.new(text, "1.7", image: img, padx: 5, pady: 3)
+
+    # image_cget - get option value
+    padx = text.image_cget("1.7", :padx)
+    errors << "image_cget padx failed, got '#{padx}'" unless padx.to_i == 5
+
+    # image_cget_strict
+    pady = text.image_cget_strict("1.7", :pady)
+    errors << "image_cget_strict failed" unless pady.to_i == 3
+
+    # image_configure - set options
+    text.image_configure("1.7", padx: 10)
+    new_padx = text.image_cget("1.7", :padx)
+    errors << "image_configure failed" unless new_padx.to_i == 10
+
+    # image_configure with hash
+    text.image_configure("1.7", { padx: 8, pady: 4 })
+    errors << "image_configure hash failed" unless text.image_cget("1.7", :padx).to_i == 8
+
+    # image_configinfo - single option
+    info = text.image_configinfo("1.7", :padx)
+    errors << "image_configinfo should return array" unless info.is_a?(Array)
+    errors << "image_configinfo option name wrong" unless info[0] == "padx"
+
+    # image_configinfo - all options
+    all_info = text.image_configinfo("1.7")
+    errors << "image_configinfo all should return array" unless all_info.is_a?(Array)
+
+    # current_image_configinfo - single option
+    current = text.current_image_configinfo("1.7", :padx)
+    errors << "current_image_configinfo should return hash" unless current.is_a?(Hash)
+
+    # current_image_configinfo - all options
+    current_all = text.current_image_configinfo("1.7")
+    errors << "current_image_configinfo all should return hash" unless current_all.is_a?(Hash)
+
+    # image_names - list embedded images
+    names = text.image_names
+    errors << "image_names should not be empty" if names.empty?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Debug mode
+  # ---------------------------------------------------------
+
+  def test_text_debug
+    assert_tk_app("Text debug mode", method(:debug_app))
+  end
+
+  def debug_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    # debug returns current state
+    initial = text.debug
+    errors << "debug should return boolean" unless [true, false].include?(initial)
+
+    # debug= sets state
+    text.debug = true
+    errors << "debug= true failed" unless text.debug == true
+
+    text.debug = false
+    errors << "debug= false failed" unless text.debug == false
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Misc text operations
+  # ---------------------------------------------------------
+
+  def test_text_misc_operations
+    assert_tk_app("Text misc operations", method(:misc_operations_app))
+  end
+
+  def misc_operations_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Hello World\nLine 2\nLine 3"
+
+    # set_current - set current mark position
+    text.set_current("1.5")
+    # No direct way to verify, just ensure no error
+
+    # backspace - delete character before insert
+    text.set_insert("1.6")
+    text.backspace
+    errors << "backspace failed" unless text.get("1.0", "1.10") == "HelloWorld"
+
+    # Reset
+    text.value = "Hello World\nLine 2\nLine 3"
+
+    # get_displaychars - Tk8.5 feature
+    display_text = text.get_displaychars("1.0", "1.5")
+    errors << "get_displaychars failed" unless display_text == "Hello"
+
+    # replace - Tk8.5 feature
+    text.replace("1.0", "1.5", "Hi")
+    errors << "replace failed" unless text.get("1.0", "1.8") == "Hi World"
+
+    # peer_names - list peer widgets (empty initially)
+    peers = text.peer_names
+    errors << "peer_names should return array" unless peers.is_a?(Array)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Scroll pickplace methods
+  # ---------------------------------------------------------
+
+  def test_text_scroll_pickplace
+    assert_tk_app("Text scroll pickplace", method(:scroll_pickplace_app))
+  end
+
+  def scroll_pickplace_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 5)
+    text.pack
+
+    # Insert enough text to scroll
+    50.times { |i| text.insert("end", "Line #{i}\n") }
+
+    Tk.update
+
+    # xview_pickplace - scroll horizontally to show index
+    text.xview_pickplace("1.0")
+    # No easy way to verify, just ensure no error
+
+    # yview_pickplace - scroll vertically to show index
+    text.yview_pickplace("25.0")
+    # No easy way to verify, just ensure no error
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Tag bindings
+  # ---------------------------------------------------------
+
+  def test_text_tag_bindings
+    assert_tk_app("Text tag bindings", method(:tag_bindings_app))
+  end
+
+  def tag_bindings_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Click here"
+    text.tag_add("clickable", "1.0", "1.10")
+
+    # tag_bind - bind event to tag
+    clicked = false
+    text.tag_bind("clickable", "Enter", proc { clicked = true })
+
+    # tag_bindinfo - get binding info
+    info = text.tag_bindinfo("clickable")
+    errors << "tag_bindinfo should return array, got #{info.class}" unless info.is_a?(Array)
+    errors << "tag_bindinfo should include Enter, got #{info.inspect}" unless info.any? { |e| e.to_s.include?("Enter") }
+
+    # tag_bind_append - append to existing binding
+    text.tag_bind_append("clickable", "Enter", proc { })
+
+    # tag_bind_remove - remove binding
+    text.tag_bind_remove("clickable", "Enter")
+    info_after = text.tag_bindinfo("clickable", "Enter")
+    # After removal, binding should be empty or nil
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Dump operations
+  # ---------------------------------------------------------
+
+  def test_text_dump
+    assert_tk_app("Text dump operations", method(:dump_app))
+  end
+
+  def dump_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.insert("end", "Hello ", "tag1")
+    text.insert("end", "World")
+    text.tag_configure("tag1", foreground: "red")
+    text.mark_set("mymark", "1.3")
+
+    # dump with :all - returns [[key, value, index], ...]
+    # Note: text is split at tag/mark boundaries, so "Hello " may be split into parts
+    result = text.dump_all("1.0", "end")
+    errors << "dump_all should include text entries" unless result.any? { |r| r[0] == "text" }
+    text_entries = result.select { |r| r[0] == "text" }.map { |r| r[1] }
+    combined_text = text_entries.join
+    errors << "dump_all text should include 'Hello', got: #{combined_text}" unless combined_text.include?("Hello")
+    errors << "dump_all text should include 'World', got: #{combined_text}" unless combined_text.include?("World")
+
+    # dump_text - just text entries
+    text_result = text.dump_text("1.0", "end")
+    text_only = text_result.map { |r| r[1] }.join
+    errors << "dump_text should include 'World'" unless text_only.include?("World")
+
+    # dump_mark - just marks (includes built-in marks like insert, current)
+    mark_result = text.dump_mark("1.0", "end")
+    mark_names = mark_result.map { |r| r[1].to_s }
+    errors << "dump_mark should include 'mymark', got: #{mark_names.inspect}" unless mark_names.include?("mymark")
+
+    # dump_tag - just tag on/off entries
+    tag_result = text.dump_tag("1.0", "end")
+    errors << "dump_tag should include tagon for tag1" unless tag_result.any? { |r| r[0] == "tagon" && r[1].to_s == "tag1" }
+    errors << "dump_tag should include tagoff for tag1" unless tag_result.any? { |r| r[0] == "tagoff" && r[1].to_s == "tag1" }
+
+    # dump with symbol - same as dump_text
+    result2 = text.dump(:text, "1.0", "1.6")
+    text_content = result2.map { |r| r[1] }.join
+    errors << "dump(:text) should get first 6 chars" unless text_content.include?("Hello")
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Peer text widget (Tk8.5)
+  # ---------------------------------------------------------
+
+  def test_text_peer
+    assert_tk_app("Text peer widget", method(:peer_app))
+  end
+
+  def peer_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 5)
+    text.pack
+
+    text.value = "Shared content"
+
+    # Create a peer widget
+    peer = Tk::Text::Peer.new(text, root, width: 40, height: 5)
+    peer.pack
+
+    # Peer should share content
+    errors << "peer should share content" unless peer.value == "Shared content"
+
+    # Changes in one should reflect in other
+    text.insert("end", " modified")
+    errors << "peer should see changes" unless peer.value.include?("modified")
+
+    # peer_names should now include the peer
+    peers = text.peer_names
+    errors << "peer_names should include peer" if peers.empty?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # tksearch with count variable
+  # ---------------------------------------------------------
+
+  def test_text_tksearch_with_count
+    assert_tk_app("Text tksearch with count", method(:tksearch_count_app))
+  end
+
+  def tksearch_count_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Hello World Hello"
+
+    # tksearch_with_count stores match length in variable
+    count_var = TkVariable.new
+    pos = text.tksearch_with_count([], count_var, "World", "1.0")
+
+    errors << "tksearch_with_count should find World" unless pos.to_s == "1.6"
+    errors << "count_var should be 5" unless count_var.to_i == 5
+
+    # With regexp option
+    count_var2 = TkVariable.new
+    pos2 = text.tksearch_with_count(["regexp"], count_var2, "H.*o", "1.0")
+    errors << "tksearch_with_count regexp failed" if pos2.nil?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Clipboard operations (text_copy, text_cut, text_paste)
+  # ---------------------------------------------------------
+
+  def test_text_clipboard
+    assert_tk_app("Text clipboard operations", method(:clipboard_app))
+  end
+
+  def clipboard_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Hello World"
+
+    # Select some text
+    text.tag_add("sel", "1.0", "1.5")  # Select "Hello"
+
+    # text_copy - copy selection to clipboard
+    text.text_copy
+    errors << "text_copy should preserve text" unless text.value == "Hello World"
+
+    # text_cut - cut selection to clipboard
+    text.tag_add("sel", "1.0", "1.5")
+    text.text_cut
+    errors << "text_cut should remove selected text" unless text.value == " World"
+
+    # text_paste - paste from clipboard at insert
+    text.set_insert("1.0")
+    text.text_paste
+    errors << "text_paste should insert 'Hello'" unless text.value.start_with?("Hello")
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # IndexString.at and any_lines
+  # ---------------------------------------------------------
+
+  def test_text_index_at
+    assert_tk_app("Text index at", method(:index_at_app))
+  end
+
+  def index_at_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Hello World\nLine 2\nLine 3"
+    Tk.update
+
+    # Tk::Text.at class method - creates "@x,y" index
+    idx_class = Tk::Text.at(10, 10)
+    errors << "Tk::Text.at should return '@10,10'" unless idx_class.to_s == "@10,10"
+
+    # text.at instance method
+    idx_inst = text.at(10, 10)
+    errors << "text.at should return '@10,10'" unless idx_inst.to_s == "@10,10"
+
+    # any_lines - positive
+    idx = text.index("1.0")
+    idx_any = idx.any_lines(1)
+    resolved = text.index(idx_any)
+    errors << "any_lines(1) should go to line 2, got '#{resolved}'" unless resolved.to_s == "2.0"
+
+    # any_lines - negative
+    idx2 = text.index("2.0")
+    idx_any_neg = idx2.any_lines(-1)
+    resolved2 = text.index(idx_any_neg)
+    errors << "any_lines(-1) should go to line 1, got '#{resolved2}'" unless resolved2.to_s == "1.0"
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # Insert with multiple tag arrays
+  # ---------------------------------------------------------
+
+  def test_text_insert_multi_tags
+    assert_tk_app("Text insert multi tags", method(:insert_multi_tags_app))
+  end
+
+  def insert_multi_tags_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    # Insert with array of tags: str, [tag,...], str, [tag,...], ...
+    text.insert("end", "Red", ["color_red"], "Blue", ["color_blue"])
+    text.tag_configure("color_red", foreground: "red")
+    text.tag_configure("color_blue", foreground: "blue")
+
+    content = text.value
+    errors << "insert multi-tag should contain 'RedBlue', got '#{content}'" unless content == "RedBlue"
+
+    # Check tag ranges
+    red_ranges = text.tag_ranges("color_red")
+    errors << "color_red tag should have ranges" if red_ranges.empty?
+
+    blue_ranges = text.tag_ranges("color_blue")
+    errors << "color_blue tag should have ranges" if blue_ranges.empty?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # dump_window and dump_image
+  # ---------------------------------------------------------
+
+  def test_text_dump_window_image
+    assert_tk_app("Text dump window/image", method(:dump_window_image_app))
+  end
+
+  def dump_window_image_app
+    require 'tk'
+    require 'tk/text'
+    require 'tk/textwindow'
+    require 'tk/textimage'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "Before  Middle  After"
+
+    # Embed a button
+    btn = TkButton.new(text, text: "Click")
+    TkTextWindow.new(text, "1.7", window: btn)
+
+    # Embed an image
+    img = TkPhotoImage.new(width: 16, height: 16)
+    TkTextImage.new(text, "1.15", image: img)
+
+    # dump_window
+    win_result = text.dump_window("1.0", "end")
+    errors << "dump_window should find embedded button" unless win_result.any? { |r| r[0] == "window" }
+
+    # dump_image
+    img_result = text.dump_image("1.0", "end")
+    errors << "dump_image should find embedded image" unless img_result.any? { |r| r[0] == "image" }
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # ---------------------------------------------------------
+  # rsearch wrap-around
+  # ---------------------------------------------------------
+
+  def test_text_rsearch_wrap
+    assert_tk_app("Text rsearch wrap", method(:rsearch_wrap_app))
+  end
+
+  def rsearch_wrap_app
+    require 'tk'
+    require 'tk/text'
+
+    errors = []
+
+    text = TkText.new(root, width: 40, height: 10)
+    text.pack
+
+    text.value = "First Hello\nSecond Hello\nThird"
+
+    # rsearch with stop - should find in range
+    pos = text.rsearch("Hello", "2.20", "1.0")
+    errors << "rsearch with stop should find 'Hello' at 2.7, got '#{pos}'" unless pos.to_s == "2.7"
+
+    # rsearch_with_length - returns [index, length, match]
+    result = text.rsearch_with_length("Hello", "end")
+    errors << "rsearch_with_length index wrong, got '#{result[0]}'" unless result[0].to_s == "2.7"
+    errors << "rsearch_with_length length should be 5" unless result[1] == 5
+
+    # rsearch_with_length with stop
+    result2 = text.rsearch_with_length("Hello", "2.0", "1.0")
+    errors << "rsearch_with_length with stop should find at 1.6" unless result2[0].to_s == "1.6"
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

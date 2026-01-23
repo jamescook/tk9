@@ -573,7 +573,7 @@ class Tk::Text<TkTextWin
   end
 
   def backspace
-    self.delete 'insert'
+    self.delete 'insert - 1 char', 'insert'
   end
 
   def bbox(index)
