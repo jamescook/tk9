@@ -259,11 +259,8 @@ class TkcTag<TkObject
   end
 
   def exist?
-    if @c.find_withtag(@id)
-      true
-    else
-      false
-    end
+    # find_withtag returns array - empty array [] is truthy in Ruby
+    !@c.find_withtag(@id).empty?
   end
 
   def delete
