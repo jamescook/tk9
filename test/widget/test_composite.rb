@@ -461,4 +461,211 @@ class TestTkComposite < Minitest::Test
 
     raise "TkComposite subclass test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
+
+  # --- Additional coverage tests ---
+
+  def test_composite_cget_strict
+    assert_tk_app("TkComposite cget_strict", method(:composite_cget_strict_app))
+  end
+
+  def composite_cget_strict_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      attr_reader :label
+
+      def initialize_composite(keys = {})
+        @label = TkLabel.new(@frame, text: 'Strict Test')
+        @label.pack
+        delegate('text', @label)
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # cget_strict should work like cget for delegated options
+    result = widget.cget_strict('text')
+    errors << "cget_strict failed: expected 'Strict Test', got '#{result}'" unless result == 'Strict Test'
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_composite_cget_tkstring
+    assert_tk_app("TkComposite cget_tkstring", method(:composite_cget_tkstring_app))
+  end
+
+  def composite_cget_tkstring_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      attr_reader :label
+
+      def initialize_composite(keys = {})
+        @label = TkLabel.new(@frame, text: 'TkString Test')
+        @label.pack
+        delegate('text', @label)
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # cget_tkstring returns string representation
+    result = widget.cget_tkstring('text')
+    errors << "cget_tkstring failed: expected string, got #{result.class}" unless result.is_a?(String)
+    errors << "cget_tkstring value wrong: expected 'TkString Test', got '#{result}'" unless result == 'TkString Test'
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_composite_database_class
+    assert_tk_app("TkComposite database_class", method(:composite_database_class_app))
+  end
+
+  def composite_database_class_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      def initialize_composite(keys = {})
+        TkLabel.new(@frame, text: 'DB Class').pack
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # database_class delegates to @frame.database_class
+    result = widget.database_class
+    errors << "database_class should return something" if result.nil?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_composite_inspect
+    assert_tk_app("TkComposite inspect", method(:composite_inspect_app))
+  end
+
+  def composite_inspect_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      def initialize_composite(keys = {})
+        TkLabel.new(@frame, text: 'Inspect').pack
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # inspect should include @epath
+    result = widget.inspect
+    errors << "inspect should be a string" unless result.is_a?(String)
+    errors << "inspect should include @epath" unless result.include?('@epath=')
+    errors << "inspect should include the path" unless result.include?(widget.epath)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_composite_option_methods_without_getter
+    assert_tk_app("TkComposite option_methods without getter", method(:composite_option_no_getter_app))
+  end
+
+  def composite_option_no_getter_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    # Test option_methods where there's no cget method - value stored in @option_setting
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      def initialize_composite(keys = {})
+        @label = TkLabel.new(@frame, text: '0')
+        @label.pack
+        # Register option with only setter (no getter)
+        option_methods(:my_option)
+      end
+
+      def my_option(val)
+        @label.configure(text: val.to_s)
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # Configure the option
+    widget.configure('my_option', 'stored_value')
+
+    # cget should return the stored value from @option_setting
+    result = widget.cget('my_option')
+    errors << "option without getter should store value, got '#{result}'" unless result == 'stored_value'
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_composite_delegate_alias_error
+    assert_tk_app("TkComposite delegate_alias errors", method(:composite_delegate_alias_error_app))
+  end
+
+  def composite_delegate_alias_error_app
+    require 'tk'
+    require 'tk/composite'
+
+    errors = []
+
+    composite_class = Class.new(TkFrame) do
+      include TkComposite
+
+      attr_reader :label
+
+      def initialize_composite(keys = {})
+        @label = TkLabel.new(@frame, text: 'Test')
+        @label.pack
+      end
+    end
+
+    widget = composite_class.new(root)
+    widget.pack
+
+    # delegate_alias with no widgets should raise ArgumentError
+    begin
+      widget.send(:delegate_alias, 'alias', 'option')
+      errors << "delegate_alias with no widgets should raise ArgumentError"
+    rescue ArgumentError => e
+      errors << "wrong error message" unless e.message.include?("target widgets")
+    end
+
+    # Cannot alias DEFAULT
+    begin
+      widget.send(:delegate_alias, 'DEFAULT', 'other', widget.label)
+      errors << "aliasing DEFAULT should raise ArgumentError"
+    rescue ArgumentError => e
+      errors << "wrong error message for DEFAULT" unless e.message.include?("DEFAULT")
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

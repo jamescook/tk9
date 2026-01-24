@@ -144,7 +144,7 @@ class Tk::PanedWindow<TkWindow
         #                                         win, "-#{key}"))
         conf = tk_split_list(tk_send_without_enc('paneconfigure',
                                                  win, "-#{key}"),
-                             false, true)
+                             0, false, true)
         conf[0] = conf[0][1..-1]
         if conf[0] == 'hide'
           conf[3] = bool(conf[3]) unless conf[3].empty?
