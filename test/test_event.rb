@@ -351,4 +351,320 @@ class TestEvent < Minitest::Test
 
     raise errors.join("\n") unless errors.empty?
   end
+
+  # --- KEY_TBL and PROC_TBL ---
+
+  def test_event_key_tbl
+    assert_tk_app("Event KEY_TBL", method(:app_event_key_tbl))
+  end
+
+  def app_event_key_tbl
+    require 'tk'
+
+    errors = []
+    key_tbl = TkEvent::Event::KEY_TBL
+
+    # KEY_TBL contains substitution definitions
+    # Each entry is [subst_char, proc_type_char, attr_name]
+    serial_entry = key_tbl.find { |e| e.is_a?(Array) && e[2] == :serial }
+    errors << "KEY_TBL should have serial entry" unless serial_entry
+    errors << "serial subst char should be #" unless serial_entry && serial_entry[0] == ?#
+
+    widget_entry = key_tbl.find { |e| e.is_a?(Array) && e[2] == :widget }
+    errors << "KEY_TBL should have widget entry" unless widget_entry
+    errors << "widget subst char should be W" unless widget_entry && widget_entry[0] == ?W
+
+    keysym_entry = key_tbl.find { |e| e.is_a?(Array) && e[2] == :keysym }
+    errors << "KEY_TBL should have keysym entry" unless keysym_entry
+    errors << "keysym subst char should be K" unless keysym_entry && keysym_entry[0] == ?K
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_event_proc_tbl
+    assert_tk_app("Event PROC_TBL", method(:app_event_proc_tbl))
+  end
+
+  def app_event_proc_tbl
+    require 'tk'
+
+    errors = []
+    proc_tbl = TkEvent::Event::PROC_TBL
+
+    # PROC_TBL maps proc_type_char to conversion procs/methods
+    num_entry = proc_tbl.find { |e| e.is_a?(Array) && e[0] == ?n }
+    errors << "PROC_TBL should have numeric converter" unless num_entry
+    errors << "numeric converter should be callable" unless num_entry && num_entry[1].respond_to?(:call)
+
+    str_entry = proc_tbl.find { |e| e.is_a?(Array) && e[0] == ?s }
+    errors << "PROC_TBL should have string converter" unless str_entry
+
+    bool_entry = proc_tbl.find { |e| e.is_a?(Array) && e[0] == ?b }
+    errors << "PROC_TBL should have boolean converter" unless bool_entry
+
+    win_entry = proc_tbl.find { |e| e.is_a?(Array) && e[0] == ?w }
+    errors << "PROC_TBL should have window converter" unless win_entry
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Event fields in callback ---
+
+  def test_event_fields_in_callback
+    assert_tk_app("Event fields in callback", method(:app_event_fields))
+  end
+
+  def app_event_fields
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    btn = TkButton.new(root, text: "Test")
+    btn.pack
+    Tk.update
+
+    event_serial = nil
+    event_x = nil
+    event_y = nil
+    event_time = nil
+
+    btn.bind('ButtonPress-1') do |e|
+      event_serial = e.serial
+      event_x = e.x
+      event_y = e.y
+      event_time = e.time
+    end
+
+    # Generate event with specific coordinates
+    Tk.event_generate(btn, 'ButtonPress-1', x: 10, y: 20)
+    Tk.update
+
+    errors << "serial should be a number" unless event_serial.is_a?(Integer)
+    errors << "x should be 10, got #{event_x}" unless event_x == 10
+    errors << "y should be 20, got #{event_y}" unless event_y == 20
+    errors << "time should be a number" unless event_time.is_a?(Integer)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Virtual events ---
+
+  def test_virtual_event_binding
+    assert_tk_app("Virtual event binding", method(:app_virtual_event))
+  end
+
+  def app_virtual_event
+    require 'tk'
+
+    errors = []
+    root.deiconify
+
+    btn = TkButton.new(root, text: "Test")
+    btn.pack
+    Tk.update
+
+    triggered = false
+    # Virtual events use simple binding (no event object)
+    Tk.tk_call('bind', btn.path, '<<MyCustomEvent>>', proc { triggered = true })
+
+    # Generate virtual event using tk_call
+    Tk.tk_call('event', 'generate', btn.path, '<<MyCustomEvent>>')
+    Tk.update
+
+    errors << "Virtual event should have triggered" unless triggered
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Mouse wheel event ---
+
+  def test_mousewheel_event
+    assert_tk_app("MouseWheel event", method(:app_mousewheel_event))
+  end
+
+  def app_mousewheel_event
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    canvas = TkCanvas.new(root, width: 200, height: 200)
+    canvas.pack
+    Tk.update
+
+    delta_received = nil
+    canvas.bind('MouseWheel') do |e|
+      delta_received = e.wheel_delta
+    end
+
+    # Generate mousewheel event with delta
+    Tk.event_generate(canvas, 'MouseWheel', delta: 120)
+    Tk.update
+
+    errors << "wheel_delta should be 120, got #{delta_received}" unless delta_received == 120
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Motion event ---
+
+  def test_motion_event
+    assert_tk_app("Motion event", method(:app_motion_event))
+  end
+
+  def app_motion_event
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    canvas = TkCanvas.new(root, width: 200, height: 200)
+    canvas.pack
+    Tk.update
+
+    motion_x = nil
+    motion_y = nil
+    canvas.bind('Motion') do |e|
+      motion_x = e.x
+      motion_y = e.y
+    end
+
+    Tk.event_generate(canvas, 'Motion', x: 50, y: 75)
+    Tk.update
+
+    errors << "motion x should be 50, got #{motion_x}" unless motion_x == 50
+    errors << "motion y should be 75, got #{motion_y}" unless motion_y == 75
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Focus events ---
+
+  def test_focus_events
+    assert_tk_app("Focus events", method(:app_focus_events))
+  end
+
+  def app_focus_events
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    entry = TkEntry.new(root)
+    entry.pack
+    Tk.update
+
+    focus_in = false
+    focus_out = false
+
+    entry.bind('FocusIn') { focus_in = true }
+    entry.bind('FocusOut') { focus_out = true }
+
+    entry.focus(:force)
+    Tk.update
+    errors << "FocusIn should have triggered" unless focus_in
+
+    # Create another widget and focus it
+    entry2 = TkEntry.new(root)
+    entry2.pack
+    entry2.focus(:force)
+    Tk.update
+    errors << "FocusOut should have triggered" unless focus_out
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Configure event ---
+
+  def test_configure_event
+    assert_tk_app("Configure event", method(:app_configure_event))
+  end
+
+  def app_configure_event
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    frame = TkFrame.new(root, width: 100, height: 100)
+    frame.pack
+    Tk.update
+
+    config_width = nil
+    config_height = nil
+    frame.bind('Configure') do |e|
+      config_width = e.width
+      config_height = e.height
+    end
+
+    # Resize the frame
+    frame.configure(width: 200, height: 150)
+    Tk.update
+
+    # Configure event should have been triggered
+    errors << "Configure width should be set" unless config_width.is_a?(Integer)
+    errors << "Configure height should be set" unless config_height.is_a?(Integer)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- LONGKEY_TBL ---
+
+  def test_event_longkey_tbl
+    assert_tk_app("Event LONGKEY_TBL", method(:app_event_longkey_tbl))
+  end
+
+  def app_event_longkey_tbl
+    require 'tk'
+
+    errors = []
+
+    # LONGKEY_TBL is for long substitution keys (like tkdnd)
+    # It's typically empty but should be an array
+    tbl = TkEvent::Event::LONGKEY_TBL
+    errors << "LONGKEY_TBL should be an Array" unless tbl.is_a?(Array)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Event with explicit arguments ---
+
+  def test_event_binding_with_args
+    assert_tk_app("Event binding with explicit args", method(:app_event_with_args))
+  end
+
+  def app_event_with_args
+    require 'tk'
+
+    errors = []
+    root.deiconify
+    Tk.update
+
+    btn = TkButton.new(root, text: "Test")
+    btn.pack
+    Tk.update
+
+    received_x = nil
+    received_y = nil
+
+    # Bind with explicit arguments (only x and y)
+    btn.bind('ButtonPress-1', proc { |x, y|
+      received_x = x
+      received_y = y
+    }, :x, :y)
+
+    Tk.event_generate(btn, 'ButtonPress-1', x: 30, y: 40)
+    Tk.update
+
+    errors << "x should be 30, got #{received_x}" unless received_x == 30
+    errors << "y should be 40, got #{received_y}" unless received_y == 40
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end
