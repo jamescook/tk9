@@ -2,6 +2,8 @@
 #
 # tk/xim.rb : control input_method
 #
+# :nocov:
+# X Input Method - requires X11 with input method configured to test
 require 'tk' unless defined?(Tk)
 
 module TkXIM
@@ -75,3 +77,4 @@ module TkXIM
     TkXIM.configinfo(self, slot)
   end
 end
+# :nocov:
