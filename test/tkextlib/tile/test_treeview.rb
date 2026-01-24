@@ -258,6 +258,160 @@ class TestTreeviewWidget < Minitest::Test
     tree2.tag_configure("important", background: "lightblue")
     tree2.itemconfigure(item2, tags: ["important"])
 
+    # ========================================
+    # Navigation Tests
+    # ========================================
+
+    # --- Root ---
+    root_item = tree2.root
+    errors << "root failed" if root_item.nil?
+
+    # --- parent_item ---
+    parent = tree2.parent_item(item1)
+    errors << "parent_item should return root" unless parent.id == ''
+
+    # --- next_item / prev_item ---
+    next_i = tree2.next_item(item1)
+    errors << "next_item failed" unless next_i&.id == item2.id
+
+    prev_i = tree2.prev_item(item2)
+    errors << "prev_item failed" unless prev_i&.id == item1.id
+
+    # first item has no prev
+    first_prev = tree2.prev_item(item1)
+    errors << "prev_item of first should be nil" unless first_prev.nil?
+
+    # --- see (scroll into view) ---
+    tree2.see(item2)
+
+    # --- focus_item ---
+    tree2.focus_item(item1)
+    focused = tree2.focus_item
+    errors << "focus_item failed" unless focused&.id == item1.id
+
+    # ========================================
+    # Additional Item Operations
+    # ========================================
+
+    # --- set_children ---
+    child1 = tree2.insert(item1, "end", text: "Child 1")
+    child2 = tree2.insert(item1, "end", text: "Child 2")
+    tree2.set_children(item1, child2, child1)  # reverse order
+    reordered = tree2.children(item1)
+    errors << "set_children failed" unless reordered[0].id == child2.id
+
+    # --- detach ---
+    tree2.detach(child1)
+    after_detach = tree2.children(item1)
+    errors << "detach failed" unless after_detach.size == 1
+
+    # --- get_directory (get all column values) ---
+    dir = tree2.get_directory(item1)
+    errors << "get_directory should return array" unless dir.is_a?(Array)
+
+    # ========================================
+    # Tag Operations
+    # ========================================
+
+    # --- tag_names ---
+    tag_list = tree2.tag_names
+    errors << "tag_names should return array" unless tag_list.is_a?(Array)
+
+    # --- tag_add / tag_remove ---
+    tree2.tag_add("highlight", item2)
+    errors << "tag_add failed" unless tree2.tag_has?("highlight", item2)
+
+    tree2.tag_remove("highlight", item2)
+    errors << "tag_remove failed" if tree2.tag_has?("highlight", item2)
+
+    # --- tag_has (list items with tag) ---
+    tree2.tag_add("highlight", item1)
+    items_with_tag = tree2.tag_has("highlight")
+    errors << "tag_has should return items" if items_with_tag.empty?
+
+    # ========================================
+    # Treeview::Item class tests
+    # ========================================
+
+    # Item is returned from insert, test its methods
+    test_item = tree2.insert("", "end", text: "Test Item", values: ["V1", "V2"])
+
+    # --- Item#id ---
+    errors << "Item#id failed" if test_item.id.nil?
+
+    # --- Item#cget / configure ---
+    test_item.configure(text: "Modified Test")
+    errors << "Item#configure failed" unless test_item.cget(:text) == "Modified Test"
+
+    # --- Item#open? / open / close ---
+    test_item.open
+    errors << "Item#open failed" unless test_item.open?
+    test_item.close
+    errors << "Item#close failed" if test_item.open?
+
+    # --- Item#index ---
+    idx = test_item.index
+    errors << "Item#index failed" if idx.nil?
+
+    # --- Item#children / set_children ---
+    sub1 = test_item.insert("end", text: "Sub 1")
+    sub2 = test_item.insert("end", text: "Sub 2")
+    kids = test_item.children
+    errors << "Item#children failed" unless kids.size == 2
+
+    # --- Item#parent_item ---
+    p = sub1.parent_item
+    errors << "Item#parent_item failed" unless p.id == test_item.id
+
+    # --- Item#next_item / prev_item ---
+    n = sub1.next_item
+    errors << "Item#next_item failed" unless n&.id == sub2.id
+
+    # --- Item#exist? ---
+    errors << "Item#exist? failed" unless test_item.exist?
+
+    # --- Item#selection methods ---
+    test_item.selection_set
+    test_item.selection_add
+    test_item.selection_toggle
+    test_item.selection_remove
+
+    # --- Item#see ---
+    test_item.see
+
+    # --- Item#get / set ---
+    test_item.set("col1", "NewVal")
+    errors << "Item#set/get failed" unless test_item.get("col1") == "NewVal"
+
+    # --- Item#delete ---
+    test_item.delete
+    errors << "Item#delete failed" if test_item.exist?
+
+    # ========================================
+    # Treeview::Tag class tests
+    # ========================================
+
+    tag = Tk::Tile::Treeview::Tag.new(tree2, foreground: "blue")
+    errors << "Tag creation failed" if tag.nil?
+    errors << "Tag#id failed" if tag.id.nil?
+
+    # --- Tag#cget / configure ---
+    tag.configure(background: "lightyellow")
+    bg = tag.cget(:background)
+    errors << "Tag#configure/cget failed" if bg.to_s.empty?
+
+    # --- Tag#add / remove ---
+    tag.add(item1)
+    errors << "Tag#add failed" unless tag.tag_has?(item1)
+
+    tag.remove(item1)
+    errors << "Tag#remove failed" if tag.tag_has?(item1)
+
+    # --- Tag#tag_has (list items) ---
+    tag.add(item1, item2)
+    items = tag.tag_has
+    errors << "Tag#tag_has list failed" unless items.size >= 2
+
     raise "Treeview test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

@@ -139,6 +139,48 @@ class TestTNotebookWidget < Minitest::Test
 
     notebook.tabconfigure(tab3, state: "normal")
 
+    # ========================================
+    # Additional coverage
+    # ========================================
+
+    # --- Class method style ---
+    style_str = Tk::Tile::TNotebook.style
+    errors << "class style() failed" unless style_str == 'TNotebook'
+
+    style_custom = Tk::Tile::TNotebook.style('Custom')
+    errors << "class style('Custom') failed" unless style_custom == 'TNotebook.Custom'
+
+    # --- Notebook alias ---
+    errors << "Notebook alias missing" unless Tk::Tile::Notebook == Tk::Tile::TNotebook
+
+    # --- selected (returns currently selected tab widget) ---
+    notebook.select(tab1)
+    sel = notebook.selected
+    errors << "selected failed" if sel.nil?
+
+    # --- tabcget_tkstring ---
+    text_str = notebook.tabcget_tkstring(tab1, :text)
+    errors << "tabcget_tkstring failed" if text_str.nil?
+
+    # --- forget (removes tab completely) ---
+    notebook.forget(tab4)
+    errors << "forget failed" unless notebook.tabs.size == 3
+
+    # --- enable_traversal (keyboard navigation) ---
+    begin
+      notebook.enable_traversal
+    rescue => e
+      errors << "enable_traversal failed: #{e.message}"
+    end
+
+    # --- tabconfiginfo all options ---
+    all_info = notebook.tabconfiginfo(tab1)
+    errors << "tabconfiginfo all failed" unless all_info.is_a?(Array) && all_info.size > 0
+
+    # --- current_tabconfiginfo all options ---
+    all_current = notebook.current_tabconfiginfo(tab1)
+    errors << "current_tabconfiginfo all failed" unless all_current.is_a?(Hash) && all_current.size > 0
+
     raise "TNotebook test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

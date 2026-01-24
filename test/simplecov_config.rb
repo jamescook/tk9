@@ -43,8 +43,18 @@ module SimpleCovConfig
   # Standard groups for coverage report
   def self.apply_groups(simplecov_context)
     simplecov_context.add_group 'Core', 'lib/tk.rb'
-    simplecov_context.add_group 'Widgets', 'lib/tk'
-    simplecov_context.add_group 'Extensions', 'lib/tkextlib'
+    simplecov_context.add_group 'Widgets', 'lib/tk/'
+    simplecov_context.add_group 'Tile (Ttk)', 'lib/tkextlib/tile/'
+    simplecov_context.add_group 'BWidget', 'lib/tkextlib/bwidget/'
+    simplecov_context.add_group 'TkImg', 'lib/tkextlib/tkimg/'
+    simplecov_context.add_group 'TkDND', 'lib/tkextlib/tkDND/'
+    simplecov_context.add_group 'Other Extensions', ->(src) {
+      src.filename.include?('/lib/tkextlib/') &&
+      !src.filename.include?('/tile/') &&
+      !src.filename.include?('/bwidget/') &&
+      !src.filename.include?('/tkimg/') &&
+      !src.filename.include?('/tkDND/')
+    }
     simplecov_context.add_group 'Utilities', ['lib/tkutil.rb', 'lib/tk/util.rb']
   end
 

@@ -92,6 +92,47 @@ class TestTPanedWidget < Minitest::Test
     original_style = hpaned.cget(:style)
     errors << "style cget failed" if original_style.nil?
 
+    # --- Class method style ---
+    style_str = Tk::Tile::TPaned.style
+    errors << "class style() failed" unless style_str == 'TPaned'
+
+    style_custom = Tk::Tile::TPaned.style('Custom')
+    errors << "class style('Custom') failed" unless style_custom == 'TPaned.Custom'
+
+    # --- Aliases ---
+    errors << "PanedWindow alias missing" unless Tk::Tile::PanedWindow == Tk::Tile::TPaned
+    errors << "Panedwindow alias missing" unless Tk::Tile::Panedwindow == Tk::Tile::TPaned
+    errors << "Paned alias missing" unless Tk::Tile::Paned == Tk::Tile::TPaned
+
+    # --- panecget variants ---
+    weight_str = hpaned.panecget_tkstring(left_pane, :weight)
+    errors << "panecget_tkstring failed" if weight_str.nil?
+
+    weight_strict = hpaned.panecget_strict(left_pane, :weight)
+    errors << "panecget_strict failed" if weight_strict.nil?
+
+    # Aliases
+    weight_alias = hpaned.pane_cget(left_pane, :weight)
+    errors << "pane_cget alias failed" if weight_alias.nil?
+
+    # --- pane_configure alias ---
+    hpaned.pane_configure(left_pane, weight: 3)
+    errors << "pane_configure alias failed" unless hpaned.panecget(left_pane, :weight).to_i == 3
+
+    # --- Add multiple panes at once ---
+    paned3 = Tk::Tile::TPaned.new(frame, orient: "horizontal")
+    p1 = Tk::Tile::TFrame.new(paned3)
+    p2 = Tk::Tile::TFrame.new(paned3)
+    p3 = Tk::Tile::TFrame.new(paned3)
+    paned3.add(p1, p2, p3, weight: 1)
+    errors << "add multiple panes failed" unless paned3.panes.size == 3
+
+    # --- identify (returns sash index at coordinates, or nil) ---
+    # We need the widget to be mapped to test identify
+    Tk.update
+    _result = hpaned.identify(150, 10)
+    # Result may be nil if not over a sash, that's ok
+
     raise "TPaned test failures:\n  " + errors.join("\n  ") unless errors.empty?
   end
 end

@@ -810,12 +810,12 @@ class Tk::Tile::Treeview < TkWindow
 
   def tag_add(tag, *items)
     fail ArgumentError, "no target items" if items.empty?
-    tk_send('tag', 'add', tagid(tag), *(items.collect{|item| tagid(item)}))
+    tk_send('tag', 'add', tagid(tag), array2tk_list(items.flatten, true))
     self
   end
 
   def tag_remove(tag, *items)
-    tk_send('tag', 'remove', tagid(tag), *(items.collect{|item| tagid(item)}))
+    tk_send('tag', 'remove', tagid(tag), array2tk_list(items.flatten, true))
     self
   end
 

@@ -99,6 +99,14 @@ namespace :test do
 
   task tkimg: :compile
 
+  Rake::TestTask.new(:tile) do |t|
+    t.libs << 'test'
+    t.test_files = FileList['test/tkextlib/tile/test_*.rb']
+    t.verbose = true
+  end
+
+  task tile: :compile
+
   desc "Run all tests (main, bwidget, tkdnd)"
   task all: ['test', 'bwidget:test', 'tkdnd:test']
 end
@@ -617,6 +625,30 @@ namespace :docker do
       sh cmd
     end
 
+    desc "Run tile tests in Docker (TCL_VERSION=9.0|8.6, TEST=path/to/test.rb)"
+    task tile: 'docker:build' do
+      tcl_version = tcl_version_from_env
+      image_name = docker_image_name(tcl_version)
+
+      require 'fileutils'
+      FileUtils.mkdir_p('coverage')
+
+      puts "Running tile tests in Docker (Tcl #{tcl_version})..."
+      cmd = "docker run --rm --init"
+      cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
+      cmd += " -e TCL_VERSION=#{tcl_version}"
+      cmd += " -e TEST=#{ENV['TEST']}" if ENV['TEST']
+      cmd += " -e TESTOPTS=#{ENV['TESTOPTS']}" if ENV['TESTOPTS']
+      if ENV['COVERAGE'] == '1'
+        cmd += " -e COVERAGE=1"
+        cmd += " -e COVERAGE_NAME=tile"
+      end
+      cmd += " #{image_name}"
+      cmd += " xvfb-run -a bundle exec rake test:tile"
+
+      sh cmd
+    end
+
     desc "Run all tests in Docker with combined coverage (TCL_VERSION=9.0|8.6)"
     task all: :build do
       # Clean coverage results first
@@ -628,6 +660,8 @@ namespace :docker do
       Rake::Task['docker:test'].invoke
       Rake::Task['docker:test:bwidget'].invoke
       Rake::Task['docker:test:tkdnd'].invoke
+      Rake::Task['docker:test:tkimg'].invoke
+      Rake::Task['docker:test:tile'].invoke
 
       # Collate coverage inside Docker (paths match)
       if ENV['COVERAGE'] == '1'

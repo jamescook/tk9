@@ -217,4 +217,203 @@ class TestTileStyle < Minitest::Test
 
     raise errors.join("\n") unless errors.empty?
   end
+
+  # ---------------------------------------------------------
+  # Additional coverage for style methods
+  # ---------------------------------------------------------
+
+  def test_configure_default_style
+    assert_tk_app("Style configure default", method(:configure_default_app))
+  end
+
+  def configure_default_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Configure with hash only (style defaults to '.')
+    Tk::Tile::Style.configure(background: 'lightgray')
+
+    # Use 'default' alias
+    Tk::Tile::Style.default('TLabel', foreground: 'black')
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_map_configinfo
+    assert_tk_app("Style map_configinfo", method(:map_configinfo_app))
+  end
+
+  def map_configinfo_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Set up some map values first
+    Tk::Tile::Style.map('TButton', background: [:active, 'blue', :disabled, 'gray'])
+
+    # map_configinfo with style and key
+    result = Tk::Tile::Style.map_configinfo('TButton', 'background')
+    errors << "map_configinfo should return array" unless result.is_a?(Array)
+
+    # map_default_configinfo
+    Tk::Tile::Style.map('.', foreground: [:disabled, 'darkgray'])
+    result = Tk::Tile::Style.map_default_configinfo('foreground')
+    errors << "map_default_configinfo should return array" unless result.is_a?(Array)
+
+    # map_configure alias
+    Tk::Tile::Style.map_configure('TEntry', background: [:focus, 'white'])
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_map_query_all
+    assert_tk_app("Style map query all", method(:map_query_all_app))
+  end
+
+  def map_query_all_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Set up some map values
+    Tk::Tile::Style.map('TButton',
+      background: [:active, 'blue'],
+      foreground: [:disabled, 'gray'])
+
+    # Query all mappings (no keys argument)
+    result = Tk::Tile::Style.map('TButton')
+    errors << "map() with no keys should return Hash, got #{result.class}" unless result.is_a?(Hash)
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_lookup_with_fallback
+    assert_tk_app("Style lookup with fallback", method(:lookup_fallback_app))
+  end
+
+  def lookup_fallback_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Lookup with state and fallback value
+    result = Tk::Tile::Style.lookup('TButton', 'background', 'active', 'red')
+    # Result should be either the actual value or our fallback
+    errors << "lookup with fallback should return value" if result.nil?
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_layout_set
+    assert_tk_app("Style layout set", method(:layout_set_app))
+  end
+
+  def layout_set_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Set a custom layout for a style
+    # Create a simple layout spec
+    begin
+      # Query layout for an existing style first (should work)
+      existing_layout = Tk::Tile::Style.layout('TLabel')
+      errors << "layout query should return data" if existing_layout.nil?
+    rescue => e
+      errors << "layout query failed: #{e.message}"
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_element_create
+    assert_tk_app("Style element_create", method(:element_create_app))
+  end
+
+  def element_create_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Create an image element
+    # First need an image
+    img = TkPhotoImage.new(width: 10, height: 10)
+    img.put('red', to: [0, 0, 10, 10])
+
+    begin
+      Tk::Tile::Style.element_create('test.image', :image, img)
+    rescue => e
+      errors << "element_create image failed: #{e.message}"
+    end
+
+    # Verify element was created
+    elements = Tk::Tile::Style.element_names
+    errors << "created element should be in element_names" unless elements.include?('test.image')
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_element_create_image_with_states
+    assert_tk_app("Style element_create_image with states", method(:element_create_image_states_app))
+  end
+
+  def element_create_image_states_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Create images for different states
+    img_normal = TkPhotoImage.new(width: 10, height: 10)
+    img_normal.put('green', to: [0, 0, 10, 10])
+
+    img_active = TkPhotoImage.new(width: 10, height: 10)
+    img_active.put('blue', to: [0, 0, 10, 10])
+
+    begin
+      # Array format: [base_image, state1, img1, state2, img2, ...]
+      Tk::Tile::Style.element_create_image('test.stateful',
+        [img_normal, 'active', img_active],
+        border: 2, sticky: 'nsew')
+    rescue => e
+      errors << "element_create_image with states failed: #{e.message}"
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  def test_theme_settings
+    assert_tk_app("Style theme_settings", method(:theme_settings_app))
+  end
+
+  def theme_settings_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+
+    # Create a theme first
+    Tk::Tile::Style.theme_create('settings_test', parent: 'default')
+
+    # Apply settings to theme using a block
+    begin
+      Tk::Tile::Style.theme_settings('settings_test') do
+        Tk::Tile::Style.configure('TButton', padding: 10)
+      end
+    rescue => e
+      errors << "theme_settings failed: #{e.message}"
+    end
+
+    # Switch back to default
+    Tk::Tile::Style.theme_use('default')
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

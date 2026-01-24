@@ -479,6 +479,12 @@ class TestTextWidget < Minitest::Test
     # display_lines requires widget to be rendered and visible
     # These can be flaky - display geometry may need time to settle
     root.deiconify
+    root.geometry("400x200+0+0")
+    text.focus
+    Tk.update_idletasks
+    Tk.update
+    # Extra settle time for display geometry
+    sleep 0.1
     Tk.update
 
     # wait_for_display helper is injected by TkWorker for display-dependent checks
