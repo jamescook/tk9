@@ -224,50 +224,24 @@ class TkTextTag<TkObject
 end
 TktTag = TkTextTag
 
-# TODO: Refactor - self.new bypasses initialize via allocate+instance_eval
+# Named tags are cached per (parent, name) pair via the text widget's @tags hash.
+# self.new returns existing tag if found, otherwise creates new via initialize.
 class TkTextNamedTag<TkTextTag
   def self.new(parent, name, *args)
-    # Check if tag already exists via the text widget's @tags
+    # Return existing tag if already registered with this parent
     existing = parent.tagid2obj(name)
-    if existing.kind_of?(TkTextTag)
-      tagobj = existing
-    else
-      # Create new tag
-      (tagobj = self.allocate).instance_eval{
-        @parent = @t = parent
-        @tpath = parent.path
-        @path = @id = name
-        @t._addtag @id, self
-      }
-    end
+    return existing if existing.kind_of?(TkTextTag)
 
-    if args != []
-      keys = args.pop
-      if keys.kind_of?(Hash)
-        tagobj.add(*args) if args != []
-        tagobj.configure(keys)
-      else
-        args.push keys
-        tagobj.add(*args)
-      end
-    end
-
-    tagobj
+    # Create new tag via normal instantiation
+    super
   end
 
   def initialize(parent, name, *args)
-    # dummy:: not called by 'new' method
-
-    #unless parent.kind_of?(Tk::Text)
-    #  fail ArgumentError, "expect Tk::Text for 1st argument"
-    #end
     @parent = @t = parent
     @tpath = parent.path
     @path = @id = name
+    @t._addtag @id, self
 
-    #if mode
-    #  tk_call @t.path, "addtag", @id, *args
-    #end
     if args != []
       keys = args.pop
       if keys.kind_of?(Hash)
@@ -278,7 +252,6 @@ class TkTextNamedTag<TkTextTag
         add(*args)
       end
     end
-    @t._addtag @id, self
   end
 end
 TktNamedTag = TkTextNamedTag

@@ -349,39 +349,16 @@ end
 
 ########################
 
-# TODO: Refactor - self.new bypasses initialize via allocate+instance_eval
+# Root represents the treeview's root node (id='').
+# Cached via Treeview#root memoization - no need for complex self.new override.
+# Note: Root is NOT registered in ItemID_TBL because all id2obj calls guard
+# against empty id (returning nil instead). The root is accessed via tree.root.
 class Tk::Tile::Treeview::Root < Tk::Tile::Treeview::Item
-  def self.new(tree, keys = {})
-    tpath = tree.path
-    obj = nil
-    Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{
-      if Tk::Tile::Treeview::Item::ItemID_TBL[tpath] &&
-          Tk::Tile::Treeview::Item::ItemID_TBL[tpath]['']
-        obj = Tk::Tile::Treeview::Item::ItemID_TBL[tpath]['']
-      else
-        #super(tree, keys)
-        (obj = self.allocate).instance_eval{
-          @parent = @t = tree
-          @tpath = tree.path
-          @path = @id = ''
-          Tk::Tile::Treeview::Item::ItemID_TBL[@tpath] ||= {}
-          Tk::Tile::Treeview::Item::ItemID_TBL[@tpath][@id] = self
-        }
-      end
-    }
-    obj.configure(keys) if keys && ! keys.empty?
-    obj
-  end
-
   def initialize(tree, keys = {})
-    # dummy:: not called by 'new' method
     @parent = @t = tree
     @tpath = tree.path
     @path = @id = ''
-    Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{
-      Tk::Tile::Treeview::Item::ItemID_TBL[@tpath] ||= {}
-      Tk::Tile::Treeview::Item::ItemID_TBL[@tpath][@id] = self
-    }
+    configure(keys) if keys && !keys.empty?
   end
 end
 
@@ -590,7 +567,7 @@ class Tk::Tile::Treeview < TkWindow
   end
 
   def root
-    Tk::Tile::Treeview::Root.new(self)
+    @root ||= Tk::Tile::Treeview::Root.new(self)
   end
 
   def bbox(item, column=None)

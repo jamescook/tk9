@@ -123,36 +123,19 @@ class TkTextMark<TkObject
 end
 TktMark = TkTextMark
 
-# TODO: Refactor - self.new bypasses initialize via allocate+instance_eval
+# Named marks are cached per (parent, name) pair via the text widget's @tags hash.
+# self.new returns existing mark if found, otherwise creates new via initialize.
 class TkTextNamedMark<TkTextMark
   def self.new(parent, name, index=nil)
-    # Check if mark already exists via the text widget's @tags
+    # Return existing mark if already registered with this text widget
     existing = parent.tagid2obj(name)
-    if existing.kind_of?(TkTextMark)
-      obj = existing
-    else
-      # Create new mark
-      (obj = self.allocate).instance_eval{
-        @parent = @t = parent
-        @tpath = parent.path
-        @path = @id = name
-        @t._addtag @id, self
-      }
-    end
+    return existing if existing.kind_of?(TkTextMark)
 
-    if obj && index
-      tk_call_without_enc(parent.path, 'mark', 'set', name,
-                          _get_eval_enc_str(index))
-    end
-    obj
+    # Create new mark via normal instantiation
+    super
   end
 
   def initialize(parent, name, index=nil)
-    # dummy:: not called by 'new' method
-
-    #unless parent.kind_of?(Tk::Text)
-    #  fail ArgumentError, "expect Tk::Text for 1st argument"
-    #end
     @parent = @t = parent
     @tpath = parent.path
     @path = @id = name

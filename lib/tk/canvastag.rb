@@ -313,38 +313,23 @@ class TkcTag<TkObject
   alias withtag set_to_withtag
 end
 
-# TODO: Refactor - self.new bypasses initialize via allocate+instance_eval
+# Named canvas tags are cached per (parent, name) pair via the canvas's @canvas_tags hash.
+# self.new returns existing tag if found, otherwise creates new via initialize.
 class TkcTagString<TkcTag
   def self.new(parent, name, mode=nil, *args)
-    # Check if tag already exists via the canvas's @canvas_tags
+    # Return existing tag if already registered with this canvas
     existing = parent.canvastagid2obj(name)
-    if existing.kind_of?(TkcTag)
-      obj = existing
-    else
-      # Create new tag
-      (obj = self.allocate).instance_eval{
-        @c = parent
-        @cpath = parent.path
-        @path = @id = name
-        parent._addtag(@id, self)
-      }
-    end
+    return existing if existing.kind_of?(TkcTag)
 
-    if obj && mode
-      tk_call_without_enc(parent.path, "addtag", obj.id, mode, *args)
-    end
-    obj
+    # Create new tag via normal instantiation
+    super
   end
 
   def initialize(parent, name, mode=nil, *args)
-    # dummy:: not called by 'new' method
-
-    #unless parent.kind_of?(TkCanvas)
-    #  fail ArgumentError, "expect TkCanvas for 1st argument"
-    #end
     @c = parent
     @cpath = parent.path
     @path = @id = name
+    @c._addtag(@id, self)
 
     if mode
       tk_call_without_enc(@c.path, "addtag", @id, mode, *args)
