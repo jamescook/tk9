@@ -524,20 +524,22 @@ class TestTkMenuSpec < Minitest::Test
 
     errors = []
 
-    # Pattern won't match - code sets underline to -1, Tk returns nil for -1
+    # Pattern won't match - code sets underline to -1
     menu_spec = [
-      {type: 'command', label: 'File', underline: 'z'},  # 'z' not in 'File' -> -1 -> nil
-      {type: 'command', label: 'Edit', underline: true}  # no & in 'Edit' -> -1 -> nil
+      {type: 'command', label: 'File', underline: 'z'},  # 'z' not in 'File'
+      {type: 'command', label: 'Edit', underline: true}  # no & in 'Edit'
     ]
 
     menu = TkMenu.new_menuspec(menu_spec, root)
 
-    # Tk returns nil when underline is -1 (no underline)
+    # Tcl 9.0 returns nil for -1, Tcl 8.6 returns -1
+    expected = Tk::TCL_VERSION.to_f >= 9.0 ? nil : -1
+
     underline0 = menu.entrycget(0, 'underline')
-    errors << "File underline should be nil (not found), got #{underline0.inspect}" unless underline0.nil?
+    errors << "File underline should be #{expected.inspect}, got #{underline0.inspect}" unless underline0 == expected
 
     underline1 = menu.entrycget(1, 'underline')
-    errors << "Edit underline should be nil (no &), got #{underline1.inspect}" unless underline1.nil?
+    errors << "Edit underline should be #{expected.inspect}, got #{underline1.inspect}" unless underline1 == expected
 
     raise errors.join("\n") unless errors.empty?
   end
@@ -607,13 +609,16 @@ class TestTkMenuSpec < Minitest::Test
     underline0 = menu.entrycget(0, 'underline')
     errors << "File underline should be 0, got #{underline0.inspect}" unless underline0 == 0
 
-    # Entry 1: 'z' not found in 'Open' -> nil (Tk returns nil for -1)
-    underline1 = menu.entrycget(1, 'underline')
-    errors << "Open underline should be nil (pattern not found), got #{underline1.inspect}" unless underline1.nil?
+    # Entry 1: 'z' not found in 'Open' -> -1
+    # Tcl 9.0 returns nil for -1, Tcl 8.6 returns -1
+    expected_no_underline = Tk::TCL_VERSION.to_f >= 9.0 ? nil : -1
 
-    # Entry 2: no & in 'Save' -> nil
+    underline1 = menu.entrycget(1, 'underline')
+    errors << "Open underline should be #{expected_no_underline.inspect} (pattern not found), got #{underline1.inspect}" unless underline1 == expected_no_underline
+
+    # Entry 2: no & in 'Save' -> -1
     underline2 = menu.entrycget(2, 'underline')
-    errors << "Save underline should be nil (no &), got #{underline2.inspect}" unless underline2.nil?
+    errors << "Save underline should be #{expected_no_underline.inspect} (no &), got #{underline2.inspect}" unless underline2 == expected_no_underline
 
     raise errors.join("\n") unless errors.empty?
   end
@@ -670,6 +675,9 @@ class TestTkMenuSpec < Minitest::Test
     mbtn, menu = mbar[0]
     direction = mbtn.cget('direction')
     errors << "vertical_right should set direction to 'left', got '#{direction}'" unless direction.to_s == 'left'
+
+    # Verify menu is actually a TkMenu
+    errors << "menu should be TkMenu, got #{menu.class}" unless menu.is_a?(TkMenu)
 
     raise errors.join("\n") unless errors.empty?
   end
@@ -746,7 +754,9 @@ class TestTkMenuSpec < Minitest::Test
 
     mbtn3, _ = mbar[2]
     underline3 = mbtn3.cget('underline')
-    errors << "Help underline should be nil (pattern not found), got #{underline3.inspect}" unless underline3.nil?
+    # Tcl 9.0 returns nil for -1, Tcl 8.6 returns -1
+    expected_no_underline = Tk::TCL_VERSION.to_f >= 9.0 ? nil : -1
+    errors << "Help underline should be #{expected_no_underline.inspect} (pattern not found), got #{underline3.inspect}" unless underline3 == expected_no_underline
 
     raise errors.join("\n") unless errors.empty?
   end
