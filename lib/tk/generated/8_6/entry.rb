@@ -42,6 +42,8 @@ module Tk
           option :validatecommand, alias: :vcmd
           option :width, type: :integer
           option :xscrollcommand
+          future_option :placeholder, min_version: '9.0'
+          future_option :placeholderforeground, min_version: '9.0'
         end
       end
     end

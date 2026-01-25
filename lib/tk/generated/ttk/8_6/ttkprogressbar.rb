@@ -22,6 +22,12 @@ module Tk
           option :takefocus  # include in keyboard traversal
           option :value
           option :variable, type: :tkvariable
+          future_option :anchor, min_version: '9.0'
+          future_option :font, min_version: '9.0'
+          future_option :foreground, min_version: '9.0'
+          future_option :justify, min_version: '9.0'
+          future_option :text, min_version: '9.0'
+          future_option :wraplength, min_version: '9.0'
         end
       end
     end

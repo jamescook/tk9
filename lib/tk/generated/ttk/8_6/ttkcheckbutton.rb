@@ -27,6 +27,7 @@ module Tk
           option :underline, type: :integer  # index of character to underline for keyboard shortcut (-1 for none)
           option :variable, type: :tkvariable
           option :width, type: :integer
+          future_option :justify, min_version: '9.0'
         end
       end
     end

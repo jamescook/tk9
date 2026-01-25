@@ -848,7 +848,7 @@ namespace :tk do
         entries = generator.introspect_widget(tk_cmd)
         filename = ruby_name.downcase
         filepath = "#{version_dir}/#{filename}.rb"
-        File.write(filepath, generator.generate_widget_file(ruby_name, entries))
+        File.write(filepath, generator.generate_widget_file(ruby_name, entries, widget_cmd: tk_cmd))
         widget_files << filename
         puts " #{entries.size} options -> #{filename}.rb"
       rescue => e
@@ -892,7 +892,7 @@ namespace :tk do
         entries = generator.introspect_widget(tk_cmd)
         filename = ruby_name.downcase
         filepath = "#{version_dir}/#{filename}.rb"
-        File.write(filepath, generator.generate_widget_file(ruby_name, entries))
+        File.write(filepath, generator.generate_widget_file(ruby_name, entries, widget_cmd: tk_cmd))
         widget_files << filename
         puts " #{entries.size} options -> #{filename}.rb"
       rescue => e

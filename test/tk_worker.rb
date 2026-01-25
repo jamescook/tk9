@@ -240,6 +240,9 @@ class TkWorker
       if defined?(Tk::BWidget) && Tk::BWidget.respond_to?(:reset)
         Tk::BWidget.reset
       end
+
+      # Reset global Tk settings to defaults
+      Tk.version_mismatch = :warn
     end
 
     # Reset grid geometry manager state for a widget.

@@ -3,6 +3,7 @@
 require 'erb'
 require_relative 'type_registry'
 require_relative 'option_comments'
+require_relative 'version_options'
 
 module Tk
   # Generates Option DSL declarations by introspecting Tk widgets at runtime.
@@ -53,7 +54,16 @@ module Tk
 
       # Generate the DSL declaration for this option
       # @param aliases [Array<String>] optional list of alias names for this option
-      def to_dsl(aliases: [])
+      # @param widget_cmd [String, nil] Tcl widget command for version lookup
+      # @param target_version [String, nil] Tk version we're generating for (e.g., '8.6')
+      def to_dsl(aliases: [], widget_cmd: nil, target_version: nil)
+        min_ver = widget_cmd ? Tk::VersionOptions.min_version(widget_cmd, name) : nil
+
+        # If option requires newer version than target, emit future_option
+        if min_ver && target_version && !Tk::VersionOptions.available?(widget_cmd, name, target_version)
+          return "future_option :#{name}, min_version: '#{min_ver}'"
+        end
+
         parts = ["option :#{name}"]
 
         if ruby_type && ruby_type != :string
@@ -137,35 +147,28 @@ module Tk
     end
 
     # Generate module code from parsed entries
-    def generate_module_from_entries(widget_name, entries)
-      # Group aliases by their target
-      alias_map = {}
-      entries.select(&:alias?).each do |entry|
-        alias_map[entry.alias_target] ||= []
-        alias_map[entry.alias_target] << entry.name
-      end
-
-      # Get regular options sorted alphabetically, with their aliases
-      # Used by ERB template via binding
-      options_with_aliases = entries.reject(&:alias?).sort_by(&:name).map do |entry|
-        aliases = (alias_map[entry.name] || []).sort
-        { entry: entry, aliases: aliases }
-      end
-      _ = options_with_aliases  # referenced in ERB
+    # @param widget_cmd [String, nil] Tcl widget command for version lookup (e.g., 'ttk::entry')
+    def generate_module_from_entries(widget_name, entries, widget_cmd: nil)
+      options_with_aliases = build_options_with_aliases(entries)
 
       template = File.read(File.join(TEMPLATES_DIR, 'widget_module.erb'))
-      ERB.new(template, trim_mode: '-').result(binding)
+      ERB.new(template, trim_mode: '-').result_with_hash(
+        tcl_version: @tcl_version,
+        widget_name: widget_name,
+        options_with_aliases: options_with_aliases,
+        widget_cmd: widget_cmd,
+        target_version: @tcl_version
+      )
     end
 
     # Generate the full options file for all widgets
     def generate_options_file(widgets)
-      # Used by ERB template via binding
-      version_const = tcl_version.gsub('.', '_')
-      timestamp = Time.now.utc.iso8601
-      _ = [version_const, timestamp]  # referenced in ERB
-
       template = File.read(File.join(TEMPLATES_DIR, 'options_file.erb'))
-      ERB.new(template, trim_mode: '-').result(binding)
+      ERB.new(template, trim_mode: '-').result_with_hash(
+        version_const: @tcl_version.gsub('.', '_'),
+        timestamp: Time.now.utc.iso8601,
+        widgets: widgets
+      )
     end
 
     # Helper for ERB template to render a single widget module
@@ -174,24 +177,33 @@ module Tk
     end
 
     # Generate a standalone file for a single widget
-    def generate_widget_file(widget_name, entries)
-      # Group aliases by their target
+    # @param widget_cmd [String, nil] Tcl widget command for version lookup
+    def generate_widget_file(widget_name, entries, widget_cmd: nil)
+      options_with_aliases = build_options_with_aliases(entries)
+
+      template = File.read(File.join(TEMPLATES_DIR, 'widget_file.erb'))
+      ERB.new(template, trim_mode: '-').result_with_hash(
+        tcl_version: @tcl_version,
+        widget_name: widget_name,
+        options_with_aliases: options_with_aliases,
+        widget_cmd: widget_cmd,
+        target_version: @tcl_version
+      )
+    end
+
+    private
+
+    def build_options_with_aliases(entries)
       alias_map = {}
       entries.select(&:alias?).each do |entry|
         alias_map[entry.alias_target] ||= []
         alias_map[entry.alias_target] << entry.name
       end
 
-      # Get regular options sorted alphabetically, with their aliases
-      # Used by ERB template via binding
-      options_with_aliases = entries.reject(&:alias?).sort_by(&:name).map do |entry|
+      entries.reject(&:alias?).sort_by(&:name).map do |entry|
         aliases = (alias_map[entry.name] || []).sort
         { entry: entry, aliases: aliases }
       end
-      _ = options_with_aliases  # referenced in ERB
-
-      template = File.read(File.join(TEMPLATES_DIR, 'widget_file.erb'))
-      ERB.new(template, trim_mode: '-').result(binding)
     end
   end
 end

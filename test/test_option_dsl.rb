@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 require_relative 'test_helper'
+require_relative 'tk_test_helper'
 require 'tk/option_dsl'
 
 class TestOptionDSL < Minitest::Test
+  include TkTestHelper
   def setup
     # Create fresh test classes for each test
     @base_class = Class.new do
@@ -168,12 +170,20 @@ class TestOptionDSL < Minitest::Test
   end
 
   def test_option_version_required_returns_version_when_unavailable
+    assert_tk_app("version_required when unavailable", method(:app_version_required_unavailable))
+  end
+
+  def app_version_required_unavailable
+    require 'tk'
+    require 'tk/option_dsl'
+
     klass = Class.new do
       extend Tk::OptionDSL
       option :future_option, type: :string, min_version: 99
     end
 
-    assert_equal 99, klass.option_version_required(:future_option)
+    result = klass.option_version_required(:future_option)
+    raise "expected 99, got #{result.inspect}" unless result == 99
   end
 
   def test_option_version_required_returns_nil_for_unknown_option

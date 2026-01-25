@@ -12,7 +12,16 @@ module Tk
         base.extend Tk::OptionDSL
         base.class_eval do
 <% options_with_aliases.each do |opt| -%>
-          <%= opt[:entry].to_dsl(aliases: opt[:aliases]) %>
+          <%= opt[:entry].to_dsl(aliases: opt[:aliases], widget_cmd: widget_cmd, target_version: target_version) %>
+<% end -%>
+<%# Emit future_option for options not available in target version -%>
+<% if widget_cmd && target_version -%>
+<%   introspected_names = options_with_aliases.map { |o| o[:entry].name } -%>
+<%   Tk::VersionOptions::OPTION_VERSIONS.fetch(widget_cmd, {}).each do |opt_name, info| -%>
+<%     next if introspected_names.include?(opt_name) -%>
+<%     next if Tk::VersionOptions.available?(widget_cmd, opt_name, target_version) -%>
+          future_option :<%= opt_name %>, min_version: '<%= info[:min_version] %>'
+<%   end -%>
 <% end -%>
         end
       end

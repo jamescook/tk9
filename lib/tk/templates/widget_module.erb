@@ -2,7 +2,7 @@
     def self.included(base)
       base.class_eval do
 <% options_with_aliases.each do |opt| -%>
-        <%= opt[:entry].to_dsl(aliases: opt[:aliases]) %>
+        <%= opt[:entry].to_dsl(aliases: opt[:aliases], widget_cmd: widget_cmd, target_version: target_version) %>
 <% end -%>
       end
     end

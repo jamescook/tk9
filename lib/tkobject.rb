@@ -250,11 +250,30 @@ class TkObject<TkKernel
   end
 
   def _skip_version_restricted?(option_name)
-    return false unless self.class.respond_to?(:option_version_required)
+    # Check regular options with min_version
     required = self.class.option_version_required(option_name)
-    return false unless required
-    Tk::Warnings.warn_once(:"version_required_#{self.class}_#{option_name}",
-      "#{self.class}: option '#{option_name}' requires Tcl/Tk #{required}.0+ (current: #{Tk::TK_VERSION}). Option ignored.")
-    true
+    if required
+      _handle_version_mismatch(option_name, "#{required}.0")
+      return true
+    end
+
+    # Check future_options (options from newer Tk versions)
+    info = self.class.future_option_info(option_name.to_sym)
+    if info
+      _handle_version_mismatch(option_name, info[:min_version])
+      return true
+    end
+
+    false
+  end
+
+  def _handle_version_mismatch(option_name, min_version)
+    case Tk.version_mismatch
+    when :raise
+      raise ArgumentError, "Option '#{option_name}' requires Tk #{min_version}+ (running #{Tk::TK_VERSION})"
+    when :warn
+      Tk::Warnings.warn_once(:"version_mismatch_#{self.class}_#{option_name}",
+        "#{self.class}: option '#{option_name}' requires Tk #{min_version}+ (running #{Tk::TK_VERSION}), ignoring")
+    end
   end
 end

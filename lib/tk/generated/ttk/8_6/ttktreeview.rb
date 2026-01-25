@@ -24,6 +24,10 @@ module Tk
           option :tree
           option :xscrollcommand
           option :yscrollcommand
+          future_option :selecttype, min_version: '9.0'
+          future_option :striped, min_version: '9.0'
+          future_option :titlecolumns, min_version: '9.0'
+          future_option :titleitems, min_version: '9.0'
         end
       end
     end

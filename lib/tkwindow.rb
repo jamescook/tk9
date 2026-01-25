@@ -102,14 +102,27 @@ class TkWindow<TkObject
   private :create_self
 
   # Filter out options that require a newer Tcl/Tk version than currently running.
-  # Uses OptionDSL metadata (min_version) to silently drop unsupported options.
+  # Checks both regular options with min_version and future_options.
+  # Behavior controlled by Tk.version_mismatch (:warn, :ignore, :raise)
   def __filter_unavailable_options(keys)
     return keys unless keys.is_a?(Hash)
-    return keys unless self.class.respond_to?(:resolve_option)
 
     keys.reject do |key, _value|
+      # Check regular options with min_version
       opt = self.class.resolve_option(key)
-      opt && !opt.available?
+      if opt && !opt.available?
+        _handle_version_mismatch(key, opt.min_version_str)
+        next true
+      end
+
+      # Check future_options (options from newer Tk versions)
+      info = self.class.future_option_info(key.to_sym)
+      if info
+        _handle_version_mismatch(key, info[:min_version])
+        next true
+      end
+
+      false
     end
   end
   private :__filter_unavailable_options

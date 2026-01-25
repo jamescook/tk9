@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 # Auto-generated loader for Ttk 8.6 widget options
-# DO NOT EDIT - regenerate with: rake tk:generate_ttk_options
+# DO NOT EDIT - regenerate with: rake docker:generate_ttk_options
 
 require_relative 'ttk/8_6/ttkbutton'
 require_relative 'ttk/8_6/ttkcheckbutton'

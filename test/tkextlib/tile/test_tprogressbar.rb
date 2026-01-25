@@ -138,4 +138,45 @@ class TestTProgressbarWidget < Minitest::Test
 
     raise errors.join("\n") unless errors.empty?
   end
+
+  # Test that version-specific options are properly declared
+  def test_tprogressbar_version_specific_options
+    assert_tk_app("TProgressbar version-specific options", method(:tprogressbar_version_options_app))
+  end
+
+  def tprogressbar_version_options_app
+    require 'tk'
+    require 'tkextlib/tile'
+
+    errors = []
+    klass = Tk::Tile::TProgressbar
+
+    # These options exist in 9.0 but not 8.6
+    v9_options = [:text, :font, :foreground, :anchor, :justify, :wraplength]
+
+    if Tk::TK_VERSION.start_with?('8.')
+      # On 8.6, they should be future_options
+      v9_options.each do |opt|
+        unless klass.future_option_names.include?(opt)
+          errors << "8.6: expected #{opt} in future_option_names"
+        end
+        info = klass.future_option_info(opt)
+        unless info && info[:min_version] == '9.0'
+          errors << "8.6: expected #{opt} to have min_version '9.0'"
+        end
+      end
+    else
+      # On 9.0+, they should be regular options
+      v9_options.each do |opt|
+        unless klass.resolve_option(opt)
+          errors << "9.0: expected #{opt} to be a regular option"
+        end
+        if klass.future_option_names.include?(opt)
+          errors << "9.0: #{opt} should not be in future_option_names"
+        end
+      end
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

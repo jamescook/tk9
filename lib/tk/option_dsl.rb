@@ -76,6 +76,29 @@ module Tk
       _options.dup
     end
 
+    # Declare a future option - one that exists in newer Tk versions but not current.
+    # Used to provide helpful warnings when code tries to use unsupported options.
+    #
+    # @param name [Symbol] Option name
+    # @param min_version [String] Minimum Tk version required (e.g., '9.0')
+    #
+    def future_option(name, min_version:)
+      @future_options ||= {}
+      @future_options[name.to_sym] = { min_version: min_version }
+    end
+
+    # List of future option names
+    def future_option_names
+      @future_options ||= {}
+      @future_options.keys
+    end
+
+    # Get info about a future option
+    def future_option_info(name)
+      @future_options ||= {}
+      @future_options[name.to_sym]
+    end
+
     # Look up an option by name or alias
     #
     # @param name [Symbol, String] Option name or alias

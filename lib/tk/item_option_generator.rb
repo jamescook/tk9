@@ -149,23 +149,29 @@ module Tk
 
     # Generate module code from parsed entries
     def generate_module_from_entries(widget_name, entries)
-      # Group aliases by their target
+      options_with_aliases = build_options_with_aliases(entries)
+
+      template = File.read(File.join(TEMPLATES_DIR, 'item_options_widget.erb'))
+      ERB.new(template, trim_mode: '-').result_with_hash(
+        tcl_version: @tcl_version,
+        widget_name: widget_name,
+        options_with_aliases: options_with_aliases
+      )
+    end
+
+    private
+
+    def build_options_with_aliases(entries)
       alias_map = {}
       entries.select(&:alias?).each do |entry|
         alias_map[entry.alias_target] ||= []
         alias_map[entry.alias_target] << entry.name
       end
 
-      # Get regular options sorted alphabetically, with their aliases
-      # Used by ERB template via binding
-      options_with_aliases = entries.reject(&:alias?).sort_by(&:name).map do |entry|
+      entries.reject(&:alias?).sort_by(&:name).map do |entry|
         aliases = (alias_map[entry.name] || []).sort
         { entry: entry, aliases: aliases }
       end
-      _ = options_with_aliases  # referenced in ERB
-
-      template = File.read(File.join(TEMPLATES_DIR, 'item_options_widget.erb'))
-      ERB.new(template, trim_mode: '-').result(binding)
     end
 
     # Generate a standalone file for a single widget's item options

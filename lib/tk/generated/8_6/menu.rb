@@ -28,6 +28,7 @@ module Tk
           option :tearoffcommand
           option :title
           option :type
+          future_option :activerelief, min_version: '9.0'
         end
       end
     end

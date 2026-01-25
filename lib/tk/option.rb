@@ -66,8 +66,22 @@ module Tk
     # Returns true if no min_version is set, or if current version >= min_version.
     def available?
       return true unless @min_version
-      # Tk::TK_MAJOR_VERSION is set when Tk is loaded
-      defined?(Tk::TK_MAJOR_VERSION) && Tk::TK_MAJOR_VERSION >= @min_version
+      available_for_version?(Tk::TK_VERSION)
+    end
+
+    # Check if this option is available for a specific Tk version string.
+    # @param version_str [String] e.g., "8.6", "9.0"
+    # @return [Boolean]
+    def available_for_version?(version_str)
+      return true unless @min_version
+      compare_versions(version_str, min_version_str) >= 0
+    end
+
+    # Return min_version as a string (e.g., "9.0")
+    # Handles both integer (legacy) and string formats
+    def min_version_str
+      return nil unless @min_version
+      @min_version.is_a?(String) ? @min_version : "#{@min_version}.0"
     end
 
     # Check if this option requires a newer Tcl/Tk version than currently running.
@@ -91,6 +105,15 @@ module Tk
       when Symbol, String then OptionType[type]
       else OptionType[:string]
       end
+    end
+
+    def compare_versions(a, b)
+      parse_version(a) <=> parse_version(b)
+    end
+
+    def parse_version(str)
+      parts = str.to_s.split('.')
+      [parts[0].to_i, parts[1].to_i]
     end
   end
 end

@@ -30,6 +30,8 @@ module Tk
           option :use
           option :visual
           option :width, type: :integer
+          future_option :backgroundimage, min_version: '9.0'
+          future_option :tile, min_version: '9.0'
         end
       end
     end
