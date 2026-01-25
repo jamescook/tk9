@@ -25,14 +25,14 @@ module Tk
     # Called when module is extended into a class
     # Merge with existing options (from parent) instead of resetting
     def self.extended(base)
-      existing = base.instance_variable_get(:@_options) || {}
-      base.instance_variable_set(:@_options, existing.dup)
+      existing = base.instance_variable_get(:@options) || {}
+      base.instance_variable_set(:@options, existing.dup)
     end
 
     # Inherit options from parent class
     def inherited(subclass)
       super
-      subclass.instance_variable_set(:@_options, _options.dup)
+      subclass.instance_variable_set(:@options, (@options || {}).dup)
     end
 
     # Declare an option for this widget class.
@@ -47,12 +47,14 @@ module Tk
     #
     def option(name, type: :string, tcl_name: nil, alias: nil, aliases: [], min_version: nil,
                from_tcl: nil, to_tcl: nil)
+      @options ||= {}
+
       # Support both alias: :foo (single) and aliases: [:foo, :bar] (multiple)
       all_aliases = Array(binding.local_variable_get(:alias)) + Array(aliases)
       all_aliases.compact!
 
       # Check for conflicts with existing option (e.g., from parent class)
-      existing = _options[name.to_sym]
+      existing = @options[name.to_sym]
       if existing
         if existing.type.name == type && existing.aliases.sort == all_aliases.sort
           return # Same config, already inherited - skip silently
@@ -67,13 +69,14 @@ module Tk
 
       opt = Option.new(name: name, tcl_name: tcl_name, type: type, aliases: all_aliases,
                        min_version: min_version, from_tcl: from_tcl, to_tcl: to_tcl)
-      _options[opt.name] = opt
-      all_aliases.each { |a| _options[a.to_sym] = opt }
+      @options[opt.name] = opt
+      all_aliases.each { |a| @options[a.to_sym] = opt }
     end
 
     # All declared options (including aliases pointing to same Option)
     def options
-      _options.dup
+      @options ||= {}
+      @options.dup
     end
 
     # Declare a future option - one that exists in newer Tk versions but not current.
@@ -105,12 +108,14 @@ module Tk
     # @return [Tk::Option, nil]
     #
     def resolve_option(name)
-      _options[name.to_sym]
+      @options ||= {}
+      @options[name.to_sym]
     end
 
     # List of canonical option names (excludes aliases)
     def option_names
-      _options.values.uniq.map(&:name)
+      @options ||= {}
+      @options.values.uniq.map(&:name)
     end
 
     # Check if an option requires a newer Tcl/Tk version than currently running.
@@ -126,7 +131,8 @@ module Tk
     end
 
     def declared_optkey_aliases
-      _options.values.uniq.each_with_object({}) do |opt, hash|
+      @options ||= {}
+      @options.values.uniq.each_with_object({}) do |opt, hash|
         opt.aliases.each { |a| hash[a] = opt.name }
       end
     end
@@ -149,12 +155,6 @@ module Tk
       name = name.to_s
       _, real_name = declared_optkey_aliases.find { |k, _| k.to_s == name }
       real_name ? real_name.to_s : name
-    end
-
-    private
-
-    def _options
-      @_options ||= {}
     end
   end
 end
