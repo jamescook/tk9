@@ -6,10 +6,6 @@ module TkCore
   include TkComm
   extend TkComm
 
-  WITH_RUBY_VM  = Object.const_defined?(:RubyVM) && ::RubyVM.class == Class
-  WITH_ENCODING = defined?(::Encoding.default_external) && true
-  #WITH_ENCODING = Object.const_defined?(:Encoding) && ::Encoding.class == Class
-
   unless self.const_defined? :INTERP
     if self.const_defined? :IP_NAME
       name = IP_NAME.to_s

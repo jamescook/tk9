@@ -61,11 +61,7 @@ class TkMsgCatalog < TkObject
               "\n---< backtrace of Ruby side >-----\n" +
               e.backtrace.join("\n") +
               "\n---< backtrace of Tk side >-------"
-        if TkCore::WITH_ENCODING
-          msg.force_encoding('utf-8')
-        else
-          msg.instance_variable_set(:@encoding, 'utf-8')
-        end
+        msg.force_encoding('utf-8')
       rescue Exception
         msg = e.class.inspect + ': ' + e.message + "\n" +
               "\n---< backtrace of Ruby side >-----\n" +
@@ -188,11 +184,7 @@ class TkMsgCatalog < TkObject
       file = File.join(dir, loc + self::MSGCAT_EXT)
       if File.readable?(file)
         count += 1
-        if TkCore::WITH_ENCODING
-          eval(IO.read(file, :encoding=>"ASCII-8BIT"))
-        else
-          eval(IO.read(file))
-        end
+        eval(IO.read(file, encoding: "ASCII-8BIT"))
       end
     }
     count
@@ -208,11 +200,7 @@ class TkMsgCatalog < TkObject
       file = File.join(dir, loc + @msgcat_ext)
       if File.readable?(file)
         count += 1
-        if TkCore::WITH_ENCODING
-          @namespace.eval(IO.read(file, :encoding=>"ASCII-8BIT"))
-        else
-          @namespace.eval(IO.read(file))
-        end
+        @namespace.eval(IO.read(file, encoding: "ASCII-8BIT"))
       end
     }
     count

@@ -70,11 +70,7 @@ class TkVariable
                 "\n---< backtrace of Ruby side >-----\n" +
                 e.backtrace.join("\n") +
                 "\n---< backtrace of Tk side >-------"
-          if TkCore::WITH_ENCODING
-            msg.force_encoding('utf-8')
-          else
-            msg.instance_variable_set(:@encoding, 'utf-8')
-          end
+          msg.force_encoding('utf-8')
         rescue Exception
           msg = e.class.inspect + ': ' + e.message + "\n" +
                 "\n---< backtrace of Ruby side >-----\n" +
