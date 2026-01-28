@@ -21,8 +21,13 @@ IMAGE="tk-ci-test-${TCL_VERSION}"
 [ -f "$SAMPLE" ] || { echo "Error: $SAMPLE not found"; exit 1; }
 
 # Output filename with correct extension
-BASENAME="${SAMPLE##*/}"
-BASENAME="${BASENAME%.rb}"
+# Use NAME env var if provided, otherwise derive from sample path
+if [ -n "$NAME" ]; then
+    BASENAME="$NAME"
+else
+    BASENAME="${SAMPLE##*/}"
+    BASENAME="${BASENAME%.rb}"
+fi
 case "$CODEC" in
     vp9) EXT="webm" ;;
     x264|h264) EXT="mp4" ;;
@@ -39,6 +44,7 @@ docker run --rm \
     -e "SCREEN_SIZE=${SCREEN_SIZE:-850x700}" \
     -e "FRAMERATE=${FRAMERATE:-30}" \
     -e "CODEC=${CODEC}" \
+    -e "NAME=${NAME}" \
     -e "DOCKER_RECORD=1" \
     -v "$(pwd)/scripts:/app/scripts:ro" \
     -v "$(pwd)/sample:/app/sample:ro" \

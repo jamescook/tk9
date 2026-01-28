@@ -243,6 +243,9 @@ class TkWorker
 
       # Reset global Tk settings to defaults
       Tk.version_mismatch = :warn
+
+      # Reset warnings state (so warn_once fires fresh each test)
+      Tk::Warnings.reset!
     end
 
     # Reset grid geometry manager state for a widget.

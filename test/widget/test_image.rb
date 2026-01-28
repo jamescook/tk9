@@ -289,4 +289,59 @@ class TestImageWidget < Minitest::Test
     photo.delete
     raise errors.join("\n") unless errors.empty?
   end
+
+  def test_photo_base64_tkimg_warning
+    assert_tk_app("TkPhotoImage base64 tkimg warning", method(:app_photo_base64_warning))
+  end
+
+  def app_photo_base64_warning
+    require 'tk'
+    require 'tk/image'
+    require 'base64'
+
+    errors = []
+
+    # Load real BMP fixture and base64 encode it
+    bmp_path = File.expand_path('test/fixtures/sample.bmp')
+    bmp_data = Base64.strict_encode64(File.binread(bmp_path))
+
+    # Verify signature detection works
+    errors << "BMP base64 should start with Qk" unless bmp_data.start_with?('Qk')
+
+    # Capture stderr to check for warning
+    old_stderr = $stderr
+    $stderr = StringIO.new
+
+    begin
+      TkPhotoImage.new(data: bmp_data)
+    rescue TclTkLib::TclError
+      # Expected - tkimg can't parse base64 data
+    end
+
+    warning = $stderr.string
+    $stderr = old_stderr
+
+    errors << "Should warn about base64 BMP" unless warning.include?('base64-encoded BMP')
+    errors << "Warning should mention Base64.decode64" unless warning.include?('Base64.decode64')
+
+    # PNG should NOT warn (native base64 support)
+    # Reset so we're testing signature detection, not warn_once dedup
+    Tk::Warnings.reset!
+    png_path = File.expand_path('test/fixtures/sample.png')
+    png_data = Base64.strict_encode64(File.binread(png_path))
+
+    $stderr = StringIO.new
+    begin
+      img = TkPhotoImage.new(data: png_data)
+      img.delete
+    rescue => e
+      errors << "PNG should load without error: #{e.message}"
+    end
+    png_warning = $stderr.string
+    $stderr = old_stderr
+
+    errors << "PNG should NOT warn about base64" if png_warning.include?('base64')
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

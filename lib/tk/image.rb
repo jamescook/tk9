@@ -189,8 +189,35 @@ class TkPhotoImage<TkImage
   #   primarily in situations where the user wishes to build up the contents of
   #   the image piece by piece. A value of zero (the default) allows the image
   #   to expand or shrink horizontally to fit the data stored in it.
+  # Base64-encoded signatures for formats that DON'T support base64 -data natively
+  # These formats require binary data but users often pass base64 by mistake
+  BASE64_TKIMG_SIGNATURES = {
+    'Qk'   => 'bmp',    # "BM"
+    '/9j/' => 'jpeg',   # 0xFF 0xD8 0xFF
+    'SUkq' => 'tiff',   # "II*\x00" (little-endian TIFF)
+    'TU0A' => 'tiff',   # "MM\x00*" (big-endian TIFF)
+  }.freeze
+
   def initialize(*args)
     @type = 'photo'
+
+    # Detect base64-encoded tkimg format data (common mistake - tkimg needs binary)
+    if args[0].is_a?(Hash)
+      data = args[0][:data] || args[0]['data']
+      if data.is_a?(String)
+        BASE64_TKIMG_SIGNATURES.each do |prefix, format|
+          if data.start_with?(prefix)
+            Tk::Warnings.warn_once(:tkimg_base64,
+              "Detected base64-encoded #{format.upcase} data. " \
+              "tkimg formats require binary data, not base64. " \
+              "Use Base64.decode64(data) or load from file. " \
+              "Only PNG/GIF support base64 -data natively.")
+            break
+          end
+        end
+      end
+    end
+
     super(*args)
   end
 

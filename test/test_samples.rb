@@ -306,6 +306,25 @@ class TestSamples < Minitest::Test
     assert_includes stdout, 'UI loaded', "Missing UI loaded\nSTDOUT: #{stdout}\nSTDERR: #{stderr}"
     assert_includes stdout, 'vscroll'
   end
+
+  def test_tkimg_demo
+    success, stdout, stderr = smoke_test_sample("#{SAMPLE_DIR}/tkextlib/tkimg/demo.rb", timeout: 15)
+
+    # Skip if tkimg extension not available
+    if stderr.include?("can't find package Img") || stderr.include?("cannot find package Img")
+      skip "tkimg extension not available"
+    end
+
+    assert success, "Sample failed\nSTDOUT: #{stdout}\nSTDERR: #{stderr}"
+    assert_includes stdout, 'tkimg demo loaded', "Missing 'tkimg demo loaded'\nSTDOUT: #{stdout}\nSTDERR: #{stderr}"
+    assert_includes stdout, 'loaded animated gif'
+    assert_includes stdout, 'loaded gif gif87a'
+    assert_includes stdout, 'loaded gif gif89a'
+    assert_includes stdout, 'loaded bmp_1bit.bmp'
+    assert_includes stdout, 'loaded png color'
+    assert_includes stdout, 'loaded jpeg_color.jpg'
+    assert_includes stdout, 'loaded tiff_lzw.tiff'
+  end
 end
 
 # Separate test class for samples that test deprecated/removed features

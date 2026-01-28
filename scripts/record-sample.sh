@@ -20,8 +20,13 @@ FRAMERATE="${FRAMERATE:-30}"
 CODEC="${CODEC:-x264}"  # x264 (default), vp9 (alternative)
 
 # Output filename and codec settings
-BASENAME="${SAMPLE##*/}"
-BASENAME="${BASENAME%.rb}"
+# Use NAME env var if provided, otherwise derive from sample path
+if [ -n "$NAME" ]; then
+    BASENAME="$NAME"
+else
+    BASENAME="${SAMPLE##*/}"
+    BASENAME="${BASENAME%.rb}"
+fi
 
 case "$CODEC" in
     vp9)

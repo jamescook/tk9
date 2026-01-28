@@ -250,6 +250,9 @@ class TkObject<TkKernel
   end
 
   def _skip_version_restricted?(option_name)
+    # Only applies to classes using OptionDSL
+    return false unless self.class.respond_to?(:option_version_required)
+
     # Check regular options with min_version
     required = self.class.option_version_required(option_name)
     if required

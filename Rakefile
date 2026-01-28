@@ -791,10 +791,13 @@ namespace :docker do
       sample = demo['sample']
       screen_size = demo['screen_size']
       codec = ENV['CODEC'] || demo['codec'] || 'x264'
+      name = demo['name']  # Optional custom output name
 
       puts
       puts "Recording #{sample} (#{screen_size}, #{codec})..."
-      sh "SCREEN_SIZE=#{screen_size} CODEC=#{codec} ./scripts/docker-record.sh #{sample}"
+      env = "SCREEN_SIZE=#{screen_size} CODEC=#{codec}"
+      env += " NAME=#{name}" if name
+      sh "#{env} ./scripts/docker-record.sh #{sample}"
     end
 
     puts "Done! Recordings in: recordings/"
