@@ -73,13 +73,10 @@ RUN if [ "${TCL_VERSION}" != "8.6" ]; then \
 
 WORKDIR /app
 
-# Copy only what's needed for compilation (not tests/samples)
-# This way test changes don't invalidate the compile cache
+# Copy only what's needed for bundle install first (for layer caching)
+# This way lib/ changes don't invalidate the bundle install cache
 # Note: Gemfile.lock is gitignored (gem convention), Docker generates its own
 COPY Gemfile *.gemspec ./
-COPY Rakefile ./
-COPY ext/ ext/
-COPY lib/ lib/
 
 ENV BUNDLE_PATH=/usr/local/bundle
 RUN --mount=type=cache,target=/bundle-cache \
@@ -90,6 +87,11 @@ RUN --mount=type=cache,target=/bundle-cache \
     fi && \
     bundle install && \
     cp -a $BUNDLE_PATH/* /bundle-cache/
+
+# Now copy source code (after bundle install so changes don't invalidate gem cache)
+COPY Rakefile ./
+COPY ext/ ext/
+COPY lib/ lib/
 
 # Compile the main extension
 RUN MAKEFLAGS="-j$(nproc)" MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
