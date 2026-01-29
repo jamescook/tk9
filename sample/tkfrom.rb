@@ -1,7 +1,17 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=640x200
 
-require "base64"
+require 'date'
+
+# Decode RFC 2047 encoded headers (=?charset?B?base64?= format)
+# Simple implementation without requiring base64 gem
+def decode_b(str)
+  return str unless str
+  str.gsub(/=\?([^?]+)\?[Bb]\?([^?]+)\?=/) do
+    $2.unpack1('m').force_encoding($1) rescue $2
+  end
+end
 
 class Mail
   def Mail.new(f)
@@ -48,7 +58,11 @@ class Mail
 
 end
 
-if ARGV.length == 0
+# In demo mode, use sample mailbox
+if ENV['TK_READY_FD'] || ENV['TK_RECORD']
+  sample_mailbox = File.join(File.dirname(__FILE__), 'data', 'sample_mailbox.txt')
+  ARGV[0] = sample_mailbox if File.exist?(sample_mailbox)
+elsif ARGV.length == 0
   if ENV['MAIL']
     ARGV[0] = ENV['MAIL']
   elsif ENV['USER']
@@ -117,7 +131,7 @@ for file in ARGV
     end
   ensure
     f.close
-    File.utime(atime, mtime, file)
+    File.utime(atime, mtime, file) rescue nil  # may fail on read-only fs
     list.see 'end'
   end
 end
@@ -127,7 +141,21 @@ if $outcount == 0
   list.insert 'end', "You have no mail."
   limit = 2000
 end
-Tk.after limit, proc{
-  exit
-}
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  Tk.root.geometry('640x200')
+  TkDemo.on_visible {
+    puts "UI loaded"
+    puts "mail count: #{$outcount}"
+    Tk.after(TkDemo.delay) { TkDemo.finish }
+  }
+else
+  Tk.after limit, proc{
+    exit
+  }
+end
+
 Tk.mainloop

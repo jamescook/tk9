@@ -1,9 +1,12 @@
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 #
 # menubar sample 2 : use 'menu' option of root/toplevel widget
 #
 
 require 'tk'
+
+Tk.root.geometry('640x480')
 
 radio_var = TkVariable.new('y')
 
@@ -53,5 +56,27 @@ mbar = Tk.root.add_menubar(menu_spec,
 #                 'font'=>'Helvetica 12 bold')
 
 TkText.new(:wrap=>'word').pack.insert('1.0', 'Please read the sample source, and check how to override default configure options of menu entries on a menu_spec.')
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+
+    file_menu = mbar.entrycget(0, :menu)
+    file_menu.invoke(0)  # Open
+
+    Tk.after(TkDemo.delay) {
+      edit_menu = mbar.entrycget(1, :menu)
+      edit_menu.invoke(0)  # Cut
+
+      Tk.after(TkDemo.delay) {
+        edit_menu.invoke(1)  # Copy
+        TkDemo.finish
+      }
+    }
+  }
+end
 
 Tk.mainloop

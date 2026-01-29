@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 
@@ -19,11 +19,6 @@ class Tk::BWidget::StatusBar
   TkCommandNames = ['StatusBar'.freeze].freeze
   WidgetClassName = 'StatusBar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __boolval_optkeys
-    super() << 'showresize' << 'showseparator' << 'showresizesep'
-  end
-  private :__boolval_optkeys
 
   def add(win, keys={})
     tk_send('add', win, keys)
@@ -51,7 +46,14 @@ class Tk::BWidget::StatusBar
     win
   end
 
+  # Returns all items in the statusbar, including auto-generated separators.
+  # BWidget intentionally stores separators by name only (via [winfo name $sep])
+  # while regular widgets get full paths. We normalize by prepending frame path.
   def items
-    simplelist(tk_send('items')).map{|w| window(w)}
+    frame_path = tk_send_without_enc('getframe')
+    simplelist(tk_send('items')).map do |w|
+      w = "#{frame_path}.#{w}" unless w.start_with?('.')
+      window(w)
+    end
   end
 end

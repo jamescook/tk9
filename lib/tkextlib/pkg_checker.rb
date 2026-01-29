@@ -5,7 +5,7 @@
 #
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+require 'tk'
 
 TkRoot.new.withdraw  # hide root window
 

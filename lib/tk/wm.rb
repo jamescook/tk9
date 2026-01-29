@@ -2,7 +2,8 @@
 #
 # tk/wm.rb : methods for wm command
 #
-require 'tk' unless defined?(Tk)
+# Note: This file is autoloaded from tk.rb - do not require 'tk' here
+# to avoid circular require. TkCore, TkComm etc. are available.
 
 module Tk
   module Wm
@@ -10,8 +11,6 @@ module Tk
     extend TkCore
 
     TkCommandNames = ['wm'.freeze].freeze
-
-    TOPLEVEL_METHODCALL_OPTKEYS = {}
 
     def Wm.aspect(win, *args)
       if args.length == 0
@@ -26,7 +25,6 @@ module Tk
       Wm.aspect(self, *args)
     end
     alias wm_aspect aspect
-    TOPLEVEL_METHODCALL_OPTKEYS['aspect'] = 'aspect'
 
     def Wm.attributes(win, slot=nil,value=TkComm::None)
       if slot == nil
@@ -50,7 +48,6 @@ module Tk
       Wm.attributes(self, slot, value)
     end
     alias wm_attributes attributes
-    TOPLEVEL_METHODCALL_OPTKEYS['attributes'] = 'attributes'
 
     def Wm.client(win, name=TkComm::None)
       if name == TkComm::None
@@ -65,7 +62,6 @@ module Tk
       Wm.client(self, name)
     end
     alias wm_client client
-    TOPLEVEL_METHODCALL_OPTKEYS['client'] = 'client'
 
     def Wm.colormapwindows(win, *args)
       if args.size == 0
@@ -80,7 +76,6 @@ module Tk
       Wm.colormapwindows(self, *args)
     end
     alias wm_colormapwindows colormapwindows
-    TOPLEVEL_METHODCALL_OPTKEYS['colormapwindows'] = 'colormapwindows'
 
     def Wm.command(win, value=nil)
       if value
@@ -94,7 +89,6 @@ module Tk
     def wm_command(value=nil)
       Wm.command(self, value)
     end
-    TOPLEVEL_METHODCALL_OPTKEYS['wm_command'] = 'wm_command'
 
     def Wm.deiconify(win, ex = true)
       if ex
@@ -121,7 +115,6 @@ module Tk
       Wm.focusmodel(self, mode)
     end
     alias wm_focusmodel focusmodel
-    TOPLEVEL_METHODCALL_OPTKEYS['focusmodel'] = 'focusmodel'
 
     def Wm.forget(win)
       # Tcl/Tk 8.5+
@@ -153,7 +146,6 @@ module Tk
       Wm.geometry(self, geom)
     end
     alias wm_geometry geometry
-    TOPLEVEL_METHODCALL_OPTKEYS['geometry'] = 'geometry'
 
     def Wm.grid(win, *args)
       if args.size == 0
@@ -167,7 +159,6 @@ module Tk
     def wm_grid(*args)
       Wm.grid(self, *args)
     end
-    TOPLEVEL_METHODCALL_OPTKEYS['wm_grid'] = 'wm_grid'
 
     def Wm.group(win, leader = nil)
       if leader
@@ -181,7 +172,6 @@ module Tk
       Wm.group(self, leader)
     end
     alias wm_group group
-    TOPLEVEL_METHODCALL_OPTKEYS['group'] = 'group'
 
     def Wm.iconbitmap(win, bmp=nil)
       if bmp
@@ -195,7 +185,6 @@ module Tk
       Wm.iconbitmap(self, bmp)
     end
     alias wm_iconbitmap iconbitmap
-    TOPLEVEL_METHODCALL_OPTKEYS['iconbitmap'] = 'iconbitmap'
 
     def Wm.iconphoto(win, *imgs)
       if imgs.empty?
@@ -214,7 +203,6 @@ module Tk
       Wm.iconphoto(self, *imgs)
     end
     alias wm_iconphoto iconphoto
-    TOPLEVEL_METHODCALL_OPTKEYS['iconphoto'] = 'iconphoto'
 
     def Wm.iconphoto_default(win, *imgs)
       imgs = imgs[0] if imgs.length == 1 && imgs[0].kind_of?(Array)
@@ -251,7 +239,6 @@ module Tk
       Wm.iconmask(self, bmp)
     end
     alias wm_iconmask iconmask
-    TOPLEVEL_METHODCALL_OPTKEYS['iconmask'] = 'iconmask'
 
     def Wm.iconname(win, name=nil)
       if name
@@ -265,7 +252,6 @@ module Tk
       Wm.iconname(self, name)
     end
     alias wm_iconname iconname
-    TOPLEVEL_METHODCALL_OPTKEYS['iconname'] = 'iconname'
 
     def Wm.iconposition(win, *args)
       if args.size == 0
@@ -280,7 +266,6 @@ module Tk
       Wm.iconposition(self, *args)
     end
     alias wm_iconposition iconposition
-    TOPLEVEL_METHODCALL_OPTKEYS['iconposition'] = 'iconposition'
 
     def Wm.iconwindow(win, iconwin = nil)
       if iconwin
@@ -295,7 +280,6 @@ module Tk
       Wm.iconwindow(self, iconwin)
     end
     alias wm_iconwindow iconwindow
-    TOPLEVEL_METHODCALL_OPTKEYS['iconwindow'] = 'iconwindow'
 
     def Wm.manage(win)
       # Tcl/Tk 8.5+ feature
@@ -337,7 +321,6 @@ module Tk
       Wm.maxsize(self, *args)
     end
     alias wm_maxsize maxsize
-    TOPLEVEL_METHODCALL_OPTKEYS['maxsize'] = 'maxsize'
 
     def Wm.minsize(win, *args)
       if args.size == 0
@@ -352,7 +335,6 @@ module Tk
       Wm.minsize(self, *args)
     end
     alias wm_minsize minsize
-    TOPLEVEL_METHODCALL_OPTKEYS['minsize'] = 'minsize'
 
     def Wm.overrideredirect(win, mode=TkComm::None)
       if mode == TkComm::None
@@ -366,7 +348,6 @@ module Tk
       Wm.overrideredirect(self, mode)
     end
     alias wm_overrideredirect overrideredirect
-    TOPLEVEL_METHODCALL_OPTKEYS['overrideredirect'] = 'overrideredirect'
 
     def Wm.positionfrom(win, who=TkComm::None)
       if who == TkComm::None
@@ -381,7 +362,6 @@ module Tk
       Wm.positionfrom(self, who)
     end
     alias wm_positionfrom positionfrom
-    TOPLEVEL_METHODCALL_OPTKEYS['positionfrom'] = 'positionfrom'
 
     def Wm.protocol(win, name=nil, cmd=nil, &b)
       if cmd
@@ -421,7 +401,6 @@ module Tk
       Wm.protocols(self, kv)
     end
     alias wm_protocols protocols
-    TOPLEVEL_METHODCALL_OPTKEYS['protocols'] = 'protocols'
 
     def Wm.resizable(win, *args)
       if args.length == 0
@@ -436,7 +415,6 @@ module Tk
       Wm.resizable(self, *args)
     end
     alias wm_resizable resizable
-    TOPLEVEL_METHODCALL_OPTKEYS['resizable'] = 'resizable'
 
     def Wm.sizefrom(win, who=TkComm::None)
       if who == TkComm::None
@@ -451,7 +429,6 @@ module Tk
       Wm.sizefrom(self, who)
     end
     alias wm_sizefrom sizefrom
-    TOPLEVEL_METHODCALL_OPTKEYS['sizefrom'] = 'sizefrom'
 
     def Wm.stackorder(win)
       list(tk_call('wm', 'stackorder', win.epath))
@@ -499,7 +476,6 @@ module Tk
       Wm.state(self, st)
     end
     alias wm_state state
-    TOPLEVEL_METHODCALL_OPTKEYS['state'] = 'state'
 
     def Wm.title(win, str=nil)
       if str
@@ -513,7 +489,6 @@ module Tk
       Wm.title(self, str)
     end
     alias wm_title title
-    TOPLEVEL_METHODCALL_OPTKEYS['title'] = 'title'
 
     def Wm.transient(win, master=nil)
       if master
@@ -527,7 +502,6 @@ module Tk
       Wm.transient(self, master)
     end
     alias wm_transient transient
-    TOPLEVEL_METHODCALL_OPTKEYS['transient'] = 'transient'
 
     def Wm.withdraw(win, ex = true)
       if ex

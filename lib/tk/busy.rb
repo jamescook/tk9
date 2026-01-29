@@ -2,33 +2,20 @@
 #
 # tk/busy.rb: support 'tk busy' command (Tcl/Tk8.6 or later)
 #
-require 'tk' unless defined?(Tk)
+require 'tk/item_option_dsl'
 
 module Tk::Busy
   include TkCore
   extend TkCore
-  extend TkItemConfigMethod
+  extend Tk::ItemOptionDSL
+
+  # Declare item command structure for tk busy
+  # The "id" is a window, and we need its path
+  item_cget_cmd { |win| ['tk', 'busy', 'cget', win.path] }
+  item_configure_cmd { |win| ['tk', 'busy', 'configure', win.path] }
 end
 
 class << Tk::Busy
-  def __item_cget_cmd(win)
-    # maybe need to override
-    ['tk', 'busy', 'cget', win.path]
-  end
-  private :__item_cget_cmd
-
-  def __item_config_cmd(win)
-    # maybe need to override
-    ['tk', 'busy', 'configure', win.path]
-  end
-  private :__item_config_cmd
-
-  def __item_confinfo_cmd(win)
-    # maybe need to override
-    __item_config_cmd(win)
-  end
-  private :__item_confinfo_cmd
-
   alias cget_tkstring itemcget_tkstring
   alias cget itemcget
   alias cget_strict itemcget_strict

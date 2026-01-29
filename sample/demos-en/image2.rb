@@ -97,7 +97,9 @@ TkFrame.new(base_frame){|w|
 #
 def loadDir(w)
   w.delete(0,'end')
+  # Only show formats compatible with TkPhotoImage
   Dir.glob([$dirName,'*'].join(File::Separator)).sort.each{|f|
+    next unless f =~ /\.(gif|ppm|pgm|png|jpg|jpeg)$/i
     w.insert('end',File.basename(f))
   }
 end

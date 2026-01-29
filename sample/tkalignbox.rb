@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 #
 #  tkalignbox.rb : align widgets with same width/height
 #
@@ -189,6 +190,8 @@ end
 # test
 ################################################
 if __FILE__ == $0
+  Tk.root.geometry('640x480')
+
   f = Tk::RbWidget::HBox.new(:borderwidth=>3, :relief=>'ridge').pack
   f.add(TkButton.new(f, :text=>'a'),
         TkButton.new(f, :text=>'aa', :font=>'Helvetica 16'),
@@ -231,6 +234,16 @@ if __FILE__ == $0
           TkButton.new(ff, :text=>'aaaa').pack(:pady=>4, :padx=>6,
                                                :fill=>:both, :expand=>true)
         })
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      Tk.after(TkDemo.delay) { TkDemo.finish }
+    }
+  end
 
   Tk.mainloop
 end

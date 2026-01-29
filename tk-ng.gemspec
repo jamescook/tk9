@@ -9,7 +9,8 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/jamescook/tk-ng"
   spec.license       = "BSD-2-Clause"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  spec.files         = Dir.glob("{lib,ext,exe,sample}/**/*").select { |f| File.file?(f) } +
+                       %w[Rakefile LICENSE.txt README.md tk-ng.gemspec Gemfile]
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
@@ -18,6 +19,11 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rake-compiler", "~> 1.0"
+  spec.add_development_dependency "simplecov", "~> 0.22"
+  spec.add_development_dependency "minitest", "~> 6.0"
+  spec.add_development_dependency "method_source", "~> 1.0"
+  spec.add_development_dependency "prism", "~> 1.0"  # stdlib in Ruby 3.3+, gem for 3.2
+  spec.add_development_dependency "base64"  # stdlib until Ruby 3.4, now bundled gem
 
   spec.metadata["msys2_mingw_dependencies"] = "tk"
 end

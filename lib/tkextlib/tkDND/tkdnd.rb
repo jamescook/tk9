@@ -3,8 +3,12 @@
 #  tkextlib/tkDND/tkdnd.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
+# NOTE: This extension is currently UNTESTED. The tkDND Tcl package must be
+# installed separately (not included in standard Tcl/Tk distributions).
+# See: https://github.com/petasis/tkdnd
+#
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 
 # call setup script for general 'tkextlib' libraries
 require 'tkextlib/setup.rb'

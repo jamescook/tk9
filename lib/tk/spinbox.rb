@@ -3,10 +3,64 @@
 #               tk/spinbox.rb - Tk spinbox classes
 #                       by Yukihiro Matsumoto <matz@caelum.co.jp>
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/spinbox.html
+#
 require 'tk/entry'
 
 class Tk::Spinbox<Tk::Entry
+  include Tk::Generated::Spinbox
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :background
+  #   :borderwidth
+  #   :buttonbackground
+  #   :buttoncursor
+  #   :buttondownrelief
+  #   :buttonuprelief
+  #   :command (callback)
+  #   :cursor
+  #   :disabledbackground
+  #   :disabledforeground
+  #   :exportselection
+  #   :font
+  #   :foreground
+  #   :format
+  #   :from
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :increment
+  #   :insertbackground
+  #   :insertborderwidth
+  #   :insertofftime
+  #   :insertontime
+  #   :insertwidth
+  #   :invalidcommand
+  #   :justify
+  #   :placeholder
+  #   :placeholderforeground
+  #   :readonlybackground
+  #   :relief
+  #   :repeatdelay
+  #   :repeatinterval
+  #   :selectbackground
+  #   :selectborderwidth
+  #   :selectforeground
+  #   :state
+  #   :takefocus
+  #   :textvariable (tkvariable)
+  #   :to
+  #   :validate
+  #   :validatecommand
+  #   :values
+  #   :width
+  #   :wrap
+  #   :xscrollcommand
+  # @generated:options:end
+
+
   TkCommandNames = ['spinbox'.freeze].freeze
   WidgetClassName = 'Spinbox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
@@ -24,16 +78,7 @@ class Tk::Spinbox<Tk::Entry
         [ ?s, TkComm.method(:string) ],
         [ ?w, TkComm.method(:window) ],
 
-        [ ?e, proc{|val|
-            #enc = Tk.encoding
-            enc = ((Tk.encoding)? Tk.encoding : Tk.encoding_system)
-            if enc
-              Tk.fromUTF8(TkComm::string(val), enc)
-            else
-              TkComm::string(val)
-            end
-          }
-        ],
+        [ ?e, proc{|val| TkComm::string(val) } ],
 
         nil
       ]
@@ -82,20 +127,9 @@ class Tk::Spinbox<Tk::Entry
   #end
   #private :create_self
 
-  def __boolval_optkeys
-    super() << 'wrap'
-  end
-  private :__boolval_optkeys
-
-  def __strval_optkeys
-    super() << 'buttonbackground' << 'format'
-  end
-  private :__strval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
+  # NOTE: __boolval_optkeys override for 'wrap' removed - now declared via OptionDSL
+  # NOTE: __strval_optkeys override for 'buttonbackground', 'format' removed - now declared via OptionDSL
+  # NOTE: __listval_optkeys override for 'values' removed - now declared via OptionDSL
 
   def identify(x, y)
     tk_send_without_enc('identify', x, y)
@@ -135,7 +169,7 @@ class Tk::Spinbox<Tk::Entry
   end
 
   def set(str)
-    _fromUTF8(tk_send_without_enc('set', _get_eval_enc_str(str)))
+    tk_send_without_enc('set', _get_eval_enc_str(str))
   end
 end
 

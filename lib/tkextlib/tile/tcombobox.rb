@@ -3,7 +3,9 @@
 #  tcombobox widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_combobox.html
+#
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -16,6 +18,7 @@ end
 
 class Tk::Tile::TCombobox < Tk::Tile::TEntry
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkCombobox
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::combobox'.freeze].freeze
@@ -24,16 +27,6 @@ class Tk::Tile::TCombobox < Tk::Tile::TEntry
   end
   WidgetClassName = 'TCombobox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __boolval_optkeys
-    super() << 'exportselection'
-  end
-  private :__boolval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

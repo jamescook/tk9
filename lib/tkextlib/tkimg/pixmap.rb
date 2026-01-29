@@ -3,7 +3,7 @@
 #  TkImg - format 'pixmap'
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+require 'tk'
 
 # call setup script for general 'tkextlib' libraries
 require 'tkextlib/setup.rb'

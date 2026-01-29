@@ -2,7 +2,6 @@
 #
 # tk/textwindow.rb - treat Tk text window object
 #
-require 'tk' unless defined?(Tk)
 require 'tk/text'
 
 class TkTextWindow<TkObject

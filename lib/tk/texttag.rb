@@ -2,7 +2,6 @@
 #
 # tk/texttag.rb - methods for treating text tags
 #
-require 'tk' unless defined?(Tk)
 require 'tk/text'
 require 'tk/tagfont'
 
@@ -10,27 +9,15 @@ class TkTextTag<TkObject
   include TkTreatTagFont
   include Tk::Text::IndexModMethods
 
-  TTagID_TBL = TkCore::INTERP.create_table
-
   (Tk_TextTag_ID = ['tag'.freeze, '00000']).instance_eval{
     @mutex = Mutex.new
     def mutex; @mutex; end
     freeze
   }
 
-  TkCore::INTERP.init_ip_env{
-    TTagID_TBL.mutex.synchronize{ TTagID_TBL.clear }
-  }
-
+  # Look up a tag by ID. Delegates to the text widget's tagid2obj.
   def TkTextTag.id2obj(text, id)
-    tpath = text.path
-    TTagID_TBL.mutex.synchronize{
-      if TTagID_TBL[tpath]
-        TTagID_TBL[tpath][id]? TTagID_TBL[tpath][id]: id
-      else
-        id
-      end
-    }
+    text.tagid2obj(id)
   end
 
   def initialize(parent, *args)
@@ -43,11 +30,6 @@ class TkTextTag<TkObject
       # @path = @id = Tk_TextTag_ID.join('')
       @path = @id = Tk_TextTag_ID.join(TkCore::INTERP._ip_id_).freeze
       Tk_TextTag_ID[1].succ!
-    }
-    TTagID_TBL.mutex.synchronize{
-      TTagID_TBL[@id] = self
-      TTagID_TBL[@tpath] = {} unless TTagID_TBL[@tpath]
-      TTagID_TBL[@tpath][@id] = self
     }
     #tk_call @t.path, "tag", "configure", @id, *hash_kv(keys)
     if args != []
@@ -236,61 +218,29 @@ class TkTextTag<TkObject
 
   def destroy
     tk_call_without_enc(@t.path, 'tag', 'delete', @id)
-    TTagID_TBL.mutex.synchronize{
-      TTagID_TBL[@tpath].delete(@id) if TTagID_TBL[@tpath]
-    }
     self
   end
 end
 TktTag = TkTextTag
 
+# Named tags are cached per (parent, name) pair via the text widget's @tags hash.
+# self.new returns existing tag if found, otherwise creates new via initialize.
 class TkTextNamedTag<TkTextTag
   def self.new(parent, name, *args)
-    tagobj = nil
-    TTagID_TBL.mutex.synchronize{
-      if TTagID_TBL[parent.path] && TTagID_TBL[parent.path][name]
-        tagobj = TTagID_TBL[parent.path][name]
-      else
-        # super(parent, name, *args)
-        (tagobj = self.allocate).instance_eval{
-          @parent = @t = parent
-          @tpath = parent.path
-          @path = @id = name
-          TTagID_TBL[@id] = self
-          TTagID_TBL[@tpath] = {} unless TTagID_TBL[@tpath]
-          TTagID_TBL[@tpath][@id] = self unless TTagID_TBL[@tpath][@id]
-          @t._addtag @id, self
-        }
-      end
-    }
+    # Return existing tag if already registered with this parent
+    existing = parent.tagid2obj(name)
+    return existing if existing.kind_of?(TkTextTag)
 
-    if args != []
-      keys = args.pop
-      if keys.kind_of?(Hash)
-        tagobj.add(*args) if args != []
-        tagobj.configure(keys)
-      else
-        args.push keys
-        tagobj.add(*args)
-      end
-    end
-
-    tagobj
+    # Create new tag via normal instantiation
+    super
   end
 
   def initialize(parent, name, *args)
-    # dummy:: not called by 'new' method
-
-    #unless parent.kind_of?(Tk::Text)
-    #  fail ArgumentError, "expect Tk::Text for 1st argument"
-    #end
     @parent = @t = parent
     @tpath = parent.path
     @path = @id = name
+    @t._addtag @id, self
 
-    #if mode
-    #  tk_call @t.path, "addtag", @id, *args
-    #end
     if args != []
       keys = args.pop
       if keys.kind_of?(Hash)
@@ -301,7 +251,6 @@ class TkTextNamedTag<TkTextTag
         add(*args)
       end
     end
-    @t._addtag @id, self
   end
 end
 TktNamedTag = TkTextNamedTag
@@ -312,3 +261,6 @@ class TkTextTagSel<TkTextNamedTag
   end
 end
 TktTagSel = TkTextTagSel
+
+# Add deprecation warning for removed TTagID_TBL constant
+TkTextTag.extend(TkTextTagCompat)

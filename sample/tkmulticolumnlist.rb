@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=400x300
 #
 # tkmulticolumnlist.rb : multiple column list widget on scrollable frame
 #                        by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -739,6 +740,60 @@ if __FILE__ == $0
   p l.columns(1,2)
 
   l.command proc{|line_info| p line_info}
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  # Helper to select a row across all columns
+  select_row = proc { |row|
+    (0..2).each { |col|
+      l.columns(col).select_clear(1, 'end')
+      l.columns(col).select_set(row)
+    }
+  }
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      puts "rows inserted"
+
+      delay = TkDemo.delay
+
+      # Demo: select different rows to show highlighting
+      Tk.after(delay) {
+        select_row.call(1)
+        Tk.update
+        puts "selected row 1"
+
+        Tk.after(delay) {
+          select_row.call(3)
+          Tk.update
+          puts "selected row 3"
+
+          Tk.after(delay) {
+            select_row.call(5)
+            Tk.update
+            puts "selected row 5"
+
+            Tk.after(delay) {
+              # Scroll down
+              (0..2).each { |col| l.columns(col).yview('scroll', 3, 'units') }
+              Tk.update
+              puts "scrolled down"
+
+              Tk.after(delay) {
+                select_row.call(8)
+                Tk.update
+                puts "selected row 8"
+
+                Tk.after(delay) { TkDemo.finish }
+              }
+            }
+          }
+        }
+      }
+    }
+  end
 
   Tk.mainloop
 end

@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/messagedlg'
 
@@ -25,16 +25,6 @@ class Tk::BWidget::SelectFont
   TkCommandNames = ['SelectFont'.freeze].freeze
   WidgetClassName = 'SelectFont'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __strval_optkeys
-    super() << 'sampletext' <<  'title'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'nosizes'
-  end
-  private :__boolval_optkeys
 
   def __font_optkeys
     [] # without fontobj operation

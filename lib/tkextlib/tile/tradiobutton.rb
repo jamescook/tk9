@@ -3,7 +3,9 @@
 #  tradiobutton widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_radiobutton.html
+#
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -18,6 +20,7 @@ end
 
 class Tk::Tile::TRadioButton < Tk::RadioButton
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkRadiobutton
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::radiobutton'.freeze].freeze

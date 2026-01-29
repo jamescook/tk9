@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 
 module Tk
@@ -18,9 +18,4 @@ class Tk::BWidget::ScrollView
   TkCommandNames = ['ScrollView'.freeze].freeze
   WidgetClassName = 'ScrollView'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __strval_optkeys
-    super() << 'fill'
-  end
-  private :__strval_optkeys
 end

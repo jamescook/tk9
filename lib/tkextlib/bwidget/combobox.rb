@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/entry'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/listbox'
@@ -18,16 +18,16 @@ module Tk
 end
 
 class Tk::BWidget::ComboBox
+  extend Tk::OptionDSL
   include Scrollable
 
   TkCommandNames = ['ComboBox'.freeze].freeze
   WidgetClassName = 'ComboBox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __boolval_optkeys
-    super() << 'autocomplete' << 'autopost'
-  end
-  private :__boolval_optkeys
+  # BWidget ComboBox-specific options
+  option :autocomplete, type: :boolean
+  option :autopost, type: :boolean
 
   def get_listbox(&b)
     win = window(tk_send_without_enc('getlistbox'))

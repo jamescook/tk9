@@ -3,7 +3,10 @@
 #  tprogressbar widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_progressbar.html
+#
+require 'tk'
+require 'tk/option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -15,7 +18,9 @@ module Tk
 end
 
 class Tk::Tile::TProgressbar
+  extend Tk::OptionDSL
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkProgressbar
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::progressbar'.freeze].freeze
@@ -24,6 +29,11 @@ class Tk::Tile::TProgressbar
   end
   WidgetClassName = 'TProgressbar'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Override generated options with correct types
+  option :maximum, type: :float
+  option :value,   type: :float
+  option :phase,   type: :integer
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

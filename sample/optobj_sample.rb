@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 #
 #  sample script of Tk::OptionObj
 #
 require "tk"
+
+Tk.root.geometry('640x480')
 
 optobj = Tk::OptionObj.new('foreground'=>'red', 'background'=>'black')
 
@@ -42,7 +45,7 @@ optobj.notify  # To apply the convert_key ( 3rd element of widget info
                # (that is, {'foreground'=>'activeforeground', ,,, } )
                # of the 'EEE' button
 
-TkButton.new(f, :text=>'toggle',
+toggle_btn = TkButton.new(f, :text=>'toggle',
              :command=>proc{
                fg = optobj['foreground']
                bg = optobj['background']
@@ -64,5 +67,22 @@ TkFrame.new{|f|
     pack(:expand=>true, :fill=>:both)
   }
 }
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    toggle_btn.invoke
+    puts "toggled once"
+
+    Tk.after(TkDemo.delay) {
+      toggle_btn.invoke
+      puts "toggled twice"
+      TkDemo.finish
+    }
+  }
+end
 
 Tk.mainloop

@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/arrowbutton'
 require 'tkextlib/bwidget/entry'
@@ -17,31 +17,23 @@ module Tk
 end
 
 class Tk::BWidget::SpinBox
+  extend Tk::OptionDSL
   include Scrollable
 
   TkCommandNames = ['SpinBox'.freeze].freeze
   WidgetClassName = 'SpinBox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext' << 'insertbackground' << 'entryfg' << 'entrybg'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled' << 'editable'
-  end
-  private :__boolval_optkeys
-
-  def __listval_optkeys
-    super() << 'values'
-  end
-  private :__listval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget SpinBox options
+  option :helptext, type: :string
+  option :helpvar, type: :tkvariable
+  option :insertbackground, type: :string
+  option :entryfg, type: :string
+  option :entrybg, type: :string
+  option :dragenabled, type: :boolean
+  option :dropenabled, type: :boolean
+  option :editable, type: :boolean
+  option :values, type: :list
 
   def entrybind(context, *args, &block)
     #if args[0].kind_of?(Proc) || args[0].kind_of?(Method)

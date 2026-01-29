@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/buttonbox'
@@ -21,22 +21,7 @@ class Tk::BWidget::Dialog
   WidgetClassName = 'Dialog'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  include TkItemConfigMethod
-
-  def __numstrval_optkeys
-    super() << 'buttonwidth'
-  end
-  private :__numstrval_optkeys
-
-  def __strval_optkeys
-    super() << 'title' << 'geometry'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'transient' << 'homogeneous'
-  end
-  private :__boolval_optkeys
+  extend Tk::ItemOptionDSL
 
   def initialize(parent=nil, keys=nil)
     @relative = ''
@@ -110,7 +95,7 @@ class Tk::BWidget::Dialog
       end
     else
       ret = super()
-      if TkComm::GET_CONFIGINFO_AS_ARRAY
+      if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
         ret << ['relative', 'parent']
       else
         ret['relative'] = 'parent'

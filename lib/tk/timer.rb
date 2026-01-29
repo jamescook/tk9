@@ -4,7 +4,6 @@
 #
 #   $Id$
 #
-require 'tk' unless defined?(Tk)
 
 class TkTimer
   include TkCore
@@ -20,8 +19,11 @@ class TkTimer
 
   Tk_CBTBL = {}
 
-  TkCore::INTERP.add_tk_procs('rb_after', 'id', <<-'EOL')
-    if {[set st [catch {eval {ruby_cmd TkTimer callback} $id} ret]] != 0} {
+  # Register callback for TkTimer.callback, used by rb_after Tcl proc
+  TKTIMER_CALLBACK_ID = TkCore::INTERP.register_callback(proc { |*args| TkTimer.callback(*args) })
+
+  TkCore::INTERP.add_tk_procs('rb_after', 'id', <<-EOL)
+    if {[set st [catch {eval {ruby_callback #{TKTIMER_CALLBACK_ID}} $id} ret]] != 0} {
         return -code $st $ret
     } {
         return $ret
@@ -76,7 +78,7 @@ class TkTimer
       exit(0)
     rescue Interrupt
       exit!(1)
-    rescue Exception => e
+    rescue StandardError => e
       if @cancel_on_exception &&
           @cancel_on_exception.find{|exc| e.kind_of?(exc)}
         cancel

@@ -3,7 +3,7 @@
 # tk/image.rb : treat Tk image objects
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk/option_dsl'
 
 class TkImage<TkObject
   include Tk
@@ -117,10 +117,12 @@ class TkImage<TkObject
 end
 
 class TkBitmapImage<TkImage
-  def __strval_optkeys
-    super() + ['maskdata', 'maskfile']
-  end
-  private :__strval_optkeys
+  extend Tk::OptionDSL
+
+  option :maskdata, type: :string
+  option :maskfile, type: :string
+
+  # NOTE: __strval_optkeys override for 'maskdata', 'maskfile' removed - now declared via OptionDSL
 
   def initialize(*args)
     @type = 'bitmap'
@@ -187,8 +189,35 @@ class TkPhotoImage<TkImage
   #   primarily in situations where the user wishes to build up the contents of
   #   the image piece by piece. A value of zero (the default) allows the image
   #   to expand or shrink horizontally to fit the data stored in it.
+  # Base64-encoded signatures for formats that DON'T support base64 -data natively
+  # These formats require binary data but users often pass base64 by mistake
+  BASE64_TKIMG_SIGNATURES = {
+    'Qk'   => 'bmp',    # "BM"
+    '/9j/' => 'jpeg',   # 0xFF 0xD8 0xFF
+    'SUkq' => 'tiff',   # "II*\x00" (little-endian TIFF)
+    'TU0A' => 'tiff',   # "MM\x00*" (big-endian TIFF)
+  }.freeze
+
   def initialize(*args)
     @type = 'photo'
+
+    # Detect base64-encoded tkimg format data (common mistake - tkimg needs binary)
+    if args[0].is_a?(Hash)
+      data = args[0][:data] || args[0]['data']
+      if data.is_a?(String)
+        BASE64_TKIMG_SIGNATURES.each do |prefix, format|
+          if data.start_with?(prefix)
+            Tk::Warnings.warn_once(:tkimg_base64,
+              "Detected base64-encoded #{format.upcase} data. " \
+              "tkimg formats require binary data, not base64. " \
+              "Use Base64.decode64(data) or load from file. " \
+              "Only PNG/GIF support base64 -data natively.")
+            break
+          end
+        end
+      end
+    end
+
     super(*args)
   end
 
@@ -213,21 +242,7 @@ class TkPhotoImage<TkImage
   # Example, display name of the file from which <tt>image</tt> was created:
   # 	puts image.cget :file
   def cget(option)
-    unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      cget_strict(option)
-    else
-      begin
-        cget_strict(option)
-      rescue => e
-        if current_configinfo.has_key?(option.to_s)
-          # error on known option
-          fail e
-        else
-          # unknown option
-          nil
-        end
-      end
-    end
+    cget_strict(option)
   end
 
   # Copies a region from the image called source to the image called

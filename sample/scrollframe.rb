@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 #
 #  Tk::RbWidget::ScrollFrame class
 #
@@ -212,6 +213,13 @@ end
 
 # test
 if __FILE__ == $0
+  Tk.root.geometry('640x480')
+
+  require 'tk/demo_support'
+
+  # Use shorter timings for automated demo
+  base_delay = TkDemo.active? ? TkDemo.delay(test: 200, record: 2000) : 3000
+
   f = Tk::RbWidget::ScrollFrame.new(:scrollbarwidth=>10,
                                     :width=>300, :height=>200)
   f.pack(:expand=>true, :fill=>:both)
@@ -222,10 +230,9 @@ if __FILE__ == $0
   TkButton.new(f, :text=>'hoge hoge button',
                :command=>proc{puts 'hoge hoge'}).pack(:side=>:bottom)
 
-  # f.hscroll(false)
-
   # add a text widget
-  Tk.after(3000){
+  Tk.after(base_delay){
+    puts "adding text widget"
     t = TkText.new(f).pack(:expand=>true, :fill=>:both)
     t.insert(:end, "An example of Tk::RbWidget::ScrollFrame widget.\n\n")
     t.insert(:end, "Here is a text widget.\n")
@@ -234,17 +241,25 @@ if __FILE__ == $0
     t.insert(:end, "to move the view of packed widgets.\n")
   }
 
-  # remove a vertical scrollbar, and then the scrollframe is not scrollable.
-  Tk.after(6000){ f.vscroll(false) }
+  # remove a vertical scrollbar
+  Tk.after(base_delay * 2){ puts "vscroll off"; f.vscroll(false) }
 
-  # add a vertical scrollbar, and make the scrollframe scrollable.
-  Tk.after(9000){ f.vscroll(true) }
+  # add a vertical scrollbar
+  Tk.after(base_delay * 3){ puts "vscroll on"; f.vscroll(true) }
 
-  # remove a horizontal scrollbar, and then the scrollframe is not scrollable.
-  Tk.after(12000){ f.hscroll(false) }
+  # remove a horizontal scrollbar
+  Tk.after(base_delay * 4){ puts "hscroll off"; f.hscroll(false) }
 
-  # add a horizontal scrollbar, and make the scrollframe scrollable.
-  Tk.after(15000){ f.hscroll(true) }
+  # add a horizontal scrollbar
+  Tk.after(base_delay * 5){ puts "hscroll on"; f.hscroll(true) }
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      # Wait for demo sequence to complete, then finish
+      Tk.after(base_delay * 6) { TkDemo.finish }
+    }
+  end
 
   Tk.mainloop
 end

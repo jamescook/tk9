@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/progressbar'
@@ -17,28 +17,16 @@ module Tk
 end
 
 class Tk::BWidget::MainFrame
+  extend Tk::OptionDSL
+
   TkCommandNames = ['MainFrame'.freeze].freeze
   WidgetClassName = 'MainFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'progressfg'
-  end
-  private :__strval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'progressvar'
-  end
-  private :__tkvariable_optkeys
-
-  def __val2ruby_optkeys  # { key=>proc, ... }
-    # The method is used to convert a opt-value to a ruby's object.
-    # When get the value of the option "key", "proc.call(value)" is called.
-    {
-      'menu'=>proc{|v| simplelist(v).collect!{|elem| simplelist(v)}}
-    }
-  end
-  private :__val2ruby_optkeys
+  # BWidget MainFrame options
+  option :progressvar, type: :tkvariable
+  # Note: original code had `simplelist(v)` twice - preserving behavior
+  option :menu, from_tcl: ->(v, widget:) { TkComm.simplelist(v).collect! { |_elem| TkComm.simplelist(v) } }
 
   def add_indicator(keys={}, &b)
     win = window(tk_send('addindicator', *hash_kv(keys)))

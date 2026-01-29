@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=320x240
 require 'tk'
+
+Tk.root.geometry('320x240')
 
 TkLabel.new(:text=>"Please click the bottom frame").pack
 
@@ -27,5 +30,30 @@ f.bind('1', proc{
          list.push(w)
          list[0].pack(:expand=>true, :anchor=>:center) if list[0]
        })
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    f.event_generate('1', x: 50, y: 50)
+    Tk.update
+    puts "button 1 shown"
+
+    Tk.after(TkDemo.delay(test: 150)) {
+      f.event_generate('1', x: 50, y: 50)
+      Tk.update
+      puts "button 2 shown"
+
+      Tk.after(TkDemo.delay(test: 150)) {
+        f.event_generate('1', x: 50, y: 50)
+        Tk.update
+        puts "button 3 shown"
+        TkDemo.finish
+      }
+    }
+  }
+end
 
 Tk.mainloop

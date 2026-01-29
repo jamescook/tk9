@@ -118,11 +118,31 @@ p b4.bindtags
 b5.bindtags([tag1, TkButton, tag2, b5])
 
 # create button to set button class binding
-TkButton.new(:text=>'set binding to TkButton class',
-             :command=>proc{
-               puts 'call "set_class_bind"'
-               set_class_bind
-             }).pack(:pady=>7)
+b6 = TkButton.new(:text=>'set binding to TkButton class',
+                  :command=>proc{
+                    puts 'call "set_class_bind"'
+                    set_class_bind
+                  }).pack(:pady=>7)
+
+# Smoke test support
+if ENV['TK_READY_FD']
+  Tk.root.bind('Visibility') {
+    Tk.after(50) {
+      # Simulate mouse clicks to trigger bindings AND invoke command
+      [b1, b2, b3, b4, b5, b6].each do |btn|
+        btn.event_generate('ButtonPress-1')
+        btn.event_generate('ButtonRelease-1')
+        btn.invoke
+      end
+      $stdout.flush
+
+      if (fd = ENV.delete('TK_READY_FD'))
+        IO.for_fd(fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+      end
+      Tk.after_idle { Tk.root.destroy }
+    }
+  }
+end
 
 # start event-loop
 Tk.mainloop

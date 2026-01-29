@@ -2,7 +2,6 @@
 #
 # tk/composite.rb :
 #
-require 'tk' unless defined?(Tk)
 
 module TkComposite
   include Tk
@@ -159,6 +158,10 @@ module TkComposite
   def option_methods(*opts)
     if opts.size == 1 && opts[0].kind_of?(Hash)
       # {name => [m_set, m_cget, m_info], name => method} style
+      # Deprecated: prefer array style for consistency with configure
+      Tk::Warnings.warn_once(:composite_option_methods_hash,
+        "TkComposite#option_methods hash style is deprecated and untested. " \
+        "Prefer array style: option_methods(:setter) or option_methods([:setter, :getter])")
       opts[0].each{|name, arg|
         m_set, m_cget, m_info = _get_opt_method_list(arg)
         @option_methods[name.to_s] = {
@@ -166,7 +169,7 @@ module TkComposite
         }
       }
     else
-      # [m_set, m_cget, m_info] or method style
+      # [m_set, m_cget, m_info] or method style (preferred)
       opts.each{|arg|
         m_set, m_cget, m_info = _get_opt_method_list(arg)
         @option_methods[m_set] = {
@@ -330,156 +333,82 @@ module TkComposite
   end
 
   def configinfo(slot = nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if slot
-        slot = slot.to_s
-        if @option_methods.include?(slot)
-          if @option_methods[slot][:info]
-            return self.__send__(@option_methods[slot][:info])
-          else
-            return [slot, '', '', '', self.cget(slot)]
-          end
+    if slot
+      slot = slot.to_s
+      if @option_methods.include?(slot)
+        if @option_methods[slot][:info]
+          return self.__send__(@option_methods[slot][:info])
+        else
+          return [slot, '', '', '', self.cget(slot)]
         end
+      end
 
-        tbl = @delegates[slot]
-        tbl = @delegates['DEFAULT'] unless tbl
+      tbl = @delegates[slot]
+      tbl = @delegates['DEFAULT'] unless tbl
 
-        begin
-          if tbl
-            if tbl.length == 1
-              opt, wins = tbl[0]
-              if slot == opt || opt == 'DEFAULT'
-                return wins[-1].configinfo(slot)
-              else
-                info = wins[-1].configinfo(opt)
-                info[0] = slot
-                return info
-              end
-            else
-              opt, wins = tbl[-1]
-              return [slot, '', '', '', wins[-1].cget(opt)]
-            end
-          end
-        rescue
-        end
-
-        super(slot)
-
-      else # slot == nil
-        info_list = super(slot)
-
-        tbl = @delegates['DEFAULT']
+      begin
         if tbl
-          wins = tbl[0][1]
-          if wins && wins[-1]
-            wins[-1].configinfo.each{|info|
-              slot = info[0]
-              info_list.delete_if{|i| i[0] == slot} << info
-            }
-          end
-        end
-
-        @delegates.each{|slot, tbl|
-          next if slot == 'DEFAULT'
           if tbl.length == 1
             opt, wins = tbl[0]
-            next unless wins && wins[-1]
-            if slot == opt
-              info_list.delete_if{|i| i[0] == slot} <<
-                wins[-1].configinfo(slot)
+            if slot == opt || opt == 'DEFAULT'
+              return wins[-1].configinfo(slot)
             else
               info = wins[-1].configinfo(opt)
               info[0] = slot
-              info_list.delete_if{|i| i[0] == slot} << info
+              return info
             end
           else
             opt, wins = tbl[-1]
-            info_list.delete_if{|i| i[0] == slot} <<
-              [slot, '', '', '', wins[-1].cget(opt)]
+            return [slot, '', '', '', wins[-1].cget(opt)]
           end
-        }
-
-        @option_methods.each{|slot, m|
-          if m[:info]
-            info = self.__send__(m[:info])
-          else
-            info = [slot, '', '', '', self.cget(slot)]
-          end
-          info_list.delete_if{|i| i[0] == slot} << info
-        }
-
-        info_list
+        end
+      rescue
       end
 
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      if slot
-        slot = slot.to_s
-        if @option_methods.include?(slot)
-          if @option_methods[slot][:info]
-            return self.__send__(@option_methods[slot][:info])
-          else
-            return {slot => ['', '', '', self.cget(slot)]}
-          end
+      super(slot)
+
+    else # slot == nil
+      info_list = super(slot)
+
+      tbl = @delegates['DEFAULT']
+      if tbl
+        wins = tbl[0][1]
+        if wins && wins[-1]
+          wins[-1].configinfo.each{|info|
+            slot = info[0]
+            info_list.delete_if{|i| i[0] == slot} << info
+          }
         end
-
-        tbl = @delegates[slot]
-        tbl = @delegates['DEFAULT'] unless tbl
-
-        begin
-          if tbl
-            if tbl.length == 1
-              opt, wins = tbl[0]
-              if slot == opt || opt == 'DEFAULT'
-                return wins[-1].configinfo(slot)
-              else
-                return {slot => wins[-1].configinfo(opt)[opt]}
-              end
-            else
-              opt, wins = tbl[-1]
-              return {slot => ['', '', '', wins[-1].cget(opt)]}
-            end
-          end
-        rescue
-        end
-
-        super(slot)
-
-      else # slot == nil
-        info_list = super(slot)
-
-        tbl = @delegates['DEFAULT']
-        if tbl
-          wins = tbl[0][1]
-          info_list.update(wins[-1].configinfo) if wins && wins[-1]
-        end
-
-        @delegates.each{|slot, tbl|
-          next if slot == 'DEFAULT'
-          if tbl.length == 1
-            opt, wins = tbl[0]
-            next unless wins && wins[-1]
-            if slot == opt
-              info_list.update(wins[-1].configinfo(slot))
-            else
-              info_list.update({slot => wins[-1].configinfo(opt)[opt]})
-            end
-          else
-            opt, wins = tbl[-1]
-            info_list.update({slot => ['', '', '', wins[-1].cget(opt)]})
-          end
-        }
-
-        @option_methods.each{|slot, m|
-          if m[:info]
-            info = self.__send__(m[:info])
-          else
-            info = {slot => ['', '', '', self.cget(slot)]}
-          end
-          info_list.update(info)
-        }
-
-        info_list
       end
+
+      @delegates.each{|slot, tbl|
+        next if slot == 'DEFAULT'
+        if tbl.length == 1
+          opt, wins = tbl[0]
+          next unless wins && wins[-1]
+          if slot == opt
+            info_list.delete_if{|i| i[0] == slot} << wins[-1].configinfo(slot)
+          else
+            info = wins[-1].configinfo(opt)
+            info[0] = slot
+            info_list.delete_if{|i| i[0] == slot} << info
+          end
+        else
+          opt, wins = tbl[-1]
+          info_list.delete_if{|i| i[0] == slot} << [slot, '', '', '', wins[-1].cget(opt)]
+        end
+      }
+
+      @option_methods.each{|slot, m|
+        if m[:info]
+          info = self.__send__(m[:info])
+        else
+          info = [slot, '', '', '', self.cget(slot)]
+        end
+        info_list.delete_if{|i| i[0] == slot} << info
+      }
+
+      info_list
     end
   end
 end

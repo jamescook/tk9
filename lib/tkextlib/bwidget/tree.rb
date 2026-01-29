@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/canvas'
 require 'tkextlib/bwidget.rb'
 
@@ -18,12 +18,21 @@ module Tk
 end
 
 class Tk::BWidget::Tree
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
   include Scrollable
 
   TkCommandNames = ['Tree'.freeze].freeze
   WidgetClassName = 'Tree'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Node item options
+  item_option :open,       type: :boolean
+  item_option :text,       type: :string
+  item_option :image,      type: :string
+  item_option :drawcross,  type: :string
+  item_option :font,       type: :string
+  item_option :fill,       type: :string
+  item_option :data,       type: :string
 
   class Event_for_Items < TkEvent::Event
     def self._get_extra_args_tbl
@@ -32,22 +41,6 @@ class Tk::BWidget::Tree
       ]
     end
   end
-
-  def __strval_optkeys
-    super() << 'crossfill' << 'linesfill'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled' <<
-      'redraw' << 'selectfill' << 'showlines'
-  end
-  private :__boolval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
 
   def tagid(tag)
     if tag.kind_of?(Tk::BWidget::Tree::Node)

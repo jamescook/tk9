@@ -2,12 +2,40 @@
 #
 # tk/panedwindow.rb : treat panedwindow
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/panedwindow.html
+#
+require 'tk/option_dsl'
 
 class Tk::PanedWindow<TkWindow
+  include Tk::Generated::Panedwindow
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :background
+  #   :borderwidth
+  #   :cursor
+  #   :handlepad
+  #   :handlesize
+  #   :height
+  #   :opaqueresize
+  #   :orient
+  #   :proxybackground
+  #   :proxyborderwidth
+  #   :proxyrelief
+  #   :relief
+  #   :sashcursor
+  #   :sashpad
+  #   :sashrelief
+  #   :sashwidth
+  #   :showhandle
+  #   :width
+  # @generated:options:end
+
+
   TkCommandNames = ['panedwindow'.freeze].freeze
   WidgetClassName = 'Panedwindow'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
   #def create_self(keys)
   #  if keys and keys != None
   #    tk_call_without_enc('panedwindow', @path, *hash_kv(keys, true))
@@ -83,25 +111,7 @@ class Tk::PanedWindow<TkWindow
     tk_tcl2ruby(tk_send_without_enc('panecget', win, "-#{key}"))
   end
   def panecget(win, key)
-    unless TkItemConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      panecget_strict(win, key)
-    else
-      begin
-        panecget_strict(win, key)
-      rescue => e
-        begin
-          if current_paneconfiginfo(win).has_key?(option.to_s)
-            # not tag error & option is known -> error on known option
-            fail e
-          else
-            # not tag error & option is unknown
-            nil
-          end
-        rescue
-          fail e  # tag error
-        end
-      end
-    end
+    panecget_strict(win, key)
   end
 
   def paneconfigure(win, key, value=nil)
@@ -125,7 +135,7 @@ class Tk::PanedWindow<TkWindow
   alias pane_config paneconfigure
 
   def paneconfiginfo(win, key=nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       # win = win.epath if win.kind_of?(TkObject)
       win = _epath(win)
       if key
@@ -133,7 +143,7 @@ class Tk::PanedWindow<TkWindow
         #                                         win, "-#{key}"))
         conf = tk_split_list(tk_send_without_enc('paneconfigure',
                                                  win, "-#{key}"),
-                             false, true)
+                             0, false, true)
         conf[0] = conf[0][1..-1]
         if conf[0] == 'hide'
           conf[3] = bool(conf[3]) unless conf[3].empty?
@@ -170,62 +180,14 @@ class Tk::PanedWindow<TkWindow
           conf
         }
       end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      # win = win.epath if win.kind_of?(TkObject)
-      win = _epath(win)
-      if key
-        #conf = tk_split_list(tk_send_without_enc('paneconfigure',
-        #                                         win, "-#{key}"))
-        conf = tk_split_list(tk_send_without_enc('paneconfigure',
-                                                 win, "-#{key}"),
-                             false, true)
-        key = conf.shift[1..-1]
-        if key == 'hide'
-          conf[2] = bool(conf[2]) unless conf[2].empty?
-          conf[3] = bool(conf[3]) unless conf[3].empty?
-        end
-        { key => conf }
-      else
-        ret = {}
-        #tk_split_simplelist(tk_send_without_enc('paneconfigure',
-        #                                        win)).each{|conflist|
-        #  conf = tk_split_simplelist(conflist)
-        tk_split_simplelist(tk_send_without_enc('paneconfigure', win),
-                            false, false).each{|conflist|
-          conf = tk_split_simplelist(conflist, false, true)
-          key = conf.shift[1..-1]
-          if key
-            if key == 'hide'
-              conf[2] = bool(conf[2]) unless conf[2].empty?
-            elsif conf[2].index('{')
-              conf[2] = tk_split_list(conf[2])
-            else
-              conf[2] = tk_tcl2ruby(conf[2])
-            end
-          end
-          if conf[3]
-            if key == 'hide'
-              conf[3] = bool(conf[3]) unless conf[3].empty?
-            elsif conf[3].index('{')
-              conf[3] = tk_split_list(conf[3])
-            else
-              conf[3] = tk_tcl2ruby(conf[3])
-            end
-          end
-          if conf.size == 1
-            ret[key] = conf[0][1..-1]  # alias info
-          else
-            ret[key] = conf
-          end
-        }
-        ret
-      end
+    else # ! true
+      # DEAD
     end
   end
   alias pane_configinfo paneconfiginfo
 
   def current_paneconfiginfo(win, key=nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       if key
         conf = paneconfiginfo(win, key)
         {conf[0] => conf[4]}
@@ -236,12 +198,8 @@ class Tk::PanedWindow<TkWindow
         }
         ret
       end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      ret = {}
-      paneconfiginfo(win, key).each{|k, conf|
-        ret[k] = conf[-1] if conf.kind_of?(Array)
-      }
-      ret
+    else # ! true
+      # DEAD
     end
   end
 

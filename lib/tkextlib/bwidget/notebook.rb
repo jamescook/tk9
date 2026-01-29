@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 
@@ -16,11 +16,15 @@ module Tk
 end
 
 class Tk::BWidget::NoteBook
-  include TkItemConfigMethod
+  extend Tk::OptionDSL
+  extend Tk::ItemOptionDSL
 
   TkCommandNames = ['NoteBook'.freeze].freeze
   WidgetClassName = 'NoteBook'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # BWidget NoteBook options
+  option :homogeneous, type: :boolean
 
   class Event_for_Tabs < TkEvent::Event
     def self._get_extra_args_tbl
@@ -29,11 +33,6 @@ class Tk::BWidget::NoteBook
       ]
     end
   end
-
-  def __boolval_optkeys
-    super() << 'homogeneous'
-  end
-  private :__boolval_optkeys
 
   def tagid(id)
     if id.kind_of?(TkWindow)

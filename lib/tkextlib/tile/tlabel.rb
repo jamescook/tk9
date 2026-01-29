@@ -3,7 +3,9 @@
 #  tlabel widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_label.html
+#
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -16,6 +18,7 @@ end
 
 class Tk::Tile::TLabel < Tk::Label
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkLabel
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::label'.freeze].freeze

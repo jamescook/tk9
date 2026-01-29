@@ -2,7 +2,6 @@
 #
 # tk/clock.rb : methods for clock command
 #
-require 'tk' unless defined?(Tk)
 
 module Tk
   module Clock

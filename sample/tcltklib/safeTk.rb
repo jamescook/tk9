@@ -1,23 +1,31 @@
 #!/usr/bin/env ruby
-# frozen_string_literal: false
-require 'tcltklib'
+# frozen_string_literal: true
+#
+# Safe Interpreter Tk Loading - NOT SUPPORTED
+#
+# This sample demonstrated loading Tk into a safe (sandboxed) interpreter
+# using ::safe::loadTk. However, this functionality is not available with
+# stub-enabled Tcl/Tk builds.
+#
+# From the Tcl documentation:
+#
+#   "Tcl_StaticLibrary can not be used in stub-enabled extensions.
+#    Its symbol entry in the stub table is deprecated and it will
+#    be removed in Tcl 9.0."
+#
+# See: https://www.tcl-lang.org/man/tcl8.7/TclLib/StaticLibrary.html
+#
+# The ::safe::loadTk command requires Tk to be registered via
+# Tcl_StaticLibrary, which is incompatible with stub-enabled builds.
+# Since Ruby/Tk uses stubs for version flexibility, safe interpreter
+# Tk loading cannot be supported.
 
-master = TclTkIp.new
-slave_name = 'slave0'
-slave = master.create_slave(slave_name, true)
-master._eval("::safe::interpInit #{slave_name}")
-master._eval("::safe::loadTk #{slave_name}")
+warn <<~MESSAGE
+  safeTk.rb: Safe interpreter Tk loading is not supported.
 
-master._invoke('label', '.l1', '-text', 'master')
-master._invoke('pack', '.l1', '-padx', '30', '-pady', '50')
-master._eval('label .l2 -text {root widget of master-ip}')
-master._eval('pack .l2 -padx 30 -pady 50')
+  This sample requires Tcl_StaticLibrary which cannot be used with
+  stub-enabled extensions (like Ruby/Tk). This limitation is documented
+  and the function is deprecated - it will be removed in Tcl 9.0.
 
-slave._invoke('label', '.l1', '-text', 'slave')
-slave._invoke('pack', '.l1', '-padx', '30', '-pady', '50')
-slave._eval('label .l2 -text {root widget of slave-ip}')
-slave._eval('pack .l2 -padx 30 -pady 20')
-slave._eval('label .l3 -text {( container frame widget of master-ip )}')
-slave._eval('pack .l3 -padx 30 -pady 20')
-
-TclTkLib.mainloop
+  See: https://www.tcl-lang.org/man/tcl8.7/TclLib/StaticLibrary.html
+MESSAGE

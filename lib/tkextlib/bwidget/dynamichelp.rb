@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 
 module Tk
@@ -21,11 +21,6 @@ module Tk::BWidget::DynamicHelp
   def self.__pathname
     'DynamicHelp::configure'
   end
-
-  def __strval_optkeys
-    super() << 'topbackground'
-  end
-  private :__strval_optkeys
 
   def self.__cget_cmd
     ['DynamicHelp::configure']

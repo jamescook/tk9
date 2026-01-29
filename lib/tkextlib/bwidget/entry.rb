@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/entry'
 require 'tkextlib/bwidget.rb'
 
@@ -16,26 +16,20 @@ module Tk
 end
 
 class Tk::BWidget::Entry
+  extend Tk::OptionDSL
   include Scrollable
 
   TkCommandNames = ['Entry'.freeze].freeze
   WidgetClassName = 'Entry'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext' << 'insertbackground'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled' << 'editable'
-  end
-  private :__boolval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget Entry options
+  option :helptext, type: :string
+  option :helpvar, type: :tkvariable
+  option :insertbackground, type: :string
+  option :editable, type: :boolean
+  option :dragenabled, type: :boolean
+  option :dropenabled, type: :boolean
 
   def invoke
     tk_send_without_enc('invoke')

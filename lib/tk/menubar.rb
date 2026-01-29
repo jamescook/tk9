@@ -85,7 +85,7 @@
 # To use add_menu, configuration must be done by calling configure after
 # adding all menus by add_menu, not by the constructor arguments.
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tk/composite'
 require 'tk/menuspec'
@@ -129,7 +129,6 @@ class TkMenubar<Tk::Frame
     delegate('activeforeground', mbtn, menu, *submenus)
     delegate('activebackground', mbtn, menu, *submenus)
     delegate('font', mbtn, menu, *submenus)
-    delegate('kanjifont', mbtn, menu, *submenus)
   end
 
   def [](index)

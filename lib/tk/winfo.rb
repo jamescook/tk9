@@ -5,8 +5,6 @@
 module TkWinfo
 end
 
-require 'tk' unless defined?(Tk)
-
 module TkWinfo
   include Tk
   extend Tk
@@ -27,10 +25,9 @@ module TkWinfo
 
   def TkWinfo.atomname(id, win=nil)
     if win
-      _fromUTF8(tk_call_without_enc('winfo', 'atomname',
-                                    '-displayof', win, id))
+      tk_call_without_enc('winfo', 'atomname', '-displayof', win, id)
     else
-      _fromUTF8(tk_call_without_enc('winfo', 'atomname', id))
+      tk_call_without_enc('winfo', 'atomname', id)
     end
   end
   def winfo_atomname(id)

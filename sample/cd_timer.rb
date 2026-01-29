@@ -78,5 +78,20 @@ b.command(proc{
             end
           })
 
+# Smoke test support
+if ENV['TK_READY_FD']
+  Tk.root.bind('Visibility') {
+    Tk.after(50) {
+      puts 'start clicked'
+      b.invoke  # click start
+      $stdout.flush
+
+      if (fd = ENV.delete('TK_READY_FD'))
+        IO.for_fd(fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+      end
+    }
+  }
+end
+
 Tk.mainloop
 

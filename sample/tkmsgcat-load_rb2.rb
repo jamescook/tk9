@@ -1,5 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+#
+# NOTE: This sample is probably obsolete. It demonstrates using non-UTF-8
+# encodings (like iso8859-1) in message catalogs, but Ruby 2.0+ defaults to
+# UTF-8 source encoding, so the raw iso8859-1 bytes in msgs_rb2/de.msg are
+# now invalid. See tkmsgcat-load_rb.rb for a working example.
 
 require 'tk'
 

@@ -8,6 +8,9 @@
 # まず, ライブラリを require する.
 require "tcltk"
 
+# Directory containing this script (for finding image files)
+SAMPLE_DIR = File.dirname(__FILE__)
+
 # 以下は, Test1 のインスタンスの initialize() で,
 # tcl/tk に関する処理を行う例である.
 # 必ずしもそのようにする必要は無く,
@@ -120,7 +123,7 @@ class Test1
     #### tcl/tk のイメージに対応するオブジェクト(TclTkImage)の操作
 
     # データを指定して生成する.
-    i1 = TclTkImage.new(ip, "photo", "-file maru.gif")
+    i1 = TclTkImage.new(ip, "photo", "-file #{File.join(SAMPLE_DIR, 'maru.gif')}")
     # ラベルに張り付けてみる.
     l3 = TclTkWidget.new(ip, root, label, "-relief raised -image", i1)
     place.e(l3, "-x 0 -rely 0.4 -relwidth 0.2 -relheight 0.2")
@@ -578,7 +581,7 @@ class Test1
     # arc を作る.
     ca1.e("create arc 200 10 250 50 -start 0 -extent 90 -style pieslice")
     # i1 は本当は, どこかで破壊しなければならないが, 面倒なので放ってある.
-    i1 = TclTkImage.new(ip, "photo", "-file maru.gif")
+    i1 = TclTkImage.new(ip, "photo", "-file #{File.join(SAMPLE_DIR, 'maru.gif')}")
     # image を作る.
     ca1.e("create image 100 100 -image", i1)
     # bitmap を作る.

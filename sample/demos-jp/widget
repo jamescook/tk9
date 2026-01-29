@@ -690,17 +690,17 @@ class Proc
   end
 
   alias __call__ call
-  def call(*args, &b)
+  def call(*args, **kwargs, &b)
     if top = @__pseudo_toplevel__
       orig_top = Thread.current[:TOPLEVEL]
       Thread.current[:TOPLEVEL] = top
       begin
-        __call__(*args, &b)
+        __call__(*args, **kwargs, &b)
       ensure
         Thread.current[:TOPLEVEL] = orig_top
       end
     else
-      __call__(*args, &b)
+      __call__(*args, **kwargs, &b)
     end
   end
 end

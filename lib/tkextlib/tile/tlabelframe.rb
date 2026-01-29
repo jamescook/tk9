@@ -3,7 +3,9 @@
 #  tlabelframe widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_labelframe.html
+#
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -18,6 +20,7 @@ end
 
 class Tk::Tile::TLabelframe < Tk::Tile::TFrame
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkLabelframe
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::labelframe'.freeze].freeze

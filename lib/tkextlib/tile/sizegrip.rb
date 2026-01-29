@@ -3,7 +3,10 @@
 #  ttk::sizegrip widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_sizegrip.html
+#
+require 'tk'
+require 'tk/option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -15,11 +18,15 @@ module Tk
 end
 
 class Tk::Tile::SizeGrip < TkWindow
+  extend Tk::OptionDSL
   include Tk::Tile::TileWidget
 
   TkCommandNames = ['::ttk::sizegrip'.freeze].freeze
   WidgetClassName = 'TSizegrip'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Widget-specific options (sizegrip has no unique options, only style)
+  option :style, type: :string
 
   def self.style(*args)
     [self::WidgetClassName, *(args.map!{|a| _get_eval_string(a)})].join('.')

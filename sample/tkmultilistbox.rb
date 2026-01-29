@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=400x250
 #
 # tkmultilistbox.rb : multiple listbox widget
 #                       by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -651,5 +652,55 @@ if __FILE__ == $0
   p l.columns(1)
   p l.columns(1..3)
   p l.columns(1,2)
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      puts "rows inserted"
+
+      delay = TkDemo.delay
+
+      # Demo: select different rows to show highlighting
+      Tk.after(delay) {
+        l.selection_set(0)
+        Tk.update
+        puts "selected row 0"
+
+        Tk.after(delay) {
+          l.selection_clear(0, 'end')
+          l.selection_set(2)
+          Tk.update
+          puts "selected row 2"
+
+          Tk.after(delay) {
+            l.selection_clear(0, 'end')
+            l.selection_set(4)
+            Tk.update
+            puts "selected row 4"
+
+            Tk.after(delay) {
+              # Scroll down
+              l.columns(0).yview('scroll', 3, 'units')
+              Tk.update
+              puts "scrolled down"
+
+              Tk.after(delay) {
+                l.selection_clear(0, 'end')
+                l.selection_set(7)
+                Tk.update
+                puts "selected row 7"
+
+                Tk.after(delay) { TkDemo.finish }
+              }
+            }
+          }
+        }
+      }
+    }
+  end
+
   Tk.mainloop
 end

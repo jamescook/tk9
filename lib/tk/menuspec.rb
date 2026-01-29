@@ -44,6 +44,10 @@
 # use the result of label.index(underline) as the index of underline
 # (don't remove matched substring).
 #
+# If the pattern is not found, underline is set to -1 (no underline).
+# NOTE: When querying via entrycget, Tcl 8.6 returns -1, but Tcl 9.0
+# returns empty string (which Ruby Tk converts to nil).
+#
 # NOTE: (*1)
 #   If you want to make special menus (*.help for UNIX, *.system for Win,
 #   and *.apple for Mac), append 'menu_name'=>name (name is 'help' for UNIX,

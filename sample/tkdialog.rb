@@ -1,6 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=320x240
 require "tk"
+
+Tk.root.geometry('320x240')
+
+# This sample uses legacy string commands (e.g., command "quit 'save'")
+# Enable string eval since we trust all commands in this demo
+Tk.allow_string_eval = true
 
 root = TkFrame.new
 top = TkFrame.new(root) {
@@ -57,6 +64,17 @@ root.pack('side'=>'top', 'fill'=>'both', 'expand'=>'yes')
 def quit(button)
   print "You pressed the \"#{button}\" button;  bye-bye!\n"
   exit
+end
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    # Don't click any buttons - they all call exit
+    puts "UI loaded"
+    Tk.after(TkDemo.delay) { TkDemo.finish }
+  }
 end
 
 Tk.mainloop

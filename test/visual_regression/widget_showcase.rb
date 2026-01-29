@@ -184,16 +184,18 @@ module VisualRegression
       e4.insert(0, 'Readonly')
       e4.state(['readonly'])
 
-      # Placeholder (Tcl/Tk 9.0+ only, ignored on 8.6)
+      # Placeholder (Tcl/Tk 9.0+ only)
       frame2 = Ttk::Frame.new(lf)
       frame2.pack(fill: 'x', padx: 5, pady: 5)
 
-      e5 = Ttk::Entry.new(frame2, width: 25, placeholder: 'Enter your name...')
+      entry_opts = { width: 25 }
+      entry_opts[:placeholder] = 'Enter your name...' if Tk::TK_MAJOR_VERSION >= 9
+      e5 = Ttk::Entry.new(frame2, entry_opts)
       e5.pack(side: 'left', padx: 2)
 
-      e6 = Ttk::Combobox.new(frame2, width: 20,
-                              values: ['Red', 'Green', 'Blue'],
-                              placeholder: 'Select a color...')
+      combo_opts = { width: 20, values: ['Red', 'Green', 'Blue'] }
+      combo_opts[:placeholder] = 'Select a color...' if Tk::TK_MAJOR_VERSION >= 9
+      e6 = Ttk::Combobox.new(frame2, combo_opts)
       e6.pack(side: 'left', padx: 2)
     end
 

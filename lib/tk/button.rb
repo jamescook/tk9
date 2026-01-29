@@ -2,24 +2,58 @@
 #
 # tk/button.rb : treat button widget
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/button.html
+#
 require 'tk/label'
+require 'tk/option_dsl'
 
 class Tk::Button<Tk::Label
+  include Tk::Generated::Button
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :activeforeground
+  #   :anchor
+  #   :background
+  #   :bitmap
+  #   :borderwidth
+  #   :command (callback)
+  #   :compound
+  #   :cursor
+  #   :default
+  #   :disabledforeground
+  #   :font
+  #   :foreground
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :image
+  #   :justify
+  #   :overrelief
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :repeatdelay
+  #   :repeatinterval
+  #   :state
+  #   :takefocus
+  #   :text
+  #   :textvariable (tkvariable)
+  #   :underline
+  #   :width
+  #   :wraplength
+  # @generated:options:end
+
+
+
   TkCommandNames = ['button'.freeze].freeze
   WidgetClassName = 'Button'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-  #def create_self(keys)
-  #  if keys and keys != None
-  #    tk_call_without_enc('button', @path, *hash_kv(keys, true))
-  #  else
-  #    tk_call_without_enc('button', @path)
-  #  end
-  #end
-  #private :create_self
 
   def invoke
-    _fromUTF8(tk_send_without_enc('invoke'))
+    tk_send_without_enc('invoke')
   end
   def flash
     tk_send_without_enc('flash')

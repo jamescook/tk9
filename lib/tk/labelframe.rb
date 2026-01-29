@@ -2,26 +2,41 @@
 #
 # tk/labelframe.rb : treat labelframe widget
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/labelframe.html
+#
 require 'tk/frame'
 
 class Tk::LabelFrame<Tk::Frame
+  include Tk::Generated::Labelframe
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :background
+  #   :borderwidth
+  #   :class
+  #   :colormap
+  #   :container
+  #   :cursor
+  #   :font
+  #   :foreground
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :labelanchor
+  #   :labelwidget
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :takefocus
+  #   :text
+  #   :visual
+  #   :width
+  # @generated:options:end
+
   TkCommandNames = ['labelframe'.freeze].freeze
   WidgetClassName = 'Labelframe'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-  #def create_self(keys)
-  #  if keys and keys != None
-  #    tk_call_without_enc('labelframe', @path, *hash_kv(keys, true))
-  #  else
-  #    tk_call_without_enc('labelframe', @path)
-  #  end
-  #end
-  #private :create_self
-
-  def __val2ruby_optkeys  # { key=>proc, ... }
-    super().update('labelwidget'=>proc{|v| window(v)})
-  end
-  private :__val2ruby_optkeys
 end
 
 Tk::Labelframe = Tk::LabelFrame

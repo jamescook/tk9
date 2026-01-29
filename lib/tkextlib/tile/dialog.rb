@@ -3,7 +3,7 @@
 #  ttk::dialog  (tile-0.7+)
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -67,15 +67,6 @@ class Tk::Tile::Dialog
   def cget(slot)
     @keys[slot.to_s]
   end
-=begin
-  def cget(slot)
-    unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      cget_strict(slot)
-    else
-      cget_strict(slot) rescue nil
-    end
-  end
-=end
 
   def configure(slot, value=None)
     if slot.kind_of?(Hash)

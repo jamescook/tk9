@@ -1,0 +1,346 @@
+# frozen_string_literal: true
+
+# Persistent Tk worker process for fast test execution.
+#
+# Instead of spawning a new Ruby process for each test this class keeps a single Tk interpreter
+# alive and resets state between tests. Trad-off is dealing with tests/code that mutate
+# global state.
+#
+# Uses pipe-based IPC (no threads) to avoid Tk threading issues.
+#
+# Usage:
+#   TkWorker.start
+#   result = TkWorker.run_test("label = TkLabel.new(root); ...")
+#   TkWorker.stop
+
+require 'stringio'
+require 'fileutils'
+require 'tmpdir'
+require 'json'
+
+class TkWorker
+  SOCKET_DIR = File.join(Dir.tmpdir, 'tk_worker')
+  PID_FILE = File.join(SOCKET_DIR, 'worker.pid')
+  READY_FILE = File.join(SOCKET_DIR, 'ready')
+
+  class << self
+    def start
+      return if running?
+
+      FileUtils.mkdir_p(SOCKET_DIR)
+      cleanup_stale_files
+
+      # Build load path args
+      load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(File.dirname(__FILE__))) }
+      load_path_args = load_paths.flat_map { |p| ["-I", p] }
+
+      # Spawn worker with pipes
+      @stdin_w, @stdout_r, @stderr_r, @wait_thread = Open3.popen3(
+        RbConfig.ruby, *load_path_args, __FILE__, 'server'
+      )
+
+      File.write(PID_FILE, @wait_thread.pid.to_s)
+
+      # Wait for ready signal
+      wait_for_ready
+    end
+
+    def stop
+      return unless running?
+
+      begin
+        send_command('shutdown')
+      rescue
+        # Already dead
+      end
+
+      @stdin_w&.close
+      @stdout_r&.close
+      @stderr_r&.close
+      @wait_thread&.value rescue nil
+
+      @stdin_w = @stdout_r = @stderr_r = @wait_thread = nil
+      cleanup_stale_files
+    end
+
+    def run_test(code)
+      start unless running?
+      send_command('run', code)
+    end
+
+    def running?
+      @wait_thread&.alive? && @stdin_w && !@stdin_w.closed?
+    end
+
+    private
+
+    def send_command(cmd, data = nil)
+      msg = JSON.generate({ cmd: cmd, data: data })
+      @stdin_w.puts(msg)
+      @stdin_w.flush
+
+      response = @stdout_r.gets
+      unless response
+        # Try to get error info
+        err = @stderr_r.read_nonblock(4096) rescue "[no output]"
+        err_text = "Worker died: #{err}"
+
+        raise err_text
+      end
+
+      JSON.parse(response, symbolize_names: true)
+    end
+
+    def wait_for_ready(timeout: 10)
+      deadline = Time.now + timeout
+
+      until File.exist?(READY_FILE)
+        raise "TkWorker failed to start within #{timeout}s" if Time.now > deadline
+        sleep 0.05
+      end
+    end
+
+    def cleanup_stale_files
+      File.unlink(PID_FILE) if File.exist?(PID_FILE)
+      File.unlink(READY_FILE) if File.exist?(READY_FILE)
+    end
+  end
+
+  # Server-side: runs in subprocess
+  class Server
+    def initialize
+      require 'tk'
+      @root = TkRoot.new { withdraw }
+      @test_count = 0
+    end
+
+    def run
+      # Signal ready
+      File.write(READY_FILE, '')
+
+      # Main loop - read commands from stdin
+      while (line = $stdin.gets)
+        msg = JSON.parse(line, symbolize_names: true)
+
+        result = case msg[:cmd]
+        when 'run'
+          run_test(msg[:data])
+        when 'shutdown'
+          # Write coverage BEFORE responding (parent closes pipes after response)
+          # This must happen here, not in at_exit, because the parent process
+          # closes pipes immediately after receiving the response.
+          SimpleCov.result if ENV['COVERAGE'] && defined?(SimpleCov)
+          shutdown
+          break
+        when 'ping'
+          { pong: true }
+        else
+          { error: "Unknown command: #{msg[:cmd]}" }
+        end
+
+        $stdout.puts(JSON.generate(result))
+        $stdout.flush
+      end
+    end
+
+    def run_test(code)
+      @test_count += 1
+      # Use instance variable to avoid shadowing by test code's local variables
+      @_test_result = { success: true, stdout: "", stderr: "", test_number: @test_count }
+
+      begin
+        # Capture stdout/stderr
+        old_stdout, old_stderr = $stdout, $stderr
+        captured_out = StringIO.new
+        captured_err = StringIO.new
+        $stdout = captured_out
+        $stderr = captured_err
+
+        # Make root available to the test code
+        b = binding
+        b.local_variable_set(:root, @root)
+
+        # Helper for display-dependent checks that may need time to settle
+        # Retries until expected value is returned or timeout
+        wait_for_display = ->(expected, timeout: 1.0, &block) {
+          deadline = Time.now + timeout
+          result = nil
+          while Time.now < deadline
+            Tk.update
+            result = block.call
+            break if result.to_s == expected
+            sleep 0.02
+          end
+          result
+        }
+        b.local_variable_set(:wait_for_display, wait_for_display)
+
+        # Helper to capture screenshots for debugging test failures
+        # Usage: capture_screenshot("my_test") or capture_screenshot("step1", window: some_widget)
+        screenshot_dir = File.expand_path('../../screenshots/test', __FILE__)
+        test_root = @root
+        test_count = @test_count
+        capture_screenshot = ->(name, window: nil) {
+          begin
+            win = window || test_root
+            unless win
+              STDERR.puts "Screenshot failed: no root window available"
+              return
+            end
+
+            require 'tkextlib/tkimg/window'
+            require 'tkextlib/tkimg/png'
+
+            FileUtils.mkdir_p(screenshot_dir)
+            Tk.update
+
+            path = File.join(screenshot_dir, "#{name}_#{test_count}.png")
+            img = TkPhotoImage.new(:format => 'window', :data => win.path)
+            img.write(path, :format => 'png')
+            STDERR.puts "Screenshot saved: #{path}"
+          rescue => e
+            STDERR.puts "Screenshot failed: #{e.message}"
+          end
+        }
+        b.local_variable_set(:capture_screenshot, capture_screenshot)
+
+        # Execute the test code
+        eval(code, b, "(test)", 1)
+
+        @_test_result[:stdout] = captured_out.string
+        @_test_result[:stderr] = captured_err.string
+      rescue Exception => e
+        @_test_result[:success] = false
+        @_test_result[:error_class] = e.class.name
+        @_test_result[:error_message] = e.message
+        @_test_result[:backtrace] = e.backtrace || []
+        @_test_result[:stdout] = captured_out.string if captured_out
+        @_test_result[:stderr] = captured_err.string if captured_err
+
+        # Extract code context if error is in eval'd code
+        if e.backtrace&.first&.start_with?('(test):')
+          line_match = e.backtrace.first.match(/\(test\):(\d+)/)
+          if line_match
+            line_num = line_match[1].to_i
+            code_lines = code.lines
+            start_line = [line_num - 3, 0].max
+            end_line = [line_num + 1, code_lines.size - 1].min
+            context_lines = (start_line..end_line).map do |i|
+              prefix = (i + 1 == line_num) ? ">>>" : "   "
+              "#{prefix} #{i + 1}: #{code_lines[i]}"
+            end
+            @_test_result[:code_context] = context_lines.join
+          end
+        end
+      ensure
+        $stdout, $stderr = old_stdout, old_stderr
+        reset_tk_state!
+      end
+
+      @_test_result
+    end
+
+    def shutdown
+      @root.destroy
+      { shutdown: true }
+    end
+
+    private
+
+    def reset_tk_state!
+      # Clean up extra interpreters and warn via result
+      count = TclTkIp.instance_count
+      if count > 1
+        warning = "TkWorker: #{count} interpreters exist after test ##{@test_count}, cleaning up #{count - 1}"
+        @_test_result[:warnings] ||= []
+        @_test_result[:warnings] << warning
+
+        TclTkIp.instances[1..].each { |ip| ip.delete unless ip.deleted? }
+
+        cached = TkCore.instance_variable_get(:@default_interp)
+        TkCore.instance_variable_set(:@default_interp, nil) if cached&.deleted?
+      end
+
+      # Use grid forget on children first (clears their grid config)
+      # then destroy them
+      @root.winfo_children.each do |child|
+        begin
+          Tk.tk_call_without_enc('grid', 'forget', child.path)
+        rescue TclError
+          # Widget might not be managed by grid
+        end
+        child.destroy
+      end
+      @root.withdraw
+
+      # Reset grid column/row configurations on root
+      # (these persist even after widgets are removed)
+      reset_grid_config!(@root)
+
+      # Reset BWidget state if loaded (must be done AFTER destroying children
+      # so that recreated internal widgets aren't immediately destroyed)
+      if defined?(Tk::BWidget) && Tk::BWidget.respond_to?(:reset)
+        Tk::BWidget.reset
+      end
+
+      # Reset global Tk settings to defaults
+      Tk.version_mismatch = :warn
+
+      # Reset warnings state (so warn_once fires fresh each test)
+      Tk::Warnings.reset!
+    end
+
+    # Reset grid geometry manager state for a widget.
+    # Column/row weights, minsize, pad, uniform settings persist after
+    # children are removed, so we must explicitly clear them.
+    def reset_grid_config!(widget)
+      path = widget.path
+
+      # Check if grid was used - avoid overhead if not
+      result = Tk.tk_call_without_enc('grid', 'size', path)
+      cols, rows = result.to_s.split.map(&:to_i)
+      return if cols == 0 && rows == 0
+
+      # Reset anchor and propagate to defaults
+      Tk.tk_call_without_enc('grid', 'anchor', path, 'nw')
+      Tk.tk_call_without_enc('grid', 'propagate', path, 1)
+
+      # Reset each column's config to defaults
+      cols.times do |c|
+        Tk.tk_call_without_enc('grid', 'columnconfigure', path, c,
+                               '-weight', 0, '-minsize', 0, '-pad', 0, '-uniform', '')
+      end
+
+      # Reset each row's config to defaults
+      rows.times do |r|
+        Tk.tk_call_without_enc('grid', 'rowconfigure', path, r,
+                               '-weight', 0, '-minsize', 0, '-pad', 0, '-uniform', '')
+      end
+    end
+  end
+end
+
+# Run as server if executed with 'server' argument
+if ARGV[0] == 'server'
+  require 'open3'
+
+  # Set up SimpleCov for coverage collection in the worker process
+  if ENV['COVERAGE']
+    require 'simplecov'
+    require_relative 'simplecov_config'
+
+    coverage_name = ENV['COVERAGE_NAME'] || 'default'
+    SimpleCov.coverage_dir "#{SimpleCovConfig::PROJECT_ROOT}/coverage/results/#{coverage_name}_worker_#{Process.pid}"
+    SimpleCov.command_name "tk_worker:#{coverage_name}:#{Process.pid}"
+    SimpleCov.print_error_status = false
+    SimpleCov.formatter SimpleCov::Formatter::SimpleFormatter
+
+    SimpleCov.start do
+      SimpleCovConfig.apply_filters(self)
+      track_files "#{SimpleCovConfig::PROJECT_ROOT}/lib/**/*.rb"
+    end
+  end
+
+  FileUtils.mkdir_p(TkWorker::SOCKET_DIR)
+  TkWorker::Server.new.run
+end

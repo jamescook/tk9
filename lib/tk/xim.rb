@@ -2,7 +2,8 @@
 #
 # tk/xim.rb : control input_method
 #
-require 'tk' unless defined?(Tk)
+# :nocov:
+# X Input Method - requires X11 with input method configured to test
 
 module TkXIM
   include Tk
@@ -46,63 +47,17 @@ module TkXIM
     end
   end
 
+  # imconfigure was specific to Japanized Tcl/Tk and no longer exists
   def TkXIM.configure(win, slot, value=None)
-    begin
-      if /^8\.*/ === Tk::TK_VERSION  && JAPANIZED_TK
-        if slot.kind_of? Hash
-          tk_call('imconfigure', win, *hash_kv(slot))
-        else
-          tk_call('imconfigure', win, "-#{slot}", value)
-        end
-      end
-    rescue
-    end
+    # no-op - imconfigure command not available in standard Tcl/Tk
   end
 
   def TkXIM.configinfo(win, slot=nil)
-    if TkComm::GET_CONFIGINFOwoRES_AS_ARRAY
-      begin
-        if /^8\.*/ === Tk::TK_VERSION  && JAPANIZED_TK
-          if slot
-            conf = tk_split_list(tk_call('imconfigure', win, "-#{slot}"))
-            conf[0] = conf[0][1..-1]
-            conf
-          else
-            tk_split_list(tk_call('imconfigure', win)).collect{|conf|
-              conf[0] = conf[0][1..-1]
-              conf
-            }
-          end
-        else
-          []
-        end
-      rescue
-        []
-      end
-    else # ! TkComm::GET_CONFIGINFOwoRES_AS_ARRAY
-      TkXIM.current_configinfo(win, slot)
-    end
+    []
   end
 
   def TkXIM.current_configinfo(win, slot=nil)
-    begin
-      if /^8\.*/ === Tk::TK_VERSION  && JAPANIZED_TK
-        if slot
-          conf = tk_split_list(tk_call('imconfigure', win, "-#{slot}"))
-          { conf[0][1..-1] => conf[1] }
-        else
-          ret = {}
-          tk_split_list(tk_call('imconfigure', win)).each{|conf|
-            ret[conf[0][1..-1]] = conf[1]
-          }
-          ret
-        end
-      else
-        {}
-      end
-    rescue
-      {}
-    end
+    {}
   end
 
   def useinputmethods(value=None)
@@ -121,3 +76,4 @@ module TkXIM
     TkXIM.configinfo(self, slot)
   end
 end
+# :nocov:

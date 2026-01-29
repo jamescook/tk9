@@ -2,7 +2,6 @@
 #
 # tk/place.rb : control place geometry manager
 #
-require 'tk' unless defined?(Tk)
 
 module TkPlace
   include Tk
@@ -31,32 +30,18 @@ module TkPlace
   alias place configure
 
   def configinfo(win, slot = nil)
-    # for >= Tk8.4a2 ?
-    if TkComm::GET_CONFIGINFOwoRES_AS_ARRAY
-      # win = win.epath if win.kind_of?(TkObject)
-      win = _epath(win)
-      if slot
-        #conf = tk_split_list(tk_call_without_enc('place', 'configure',
-        #                                        win, "-#{slot}") )
-        conf = tk_split_simplelist(tk_call_without_enc('place', 'configure',
-                                                       win, "-#{slot}") )
+    win = _epath(win)
+    if slot
+      conf = tk_split_simplelist(tk_call_without_enc('place', 'configure', win, "-#{slot}"))
+      conf[0] = conf[0][1..-1]
+      conf.map! { |v| tk_tcl2ruby(v) }
+      conf
+    else
+      tk_split_simplelist(tk_call_without_enc('place', 'configure', win)).map do |conflist|
+        conf = simplelist(conflist).map { |inf| tk_tcl2ruby(inf) }
         conf[0] = conf[0][1..-1]
-        conf[1] = tk_tcl2ruby(conf[1])
-        conf[2] = tk_tcl2ruby(conf[1])
-        conf[3] = tk_tcl2ruby(conf[1])
-        conf[4] = tk_tcl2ruby(conf[1])
         conf
-      else
-        tk_split_simplelist(tk_call_without_enc('place', 'configure',
-                                                win)).collect{|conflist|
-          #conf = list(conflist)
-          conf = simplelist(conflist).collect!{|inf| tk_tcl2ruby(inf)}
-          conf[0] = conf[0][1..-1]
-          conf
-        }
       end
-    else # ! TkComm::GET_CONFIGINFOwoRES_AS_ARRAY
-      current_configinfo(win, slot)
     end
   end
 

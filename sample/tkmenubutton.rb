@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=480x400
 #
 #  menubutton sample : based on sample menubuttons on the Tcl/Tk demo script
 #
 require 'tk'
+
+Tk.root.geometry('480x400')
 
 TkLabel.new(:text=>'Sample of TkMenubutton').pack(:side=>:top)
 
@@ -132,5 +135,15 @@ TkMenu.bind('<MenuSelect>', proc{|widget|
             }, '%W')
 
 ############################
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    Tk.after(TkDemo.delay) { TkDemo.finish }
+  }
+end
 
 Tk.mainloop

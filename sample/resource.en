@@ -7,7 +7,3 @@
 *BtnFrame.Button.foreground: red
 *hello.text: HELLO
 *quit.text: QUIT
-*BTN_CMD.show_msg: {|arg| print "(0) ";\
-                          print "Hello!! This is a sample of #{arg}.";\
-                          print "(<<< 0)\n"}
-*BTN_CMD.bye_msg:  {print "(0 >>>) Good-bye¡¥(<<< 0)\n"}

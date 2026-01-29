@@ -3,7 +3,11 @@
 #  treeview widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_treeview.html
+#
+require 'tk'
+require 'tk/option_dsl'
+require 'tk/item_option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -14,508 +18,13 @@ module Tk
 end
 
 module Tk::Tile::TreeviewConfig
-  include TkItemConfigMethod
-
-  def __item_configinfo_struct(id)
-    # maybe need to override
-    {:key=>0, :alias=>nil, :db_name=>nil, :db_class=>nil,
-      :default_value=>nil, :current_value=>1}
-  end
-  private :__item_configinfo_struct
-
-  def __itemconfiginfo_core(tagOrId, slot = nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
-        fontkey  = $2
-        return [slot.to_s, tagfontobj(tagid(tagOrId), fontkey)]
-      else
-        if slot
-          slot = slot.to_s
-
-          _, real_name = __item_optkey_aliases(tagid(tagOrId)).find{|k, v| k.to_s == slot}
-          if real_name
-            slot = real_name.to_s
-          end
-
-          case slot
-          when /^(#{__tile_specific_item_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              # On tile-0.7.{2-8}, 'state' options has no '-' at its head.
-              val = tk_call(*(__item_confinfo_cmd(tagid(tagOrId)) << slot))
-            rescue
-              # Maybe, 'state' option has '-' in future.
-              val = tk_call(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            end
-            return [slot, val]
-
-          when /^(#{__item_val2ruby_optkeys(tagid(tagOrId)).keys.join('|')})$/
-            method = _symbolkey2str(__item_val2ruby_optkeys(tagid(tagOrId)))[slot]
-            optval = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            begin
-              val = method.call(tagOrId, optval)
-            rescue => e
-              warn("Warning:: #{e.message} (when #{method}lcall(#{tagOrId.inspect}, #{optval.inspect})") if $DEBUG
-              val = optval
-            end
-            return [slot, val]
-
-          when /^(#{__item_methodcall_optkeys(tagid(tagOrId)).keys.join('|')})$/
-            method = _symbolkey2str(__item_methodcall_optkeys(tagid(tagOrId)))[slot]
-            return [slot, self.__send__(method, tagOrId)]
-
-          when /^(#{__item_numval_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              val = number(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            rescue
-              val = nil
-            end
-            return [slot, val]
-
-          when /^(#{__item_numstrval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = num_or_str(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            return [slot, val]
-
-          when /^(#{__item_boolval_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              val = bool(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            rescue
-              val = nil
-            end
-            return [slot, val]
-
-          when /^(#{__item_listval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            return [slot, val]
-
-          when /^(#{__item_numlistval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val =~ /^[0-9]/
-              return [slot, list(val)]
-            else
-              return [slot, val]
-            end
-
-          when /^(#{__item_strval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            return [slot, val]
-
-          when /^(#{__item_tkvariable_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val.empty?
-              return [slot, nil]
-            else
-              return [slot, TkVarAccess.new(val)]
-            end
-
-          else
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val.index('{')
-              return [slot, tk_split_list(val)]
-            else
-              return [slot, tk_tcl2ruby(val)]
-            end
-          end
-
-        else # ! slot
-          ret = Hash[*(tk_split_simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)))), false, false))].to_a.collect{|conf|
-            conf[0] = conf[0][1..-1] if conf[0][0] == ?-
-            case conf[0]
-            when /^(#{__item_val2ruby_optkeys(tagid(tagOrId)).keys.join('|')})$/
-              method = _symbolkey2str(__item_val2ruby_optkeys(tagid(tagOrId)))[conf[0]]
-              optval = conf[1]
-              begin
-                val = method.call(tagOrId, optval)
-              rescue => e
-                warn("Warning:: #{e.message} (when #{method}.call(#{tagOrId.inspect}, #{optval.inspect})") if $DEBUG
-                val = optval
-              end
-              conf[1] = val
-
-            when /^(#{__item_strval_optkeys(tagid(tagOrId)).join('|')})$/
-              # do nothing
-
-            when /^(#{__item_numval_optkeys(tagid(tagOrId)).join('|')})$/
-              begin
-                conf[1] = number(conf[1])
-              rescue
-                conf[1] = nil
-              end
-
-            when /^(#{__item_numstrval_optkeys(tagid(tagOrId)).join('|')})$/
-              conf[1] = num_or_str(conf[1])
-
-            when /^(#{__item_boolval_optkeys(tagid(tagOrId)).join('|')})$/
-              begin
-                conf[1] = bool(conf[1])
-              rescue
-                conf[1] = nil
-              end
-
-            when /^(#{__item_listval_optkeys(tagid(tagOrId)).join('|')})$/
-              conf[1] = simplelist(conf[1])
-
-            when /^(#{__item_numlistval_optkeys(tagid(tagOrId)).join('|')})$/
-              if conf[1] =~ /^[0-9]/
-                conf[1] = list(conf[1])
-              end
-
-            when /^(#{__item_tkvariable_optkeys(tagid(tagOrId)).join('|')})$/
-              if conf[1].empty?
-                conf[1] = nil
-              else
-                conf[1] = TkVarAccess.new(conf[1])
-              end
-
-            else
-              if conf[1].index('{')
-                conf[1] = tk_split_list(conf[1])
-              else
-                conf[1] = tk_tcl2ruby(conf[1])
-              end
-            end
-
-            conf
-          }
-
-          __item_font_optkeys(tagid(tagOrId)).each{|optkey|
-            optkey = optkey.to_s
-            fontconf = ret.assoc(optkey)
-            if fontconf
-              ret.delete_if{|inf| inf[0] =~ /^(|latin|ascii|kanji)#{optkey}$/}
-              fontconf[1] = tagfontobj(tagid(tagOrId), optkey)
-              ret.push(fontconf)
-            end
-          }
-
-          __item_methodcall_optkeys(tagid(tagOrId)).each{|optkey, method|
-            ret << [optkey.to_s, self.__send__(method, tagOrId)]
-          }
-
-          ret
-        end
-      end
-
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      if (slot && slot.to_s =~ /^(|latin|ascii|kanji)(#{__item_font_optkeys(tagid(tagOrId)).join('|')})$/)
-        fontkey  = $2
-        return {slot.to_s => tagfontobj(tagid(tagOrId), fontkey)}
-      else
-        if slot
-          slot = slot.to_s
-
-          _, real_name = __item_optkey_aliases(tagid(tagOrId)).find{|k, v| k.to_s == slot}
-          if real_name
-            slot = real_name.to_s
-          end
-
-          case slot
-          when /^(#{__tile_specific_item_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              # On tile-0.7.{2-8}, 'state' option has no '-' at its head.
-              val = tk_call(*(__item_confinfo_cmd(tagid(tagOrId)) << slot))
-            rescue
-              # Maybe, 'state' option has '-' in future.
-              val = tk_call(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            end
-            return {slot => val}
-
-          when /^(#{__item_val2ruby_optkeys(tagid(tagOrId)).keys.join('|')})$/
-            method = _symbolkey2str(__item_val2ruby_optkeys(tagid(tagOrId)))[slot]
-            optval = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            begin
-              val = method.call(tagOrId, optval)
-            rescue => e
-              warn("Warning:: #{e.message} (when #{method}lcall(#{tagOrId.inspect}, #{optval.inspect})") if $DEBUG
-              val = optval
-            end
-            return {slot => val}
-
-          when /^(#{__item_methodcall_optkeys(tagid(tagOrId)).keys.join('|')})$/
-            method = _symbolkey2str(__item_methodcall_optkeys(tagid(tagOrId)))[slot]
-            return {slot => self.__send__(method, tagOrId)}
-
-          when /^(#{__item_numval_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              val = number(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            rescue
-              val = nil
-            end
-            return {slot => val}
-
-          when /^(#{__item_numstrval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = num_or_str(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            return {slot => val}
-
-          when /^(#{__item_boolval_optkeys(tagid(tagOrId)).join('|')})$/
-            begin
-              val = bool(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            rescue
-              val = nil
-            end
-            return {slot => val}
-
-          when /^(#{__item_listval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}")))
-            return {slot => val}
-
-          when /^(#{__item_numlistval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val =~ /^[0-9]/
-              return {slot => list(val)}
-            else
-              return {slot => val}
-            end
-
-          when /^(#{__item_strval_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            return {slot => val}
-
-          when /^(#{__item_tkvariable_optkeys(tagid(tagOrId)).join('|')})$/
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val.empty?
-              return {slot => nil}
-            else
-              return {slot => TkVarAccess.new(val)}
-            end
-
-          else
-            val = tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)) << "-#{slot}"))
-            if val.index('{')
-              return {slot => tk_split_list(val)}
-            else
-              return {slot => tk_tcl2ruby(val)}
-            end
-          end
-
-        else # ! slot
-          ret = {}
-          ret = Hash[*(tk_split_simplelist(tk_call_without_enc(*(__item_confinfo_cmd(tagid(tagOrId)))), false, false))].to_a.collect{|conf|
-            conf[0] = conf[0][1..-1] if conf[0][0] == ?-
-
-            optkey = conf[0]
-            case optkey
-            when /^(#{__item_val2ruby_optkeys(tagid(tagOrId)).keys.join('|')})$/
-              method = _symbolkey2str(__item_val2ruby_optkeys(tagid(tagOrId)))[optkey]
-              optval = conf[1]
-              begin
-                val = method.call(tagOrId, optval)
-              rescue => e
-                warn("Warning:: #{e.message} (when #{method}.call(#{tagOrId.inspect}, #{optval.inspect})") if $DEBUG
-                val = optval
-              end
-              conf[1] = val
-
-            when /^(#{__item_strval_optkeys(tagid(tagOrId)).join('|')})$/
-              # do nothing
-
-            when /^(#{__item_numval_optkeys(tagid(tagOrId)).join('|')})$/
-              begin
-                conf[1] = number(conf[1])
-              rescue
-                conf[1] = nil
-              end
-
-            when /^(#{__item_numstrval_optkeys(tagid(tagOrId)).join('|')})$/
-              conf[1] = num_or_str(conf[1])
-
-            when /^(#{__item_boolval_optkeys(tagid(tagOrId)).join('|')})$/
-              begin
-                conf[1] = bool(conf[1])
-              rescue
-                conf[1] = nil
-              end
-
-            when /^(#{__item_listval_optkeys(tagid(tagOrId)).join('|')})$/
-              conf[1] = simplelist(conf[1])
-
-            when /^(#{__item_numlistval_optkeys(tagid(tagOrId)).join('|')})$/
-              if conf[1] =~ /^[0-9]/
-                conf[1] = list(conf[1])
-              end
-
-            when /^(#{__item_tkvariable_optkeys(tagid(tagOrId)).join('|')})$/
-              if conf[1].empty?
-                conf[1] = nil
-              else
-                conf[1] = TkVarAccess.new(conf[1])
-              end
-
-            else
-              if conf[1].index('{')
-                return [slot, tk_split_list(conf[1])]
-              else
-                return [slot, tk_tcl2ruby(conf[1])]
-              end
-            end
-
-            ret[conf[0]] = conf[1]
-          }
-
-          __item_font_optkeys(tagid(tagOrId)).each{|optkey|
-            optkey = optkey.to_s
-            fontconf = ret[optkey]
-            if fontconf.kind_of?(Array)
-              ret.delete(optkey)
-              ret.delete('latin' << optkey)
-              ret.delete('ascii' << optkey)
-              ret.delete('kanji' << optkey)
-              fontconf[1] = tagfontobj(tagid(tagOrId), optkey)
-              ret[optkey] = fontconf
-            end
-          }
-
-          __item_methodcall_optkeys(tagid(tagOrId)).each{|optkey, method|
-            ret[optkey.to_s] = self.__send__(method, tagOrId)
-          }
-
-          ret
-        end
-      end
-    end
-  end
+  include Tk::ItemOptionDSL::InstanceMethods
 
   ###################
 
-  def __item_cget_cmd(id)
-    [self.path, *id]
-  end
-  private :__item_cget_cmd
-
-  def __item_config_cmd(id)
-    [self.path, *id]
-  end
-  private :__item_config_cmd
-
-  def __item_numstrval_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      ['width']
-    when :column, 'column'
-      super(id[1]) + ['minwidth']
-    when :tag, 'tag'
-      super(id[1])
-    when :heading, 'heading'
-      super(id[1])
-    else
-      super(id[1])
-    end
-  end
-  private :__item_numstrval_optkeys
-
-  def __item_strval_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      super(id) + ['id']
-    when :column, 'column'
-      super(id[1])
-    when :tag, 'tag'
-      super(id[1])
-    when :heading, 'heading'
-      super(id[1])
-    else
-      super(id[1])
-    end
-  end
-  private :__item_strval_optkeys
-
-  def __item_boolval_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      ['open']
-    when :column, 'column'
-      super(id[1]) + ['stretch']
-    when :tag, 'tag'
-      super(id[1])
-    when :heading, 'heading'
-      super(id[1])
-    end
-  end
-  private :__item_boolval_optkeys
-
-  def __item_listval_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      ['values']
-    when :column, 'column'
-      []
-    when :heading, 'heading'
-      []
-    else
-      []
-    end
-  end
-  private :__item_listval_optkeys
-
-  def __item_val2ruby_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      {
-        'tags'=>proc{|arg_id, val|
-          simplelist(val).collect{|tag|
-            Tk::Tile::Treeview::Tag.id2obj(self, tag)
-          }
-        }
-      }
-    when :column, 'column'
-      {}
-    when :heading, 'heading'
-      {}
-    else
-      {}
-    end
-  end
-  private :__item_val2ruby_optkeys
-
-  def __tile_specific_item_optkeys(id)
-    case id[0]
-    when :item, 'item'
-      []
-    when :column, 'column'
-      []
-    when :heading, 'heading'
-      ['state']  # On tile-0.7.{2-8}, 'state' options has no '-' at its head.
-    else
-      []
-    end
-  end
-  private :__item_val2ruby_optkeys
-
-  def itemconfiginfo(tagOrId, slot = nil)
-    __itemconfiginfo_core(tagOrId, slot)
-  end
-
-  def current_itemconfiginfo(tagOrId, slot = nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if slot
-        org_slot = slot
-        begin
-          conf = __itemconfiginfo_core(tagOrId, slot)
-          if ( ! __item_configinfo_struct(tagid(tagOrId))[:alias] \
-              || conf.size > __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 )
-            return {conf[0] => conf[-1]}
-          end
-          slot = conf[__item_configinfo_struct(tagid(tagOrId))[:alias]]
-        end while(org_slot != slot)
-        fail RuntimeError,
-          "there is a configure alias loop about '#{org_slot}'"
-      else
-        ret = {}
-        __itemconfiginfo_core(tagOrId).each{|conf|
-          if ( ! __item_configinfo_struct(tagid(tagOrId))[:alias] \
-              || conf.size > __item_configinfo_struct(tagid(tagOrId))[:alias] + 1 )
-            ret[conf[0]] = conf[-1]
-          end
-        }
-        ret
-      end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      ret = {}
-      __itemconfiginfo_core(tagOrId, slot).each{|key, conf|
-        ret[key] = conf[-1] if conf.kind_of?(Array)
-      }
-      ret
-    end
-  end
+  # Item command configuration set on Tk::Tile::Treeview class via DSL:
+  #   item_cget_cmd { |id| [path, *id] }
+  #   item_configure_cmd { |id| [path, *id] }
 
   alias __itemcget_tkstring itemcget_tkstring
   alias __itemcget itemcget
@@ -573,75 +82,18 @@ module Tk::Tile::TreeviewConfig
   alias column_configinfo columnconfiginfo
   alias current_column_configinfo current_columnconfiginfo
 
-  # Treeview Heading
+  # Treeview Heading (simplified - tile-0.7.x workaround removed, we require Tk 8.6+)
   def headingcget_tkstring(tagOrId, option)
-    if __tile_specific_item_optkeys([:heading, tagOrId]).index(option.to_s)
-      begin
-        # On tile-0.7.{2-8}, 'state' options has no '-' at its head.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << option.to_s))
-      rescue
-        # Maybe, 'state' option has '-' in future.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << "-#{option}"))
-      end
-    else
-      __itemcget_tkstring([:heading, tagOrId], option)
-    end
+    __itemcget_tkstring([:heading, tagOrId], option)
   end
   def headingcget_strict(tagOrId, option)
-    if __tile_specific_item_optkeys([:heading, tagOrId]).index(option.to_s)
-      begin
-        # On tile-0.7.{2-8}, 'state' options has no '-' at its head.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << option.to_s))
-      rescue
-        # Maybe, 'state' option has '-' in future.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << "-#{option}"))
-      end
-    else
-      __itemcget_strict([:heading, tagOrId], option)
-    end
+    __itemcget_strict([:heading, tagOrId], option)
   end
   def headingcget(tagOrId, option)
-    unless TkItemConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-      headingcget_strict(tagOrId, option)
-    else
-      begin
-        headingcget_strict(tagOrId, option)
-      rescue => e
-        begin
-          if current_headingconfiginfo(tagOrId).has_key?(option.to_s)
-            # not tag error & option is known -> error on known option
-            fail e
-          else
-            # not tag error & option is unknown
-            nil
-          end
-        rescue
-          fail e  # tag error
-        end
-      end
-    end
+    __itemcget([:heading, tagOrId], option)
   end
   def headingconfigure(tagOrId, slot, value=None)
-    if slot.kind_of?(Hash)
-      slot = _symbolkey2str(slot)
-      sp_kv = []
-      __tile_specific_item_optkeys([:heading, tagOrId]).each{|k|
-        sp_kv << k << _get_eval_string(slot.delete(k)) if slot.has_key?(k)
-      }
-      tk_call(*(__item_config_cmd([:heading, tagOrId]).concat(sp_kv)))
-      tk_call(*(__item_config_cmd([:heading, tagOrId]).concat(hash_kv(slot))))
-    elsif __tile_specific_item_optkeys([:heading, tagOrId]).index(slot.to_s)
-      begin
-        # On tile-0.7.{2-8}, 'state' options has no '-' at its head.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << slot.to_s << value))
-      rescue
-        # Maybe, 'state' option has '-' in future.
-        tk_call(*(__item_cget_cmd([:heading, tagOrId]) << "-#{slot}" << value))
-      end
-    else
-      __itemconfigure([:heading, tagOrId], slot, value)
-    end
-    self
+    __itemconfigure([:heading, tagOrId], slot, value)
   end
   def headingconfiginfo(tagOrId, slot=nil)
     __itemconfiginfo([:heading, tagOrId], slot)
@@ -897,38 +349,16 @@ end
 
 ########################
 
+# Root represents the treeview's root node (id='').
+# Cached via Treeview#root memoization - no need for complex self.new override.
+# Note: Root is NOT registered in ItemID_TBL because all id2obj calls guard
+# against empty id (returning nil instead). The root is accessed via tree.root.
 class Tk::Tile::Treeview::Root < Tk::Tile::Treeview::Item
-  def self.new(tree, keys = {})
-    tpath = tree.path
-    obj = nil
-    Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{
-      if Tk::Tile::Treeview::Item::ItemID_TBL[tpath] &&
-          Tk::Tile::Treeview::Item::ItemID_TBL[tpath]['']
-        obj = Tk::Tile::Treeview::Item::ItemID_TBL[tpath]['']
-      else
-        #super(tree, keys)
-        (obj = self.allocate).instance_eval{
-          @parent = @t = tree
-          @tpath = tree.path
-          @path = @id = ''
-          Tk::Tile::Treeview::Item::ItemID_TBL[@tpath] ||= {}
-          Tk::Tile::Treeview::Item::ItemID_TBL[@tpath][@id] = self
-        }
-      end
-    }
-    obj.configure(keys) if keys && ! keys.empty?
-    obj
-  end
-
   def initialize(tree, keys = {})
-    # dummy:: not called by 'new' method
     @parent = @t = tree
     @tpath = tree.path
     @path = @id = ''
-    Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{
-      Tk::Tile::Treeview::Item::ItemID_TBL[@tpath] ||= {}
-      Tk::Tile::Treeview::Item::ItemID_TBL[@tpath][@id] = self
-    }
+    configure(keys) if keys && !keys.empty?
   end
 end
 
@@ -1055,10 +485,18 @@ end
 ########################
 
 class Tk::Tile::Treeview < TkWindow
+  extend Tk::OptionDSL
+  extend Tk::ItemOptionDSL
   include Tk::Tile::TileWidget
   include Scrollable
+  include Tk::Generated::TtkTreeview
 
   include Tk::Tile::TreeviewConfig
+
+  # Declare item command structure (treeview uses id as command suffix array)
+  # e.g., id = [:item, 'I001'] produces [path, 'item', 'I001']
+  item_cget_cmd { |id| [path, *id] }
+  item_configure_cmd { |id| [path, *id] }
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::treeview'.freeze].freeze
@@ -1067,6 +505,41 @@ class Tk::Tile::Treeview < TkWindow
   end
   WidgetClassName = 'Treeview'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
+  # Override generated options with correct types (generator defaults to :string)
+  option :columns,        type: :list     # list of column identifiers
+  option :displaycolumns, type: :list     # columns to display (or "#all")
+  option :show,           type: :list     # elements to show: tree, headings
+
+  # Tk 9.0+ options (TIP 552) - not auto-generated
+  # TODO: min_version is stored but not enforced at runtime - configure will fail on Tk 8.6
+  option :striped,        type: :boolean, min_version: 9  # zebra striping
+  option :selecttype,     type: :string,  min_version: 9  # item, cell
+  option :titlecolumns,   type: :integer, min_version: 9  # non-scrolling columns
+  option :titleitems,     type: :integer, min_version: 9  # non-scrolling items
+
+  # ================================================================
+  # Item options (flattened for items, columns, headings, and tags)
+  # ================================================================
+
+  # Item options
+  item_option :open,          type: :boolean   # item expanded state
+  item_option :values,        type: :list      # item column values
+  item_option :tags,          type: :list      # item tags
+
+  # Column options
+  item_option :width,         type: :integer   # column width
+  item_option :minwidth,      type: :integer   # column minimum width
+  item_option :stretch,       type: :boolean   # column resizable
+  item_option :anchor,        type: :string    # content alignment
+
+  # Heading options
+  item_option :text,          type: :string    # heading text
+
+  # Tag options (for styling)
+  item_option :foreground,    type: :string    # text color
+  item_option :background,    type: :string    # background color
+  item_option :image,         type: :string    # icon image
 
   def __destroy_hook__
     Tk::Tile::Treeview::Item::ItemID_TBL.mutex.synchronize{
@@ -1094,7 +567,7 @@ class Tk::Tile::Treeview < TkWindow
   end
 
   def root
-    Tk::Tile::Treeview::Root.new(self)
+    @root ||= Tk::Tile::Treeview::Root.new(self)
   end
 
   def bbox(item, column=None)
@@ -1314,12 +787,12 @@ class Tk::Tile::Treeview < TkWindow
 
   def tag_add(tag, *items)
     fail ArgumentError, "no target items" if items.empty?
-    tk_send('tag', 'add', tagid(tag), *(items.collect{|item| tagid(item)}))
+    tk_send('tag', 'add', tagid(tag), array2tk_list(items.flatten, true))
     self
   end
 
   def tag_remove(tag, *items)
-    tk_send('tag', 'remove', tagid(tag), *(items.collect{|item| tagid(item)}))
+    tk_send('tag', 'remove', tagid(tag), array2tk_list(items.flatten, true))
     self
   end
 

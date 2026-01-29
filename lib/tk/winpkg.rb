@@ -6,7 +6,9 @@
 #     ATTENTION !!
 #         This is NOT TESTED. Because I have no test-environment.
 #
-require 'tk' unless defined?(Tk)
+# :nocov:
+# Windows-only packages (DDE, Registry) - requires Windows to test
+require 'tk'
 
 module Tk::WinDDE
 end
@@ -155,3 +157,4 @@ module Tk::WinRegistry
 
   module_function :delete, :get, :keys, :set, :type, :values
 end
+# :nocov:

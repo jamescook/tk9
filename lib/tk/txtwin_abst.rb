@@ -2,7 +2,6 @@
 #
 # tk/txtwin_abst.rb : TkTextWin abstract class
 #
-require 'tk' unless defined?(Tk)
 
 class TkTextWin<TkWindow
   TkCommandNames = [].freeze
@@ -19,7 +18,7 @@ class TkTextWin<TkWindow
     self
   end
   def get(*index)
-    _fromUTF8(tk_send_without_enc('get', *index))
+    tk_send_without_enc('get', *index)
   end
   def insert(index, *args)
     tk_send('insert', index, *args)

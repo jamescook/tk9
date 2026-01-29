@@ -3,7 +3,10 @@
 #  tseparator widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_separator.html
+#
+require 'tk'
+require 'tk/option_dsl'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -15,7 +18,9 @@ module Tk
 end
 
 class Tk::Tile::TSeparator < TkWindow
+  extend Tk::OptionDSL
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkSeparator
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::separator'.freeze].freeze

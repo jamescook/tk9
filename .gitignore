@@ -17,3 +17,13 @@ ext/**/Makefile
 screenshots/unverified/
 screenshots/diffs/
 screenshots/logs
+
+# ext/trofs build artifacts
+ext/trofs/*.dylib
+ext/trofs/*.so
+ext/trofs/config.log
+ext/trofs/config.status
+ext/trofs/pkgIndex.tcl
+ext/trofs/library/trofs.tcl
+ext/trofs/tests/upstream/load.tcl
+ext/trofs/autom4te.cache/

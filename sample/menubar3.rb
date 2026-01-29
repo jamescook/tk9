@@ -1,9 +1,12 @@
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 #
 # menubar sample 3 : vertical layout menubar; use frame and menubuttons
 #
 
 require 'tk'
+
+Tk.root.geometry('640x480')
 
 radio_var = TkVariable.new('y')
 
@@ -69,5 +72,26 @@ menubar.pack('side'=>'left', 'fill'=>'y')
 TkText.new(:wrap=>'word').pack.insert('1.0', 'This sample script generates "Menu Sidebar".
 If "::tk::MenuNextMenuon" function is available  your Tcl/Tk library, you will be able to move to the next menu by Tab key on the posted menu, or the previous menu by Alt + Tab key.
 Please read the sample source, and check how to override default configure options of menu entries on a menu_spec. Maybe, on windows, this menubar does not work properly about keyboard shortcuts. Then, please use "menu" option of root/toplevel widget (see sample/menubar3.rb).')
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+
+    # Get the File menu and invoke Open
+    file_menu = menubar[0][1]  # [menubutton, menu] pair
+    file_menu.invoke(0)  # Open
+
+    Tk.after(TkDemo.delay) {
+      # Get Edit menu and invoke Cut, Copy
+      edit_menu = menubar[1][1]
+      edit_menu.invoke(0)  # Cut
+      edit_menu.invoke(1)  # Copy
+      TkDemo.finish
+    }
+  }
+end
 
 Tk.mainloop

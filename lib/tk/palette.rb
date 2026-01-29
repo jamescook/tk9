@@ -3,7 +3,6 @@
 #   tk/palette.rb : methods for Tcl/Tk standard library 'palette.tcl'
 #                     1998/06/21 by Hidetoshi Nagai <nagai@ai.kyutech.ac.jp>
 #
-require 'tk' unless defined?(Tk)
 
 module TkPalette
   include Tk
@@ -12,7 +11,7 @@ module TkPalette
   TkCommandNames = [
     'tk_setPalette'.freeze,
     'tk_bisque'.freeze,
-    'tkDarken'.freeze
+    '::tk::Darken'.freeze
   ].freeze
 
   def TkPalette.set(*args)
@@ -28,7 +27,7 @@ module TkPalette
   end
 
   def TkPalette.darken(color, percent)
-    tk_call('tkDarken', color, percent)
+    tk_call('::tk::Darken', color, percent)
   end
 
   def TkPalette.recolorTree(win, colors)

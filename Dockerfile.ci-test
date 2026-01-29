@@ -1,87 +1,238 @@
-# Test Dockerfile for Tcl/Tk on Ubuntu 24.04
+# syntax=docker/dockerfile:1
+# Test Dockerfile for Tcl/Tk on Ubuntu 25.04
+# Using 25.04 (plucky) instead of 24.04 LTS because it has:
+# - Tcl/Tk 9.0.1 packages
+# - BWidget 1.10.1 with Tcl 9 support
+# - libtk-img 2.0.1 with Tcl 9 support
 #
 # Usage:
-#   Tcl/Tk 9.0 (default, built from source):
-#     docker build -f Dockerfile.ci-test -t tk-ci-test .
+#   Tcl/Tk 9.0 (default):
+#     docker build -f Dockerfile.ci-test -t tk-ci-test-9 .
 #
-#   Tcl/Tk 8.6 (from apt):
+#   Tcl/Tk 8.6:
 #     docker build -f Dockerfile.ci-test --build-arg TCL_VERSION=8.6 -t tk-ci-test-8 .
 #
 #   Run tests:
-#     docker run --rm -v $(pwd)/screenshots:/app/screenshots tk-ci-test
+#     docker run --rm -v $(pwd)/screenshots:/app/screenshots tk-ci-test-9
+#
+#   Or use rake tasks:
+#     rake docker:test                    # Test with Tcl 9.0
+#     TCL_VERSION=8.6 rake docker:test    # Test with Tcl 8.6
+#     rake docker:clean                   # Remove dangling images
 
-FROM ubuntu:24.04
+# Ruby source - just grab pre-built Ruby, no compilation needed
+ARG RUBY_VERSION=3.4
+FROM ruby:${RUBY_VERSION}-slim AS ruby-source
 
-ARG TCL_VERSION=9.0
+#############################################
+# BUILDER STAGE - compile extension only
+#############################################
+FROM ubuntu:25.04 AS builder
+
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Skip docs/man pages to speed up apt installs
+RUN echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/excludes && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/excludes && \
+    echo 'path-exclude=/usr/share/locale/*' >> /etc/dpkg/dpkg.cfg.d/excludes
+
+COPY --from=ruby-source /usr/local /usr/local
+ENV PATH="/usr/local/bin:${PATH}"
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    cmake \
+    ca-certificates \
+    libyaml-dev \
+    libffi-dev \
+    libreadline-dev \
+    zlib1g-dev \
+    libssl-dev \
+    libx11-dev \
+    libxcursor-dev
+
+# Tcl/Tk dev packages for compilation
+ARG TCL_VERSION=9.0
 ENV TCL_VERSION=${TCL_VERSION}
 
-# Install base dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    ruby \
-    ruby-dev \
-    git \
-    xvfb \
-    imagemagick \
-    perceptualdiff \
-    fonts-noto-color-emoji \
-    fonts-noto-cjk \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Tcl/Tk based on version
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     if [ "${TCL_VERSION}" = "8.6" ]; then \
-        apt-get install -y tcl-dev tk-dev; \
+        apt-get update && apt-get install -y --no-install-recommends tcl-dev tk-dev; \
     else \
-        apt-get install -y curl libx11-dev libxft-dev libxss-dev && \
-        cd /tmp && \
-        curl -LO "https://prdownloads.sourceforge.net/tcl/tcl9.0.1-src.tar.gz" && \
-        tar xzf tcl9.0.1-src.tar.gz && \
-        rm -rf tcl9.0.1/pkgs/sqlite3* && \
-        cd tcl9.0.1/unix && \
-        ./configure --prefix=/usr/local --disable-zipfs && \
-        make -j$(nproc) && \
-        make install && \
-        cd /tmp && \
-        curl -LO "https://prdownloads.sourceforge.net/tcl/tk9.0.1-src.tar.gz" && \
-        tar xzf tk9.0.1-src.tar.gz && \
-        cd tk9.0.1/unix && \
-        ./configure --prefix=/usr/local --with-tcl=/usr/local/lib && \
-        make -j$(nproc) && \
-        make install && \
-        rm -rf /tmp/tcl* /tmp/tk*; \
-    fi && \
-    rm -rf /var/lib/apt/lists/*
+        apt-get update && apt-get install -y --no-install-recommends tcl9.0-dev tk9.0-dev libtommath-dev; \
+    fi
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-
-# Copy gem source
-WORKDIR /app
-COPY . .
-
-# Install bundler and dependencies
-RUN gem install bundler --no-document && bundle install
-
-# Compile the extension based on version
-# Note: Use dpkg-architecture to get correct lib path for arm64 vs x86_64
-RUN if [ "${TCL_VERSION}" = "8.6" ]; then \
+# Ubuntu 25.04 pkg-config bug: tk9.0.pc requires "tcl" but only tcl9.0.pc exists
+RUN if [ "${TCL_VERSION}" != "8.6" ]; then \
         MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
-        rake compile -- --with-tcltkversion=8.6 \
+        ln -sf tcl9.0.pc /usr/lib/${MULTIARCH}/pkgconfig/tcl.pc && \
+        ln -sf tk9.0.pc /usr/lib/${MULTIARCH}/pkgconfig/tk.pc; \
+    fi
+
+WORKDIR /app
+
+# Copy only what's needed for bundle install first (for layer caching)
+# This way lib/ changes don't invalidate the bundle install cache
+# Note: Gemfile.lock is gitignored (gem convention), Docker generates its own
+COPY Gemfile *.gemspec ./
+
+ENV BUNDLE_PATH=/usr/local/bundle
+RUN --mount=type=cache,target=/bundle-cache \
+    if [ -d /bundle-cache/ruby ]; then \
+        echo "Restoring cached gems..." && \
+        mkdir -p $BUNDLE_PATH && \
+        cp -a /bundle-cache/* $BUNDLE_PATH/; \
+    fi && \
+    bundle install && \
+    cp -a $BUNDLE_PATH/* /bundle-cache/
+
+# Now copy source code (after bundle install so changes don't invalidate gem cache)
+COPY Rakefile ./
+COPY ext/ ext/
+COPY lib/ lib/
+
+# Compile the main extension
+RUN MAKEFLAGS="-j$(nproc)" MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
+    if [ "${TCL_VERSION}" = "8.6" ]; then \
+        bundle exec rake compile -- --with-tcltkversion=8.6 \
             --with-tcl-lib=/usr/lib/${MULTIARCH} \
             --with-tk-lib=/usr/lib/${MULTIARCH} \
             --with-tcl-include=/usr/include/tcl8.6 \
             --with-tk-include=/usr/include/tcl8.6; \
     else \
-        rake compile -- --with-tcltkversion=9.0 \
-            --with-tcl-lib=/usr/local/lib \
-            --with-tk-lib=/usr/local/lib \
-            --with-tcl-include=/usr/local/include \
-            --with-tk-include=/usr/local/include; \
+        bundle exec rake compile -- --with-tcltkversion=9.0 \
+            --with-tcl-lib=/usr/lib/${MULTIARCH} \
+            --with-tk-lib=/usr/lib/${MULTIARCH} \
+            --with-tcl-include=/usr/include/tcl9.0 \
+            --with-tk-include=/usr/include/tk9.0; \
     fi
 
-# Verify extension loads
-RUN xvfb-run ruby -I lib -r tk -e "puts \"Tk loaded! TCL_VERSION=#{Tk::TCL_VERSION}\""
+# Compile trofs extension
+RUN bundle exec rake compile:trofs
+
+# Build tkdnd from source (no prebuilt binaries for Linux Tcl 9.0)
+ARG TKDND_VERSION=2.9.5
+RUN git clone --depth 1 --branch tkdnd-release-test-v${TKDND_VERSION} \
+        https://github.com/petasis/tkdnd.git /tmp/tkdnd && \
+    cd /tmp/tkdnd && \
+    mkdir build && cd build && \
+    MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH) && \
+    if [ "${TCL_VERSION}" = "8.6" ]; then \
+        cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/share/tcltk \
+            -Dwith-tcl=/usr/lib/${MULTIARCH}; \
+    else \
+        cmake .. \
+            -DCMAKE_INSTALL_PREFIX=/usr/share/tcltk \
+            -Dwith-tclsh=/usr/bin/tclsh9.0 \
+            -DTCL_INCLUDE_PATH=/usr/include/tcl9.0 \
+            -DTK_INCLUDE_PATH=/usr/include/tk9.0 \
+            -DTCL_LIBRARY=/usr/lib/${MULTIARCH}/libtcl9.0.so \
+            -DTK_LIBRARY=/usr/lib/${MULTIARCH}/libtk9.0.so \
+            -DTCL_STUB_LIBRARY=/usr/lib/${MULTIARCH}/libtclstub9.0.a \
+            -DTK_STUB_LIBRARY=/usr/lib/${MULTIARCH}/libtkstub9.0.a; \
+    fi && \
+    make -j$(nproc) && \
+    make install && \
+    rm -rf /tmp/tkdnd
+
+#############################################
+# RUNTIME STAGE - slim image for running tests
+#############################################
+FROM ubuntu:25.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# UTF-8 locale for Ruby's default external encoding.
+# Without this, Encoding.default_external is US-ASCII and gems like
+# method_source fail when reading files containing non-ASCII (e.g., i18n tests).
+ENV LANG=C.UTF-8
+
+# Skip docs/man pages
+RUN echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/excludes && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/excludes && \
+    echo 'path-exclude=/usr/share/locale/*' >> /etc/dpkg/dpkg.cfg.d/excludes
+
+# Runtime-only dependencies (no build-essential, no *-dev)
+ARG TCL_VERSION=9.0
+ENV TCL_VERSION=${TCL_VERSION}
+
+# Base runtime packages
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    xdotool \
+    ffmpeg \
+    imagemagick \
+    ghostscript \
+    perceptualdiff \
+    fonts-noto-color-emoji \
+    fonts-noto-cjk \
+    bwidget \
+    make \
+    libyaml-0-2 \
+    libffi8 \
+    libreadline8 \
+    zlib1g \
+    libssl3t64 \
+    libxcursor1
+
+# Tcl/Tk version-specific packages
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    if [ "${TCL_VERSION}" = "8.6" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends tcl tk libtk-img; \
+    else \
+        apt-get update && apt-get install -y --no-install-recommends tcl9.0 tk9.0 && \
+        ln -sf /usr/bin/tclsh9.0 /usr/bin/tclsh; \
+    fi
+
+# libtk-img for Tcl 9 (not in Ubuntu 25.04, fetch from Debian)
+# Note: Package versions differ by arch (arm64 has +b1 rebuild suffix)
+RUN if [ "${TCL_VERSION}" != "8.6" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends wget && \
+        ARCH=$(dpkg --print-architecture) && \
+        DEBIAN_POOL="http://ftp.us.debian.org/debian/pool/main" && \
+        wget -O /tmp/libjpeg62-turbo.deb "${DEBIAN_POOL}/libj/libjpeg-turbo/libjpeg62-turbo_2.1.5-4_${ARCH}.deb" && \
+        TKIMG_PKG=$(wget -qO- "${DEBIAN_POOL}/libt/libtk-img/" | grep -o "libtk-img_2\.1[^\"]*_${ARCH}\.deb" | sort -V | tail -1) && \
+        wget -O /tmp/libtk-img.deb "${DEBIAN_POOL}/libt/libtk-img/${TKIMG_PKG}" && \
+        dpkg -i /tmp/libjpeg62-turbo.deb /tmp/libtk-img.deb && \
+        rm /tmp/libjpeg62-turbo.deb /tmp/libtk-img.deb && \
+        apt-get purge -y wget && apt-get autoremove -y && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+ENV TCLLIBPATH="/usr/share/tcltk /app/ext/trofs"
+ENV TROFS_LIBRARY=/app/ext/trofs/library
+
+# Copy Ruby and gems from builder
+COPY --from=builder /usr/local /usr/local
+
+# Copy tkdnd extension built in builder stage
+COPY --from=builder /usr/share/tcltk/tkdnd* /usr/share/tcltk/
+ENV PATH="/usr/local/bin:${PATH}"
+ENV BUNDLE_PATH=/usr/local/bundle
+
+WORKDIR /app
+
+# Copy compiled extension and build state from builder
+# - lib/ contains the final .so files
+# - ext/ contains extconf.rb (needed by Rakefile)
+# - tmp/ contains rake-compiler build state (prevents recompilation)
+COPY --from=builder /app/lib /app/lib
+COPY --from=builder /app/ext /app/ext
+COPY --from=builder /app/tmp /app/tmp
+COPY --from=builder /app/Rakefile /app/Rakefile
+COPY --from=builder /app/Gemfile /app/Gemfile
+COPY --from=builder /app/Gemfile.lock /app/Gemfile.lock
+COPY --from=builder /app/*.gemspec /app/
+
+# Copy tests and samples directly from context (not cached with compilation)
+# This allows test changes without recompiling
+COPY test/ test/
+COPY sample/ sample/
 
 # Screenshots will be in /app/screenshots/unverified/linux/tcl{version}/
-CMD ["bash", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 1 && DISPLAY=:99 rake test"]
+# exec replaces bash so SIGINT (Ctrl+C) goes directly to rake
+CMD ["bash", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 1 && exec env DISPLAY=:99 bundle exec rake test"]

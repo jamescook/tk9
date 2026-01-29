@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record
 #
 # Ruby/Tk Goldverg demo (called by 'widget')
 #
@@ -397,6 +398,7 @@ class TkGoldberg_Demo
       end
     }
     @S['active'] = alive
+    $stderr.puts "alive=#{alive.inspect}" if ENV['DEBUG'] && alive.empty?
     return retval
   end
 
@@ -1787,6 +1789,18 @@ class TkGoldberg_Demo
 
     if step >= 3
       @canvas.delete('I24', 'I26')
+      if ENV['TK_RECORD']
+        # Auto-exit after animation completes (for recording)
+        Tk.after(500) do
+          # Signal recording to stop before window closes
+          if (pipe = ENV['TK_STOP_PIPE'])
+            File.write(pipe, "1") rescue nil
+          end
+          sleep 1
+          Tk.exit
+        end
+        return 4
+      end
       TkcText.new(@canvas, 430, 740, :anchor=>:s, :tag=>'I26',
                   :text=>'click to continue',
                   :font=>['Times Roman', 24, :bold])
@@ -2004,4 +2018,15 @@ class TkGoldberg_Demo
   end
 end
 
-TkGoldberg_Demo.new(base_frame)
+$goldberg_instance = TkGoldberg_Demo.new(base_frame)
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.recording?
+  Tk.root.withdraw  # Hide root window, we use a Toplevel
+  $goldberg_demo.geometry('+0+0')  # Position at top-left for screen capture
+  $goldberg_demo.configure(:cursor => 'none')  # Hide cursor for recording
+  Tk.after(1000) { $goldberg_instance.start }
+  Tk.mainloop
+end

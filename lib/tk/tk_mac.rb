@@ -1,12 +1,9 @@
 # frozen_string_literal: false
 #
-# tk/tk_mac.rb : Access Mac-Specific functionality on OS X from Tk
-#                (supported by Tk8.6 or later)
+# tk/tk_mac.rb : Access Mac-Specific functionality on macOS from Tk
 #
-#     ATTENTION !!
-#         This is NOT TESTED. Because I have no test-environment.
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/tk_mac.html
 #
-require 'tk' unless defined?(Tk)
 
 module Tk
   module Mac
@@ -70,25 +67,29 @@ module Tk::Mac
   end
 
 
-  # system configuration
-  def self.useCompatibilityMetrics(mode)
-    tk_call('::tk::mac::useCompatibilityMetrics', mode)
-    nil
+  # System configuration variables
+  # These are Tcl namespace variables, not commands
+  # See: https://www.tcl-lang.org/man/tcl9.0/TkCmd/tk_mac.html
+
+  # Preserves compatibility with older Tk/Aqua metrics; set to false for more native spacing
+  def self.useCompatibilityMetrics(bool)
+    tk_call('set', '::tk::mac::useCompatibilityMetrics', bool ? 1 : 0)
   end
 
+  # Sets the antialiasing limit; lines thinner than limit pixels will not be antialiased
+  # Default is 0 (all lines antialiased)
   def self.CGAntialiasLimit(limit)
-    tk_call('::tk::mac::CGAntialiasLimit', limit)
-    nil
+    tk_call('set', '::tk::mac::CGAntialiasLimit', limit)
   end
 
+  # Controls text antialiasing: -1 (system default), 0 (no AA), 1 (AA enabled)
   def self.antialiasedtext(num)
-    tk_call('::tk::mac::antialiasedtext', num)
-    nil
+    tk_call('set', '::tk::mac::antialiasedtext', num)
   end
 
-  def self.useThemedToplevel(mode)
-    tk_call('::tk::mac::useThemedToplevel', mode)
-    nil
+  # Sets toplevel windows to draw with modern grayish/pinstripe Mac background
+  def self.useThemedToplevel(bool)
+    tk_call('set', '::tk::mac::useThemedToplevel', bool ? 1 : 0)
   end
 
 end

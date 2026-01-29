@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=400x300
 #
 # tkmultilistframe.rb : multiple listbox widget on scrollable frame
 #                       by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
@@ -937,5 +938,55 @@ if __FILE__ == $0
   p l.columns(1)
   p l.columns(1..3)
   p l.columns(1,2)
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      puts "rows inserted"
+
+      delay = TkDemo.delay
+
+      # Demo: select different rows to show highlighting
+      Tk.after(delay) {
+        l.selection_set(0)
+        Tk.update
+        puts "selected row 0"
+
+        Tk.after(delay) {
+          l.selection_clear(0, 'end')
+          l.selection_set(2)
+          Tk.update
+          puts "selected row 2"
+
+          Tk.after(delay) {
+            l.selection_clear(0, 'end')
+            l.selection_set(5)
+            Tk.update
+            puts "selected row 5"
+
+            Tk.after(delay) {
+              # Scroll down
+              l.columns(0).yview('scroll', 4, 'units')
+              Tk.update
+              puts "scrolled down"
+
+              Tk.after(delay) {
+                l.selection_clear(0, 'end')
+                l.selection_set(9)
+                Tk.update
+                puts "selected row 9"
+
+                Tk.after(delay) { TkDemo.finish }
+              }
+            }
+          }
+        }
+      }
+    }
+  end
+
   Tk.mainloop
 end

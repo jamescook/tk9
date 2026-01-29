@@ -3,7 +3,9 @@
 #  tscrollbar widget
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/ttk_scrollbar.html
+#
+require 'tk'
 require 'tkextlib/tile.rb'
 
 module Tk
@@ -16,6 +18,7 @@ end
 
 class Tk::Tile::TScrollbar < Tk::Scrollbar
   include Tk::Tile::TileWidget
+  include Tk::Generated::TtkScrollbar
 
   if Tk::Tile::USE_TTK_NAMESPACE
     TkCommandNames = ['::ttk::scrollbar'.freeze].freeze

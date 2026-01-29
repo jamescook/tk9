@@ -2,13 +2,10 @@
 #
 # tk/textmark.rb - methods for treating text marks
 #
-require 'tk' unless defined?(Tk)
 require 'tk/text'
 
 class TkTextMark<TkObject
   include Tk::Text::IndexModMethods
-
-  TMarkID_TBL = TkCore::INTERP.create_table
 
   (Tk_TextMark_ID = ['mark'.freeze, '00000']).instance_eval{
     @mutex = Mutex.new
@@ -16,19 +13,9 @@ class TkTextMark<TkObject
     freeze
   }
 
-  TkCore::INTERP.init_ip_env{
-    TMarkID_TBL.mutex.synchronize{ TMarkID_TBL.clear }
-  }
-
+  # Look up a mark by ID. Delegates to the text widget's tagid2obj.
   def TkTextMark.id2obj(text, id)
-    tpath = text.path
-    TMarkID_TBL.mutex.synchronize{
-      if TMarkID_TBL[tpath]
-        TMarkID_TBL[tpath][id]? TMarkID_TBL[tpath][id]: id
-      else
-        id
-      end
-    }
+    text.tagid2obj(id)
   end
 
   def initialize(parent, index)
@@ -41,11 +28,6 @@ class TkTextMark<TkObject
       # @path = @id = Tk_TextMark_ID.join('')
       @path = @id = Tk_TextMark_ID.join(TkCore::INTERP._ip_id_).freeze
       Tk_TextMark_ID[1].succ!
-    }
-    TMarkID_TBL.mutex.synchronize{
-      TMarkID_TBL[@id] = self
-      TMarkID_TBL[@tpath] = {} unless TMarkID_TBL[@tpath]
-      TMarkID_TBL[@tpath][@id] = self
     }
     tk_call_without_enc(@t.path, 'mark', 'set', @id,
                         _get_eval_enc_str(index))
@@ -124,55 +106,35 @@ class TkTextMark<TkObject
 
   def next(index = nil)
     if index
-      @t.tagid2obj(_fromUTF8(tk_call_without_enc(@t.path, 'mark', 'next', _get_eval_enc_str(index))))
+      @t.tagid2obj(tk_call_without_enc(@t.path, 'mark', 'next', _get_eval_enc_str(index)))
     else
-      @t.tagid2obj(_fromUTF8(tk_call_without_enc(@t.path, 'mark', 'next', @id)))
+      @t.tagid2obj(tk_call_without_enc(@t.path, 'mark', 'next', @id))
     end
   end
 
   def previous(index = nil)
     if index
-      @t.tagid2obj(_fromUTF8(tk_call_without_enc(@t.path, 'mark', 'previous', _get_eval_enc_str(index))))
+      @t.tagid2obj(tk_call_without_enc(@t.path, 'mark', 'previous', _get_eval_enc_str(index)))
     else
-      @t.tagid2obj(_fromUTF8(tk_call_without_enc(@t.path, 'mark', 'previous', @id)))
+      @t.tagid2obj(tk_call_without_enc(@t.path, 'mark', 'previous', @id))
     end
   end
 end
 TktMark = TkTextMark
 
+# Named marks are cached per (parent, name) pair via the text widget's @tags hash.
+# self.new returns existing mark if found, otherwise creates new via initialize.
 class TkTextNamedMark<TkTextMark
   def self.new(parent, name, index=nil)
-    TMarkID_TBL.mutex.synchronize{
-      if TMarkID_TBL[parent.path] && TMarkID_TBL[parent.path][name]
-        obj = TMarkID_TBL[parent.path][name]
-      else
-        # super(parent, name, *args)
-        (obj = self.allocate).instance_eval{
-          @parent = @t = parent
-          @tpath = parent.path
-          @path = @id = name
-          TMarkID_TBL[@id] = self
-          TMarkID_TBL[@tpath] = {} unless TMarkID_TBL[@tpath]
-          TMarkID_TBL[@tpath][@id] = self unless TMarkID_TBL[@tpath][@id]
-          @t._addtag @id, self
-        }
-        obj
-      end
+    # Return existing mark if already registered with this text widget
+    existing = parent.tagid2obj(name)
+    return existing if existing.kind_of?(TkTextMark)
 
-      if obj && index
-        tk_call_without_enc(parent.path, 'mark', 'set', name,
-                            _get_eval_enc_str(index))
-      end
-      obj
-    }
+    # Create new mark via normal instantiation
+    super
   end
 
   def initialize(parent, name, index=nil)
-    # dummy:: not called by 'new' method
-
-    #unless parent.kind_of?(Tk::Text)
-    #  fail ArgumentError, "expect Tk::Text for 1st argument"
-    #end
     @parent = @t = parent
     @tpath = parent.path
     @path = @id = name
@@ -203,3 +165,6 @@ class TkTextMarkAnchor<TkTextNamedMark
   end
 end
 TktMarkAnchor = TkTextMarkAnchor
+
+# Add deprecation warning for removed TMarkID_TBL constant
+TkTextMark.extend(TkTextMarkCompat)

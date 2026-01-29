@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=320x480
 #
 # This script generates a directory browser, which lists the working
 # directory and allows you to open files or subdirectories by
@@ -8,7 +9,8 @@
 # Create a scrollbar on the right side of the main window and a listbox
 # on the left side.
 
-require "tkscrollbox"
+require 'tk'
+require 'tkscrollbox'
 
 # The procedure below is invoked to open a browser on a given file;  if the
 # file is a directory then another instance of this program is invoked; if
@@ -76,5 +78,17 @@ else
   dir="."
 end
 
+Tk.root.geometry('320x480')
 browsedir(dir)
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    Tk.after(TkDemo.delay) { TkDemo.finish }
+  }
+end
+
 Tk.mainloop

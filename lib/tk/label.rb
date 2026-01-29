@@ -2,9 +2,44 @@
 #
 # tk/label.rb : treat label widget
 #
-require 'tk' unless defined?(Tk)
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/label.html
+#
+require 'tk/option_dsl'
 
 class Tk::Label<TkWindow
+  include Tk::Generated::Label
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :activeforeground
+  #   :anchor
+  #   :background
+  #   :bitmap
+  #   :borderwidth
+  #   :compound
+  #   :cursor
+  #   :disabledforeground
+  #   :font
+  #   :foreground
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :image
+  #   :justify
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :state
+  #   :takefocus
+  #   :text
+  #   :textvariable (tkvariable)
+  #   :underline
+  #   :width
+  #   :wraplength
+  # @generated:options:end
+
   TkCommandNames = ['label'.freeze].freeze
   WidgetClassName = 'Label'.freeze
   WidgetClassNames[WidgetClassName] ||= self

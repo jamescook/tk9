@@ -1,7 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=480x400
 
 require 'tk'
+
+Tk.root.geometry('480x400')
 
 demo_dir = File.dirname($0)
 msgcat_dir = [demo_dir, 'msgs_tk'].join(File::Separator)
@@ -40,23 +43,28 @@ show_sample = proc{|loc|
   lbl = TkLabel.new(top_win, :text=>msgcat.mc("%1$s:: %2$s",
                                               'Color', '')).pack(:anchor=>'w')
 
-  bg = TkFrame.new(top_win).pack(:ipadx=>20, :ipady=>10,
-                                 :expand=>true, :fill=>:both)
+  # Use classic Tk::Frame (not Ttk) so background color works when recording
+  bg = Tk::Frame.new(top_win).pack(:ipadx=>20, :ipady=>10,
+                                   :expand=>true, :fill=>:both)
 
+  color_buttons = {}
+  color_procs = {}
   TkFrame.new(bg){|f|
     ['blue', 'green', 'red'].each{|col|
-      TkButton.new(f, :text=>msgcat.mc(col)){
-        bind('ButtonRelease-1', col_proc, "#{col} #{bg.path} #{lbl.path}")
-      }.pack(:fill=>:x)
-=begin
-      TkButton.new(f, :text=>msgcat.mc(col),
-                   :command=>proc{
-                     bg.background col
-                     lbl.text msgcat.mc("%1$s:: %2$s", 'Color', col.capitalize)
-                   }).pack(:fill=>:x)
-=end
+      btn = nil
+      # Extract color change into a proc we can call from button AND demo
+      color_procs[col] = proc {
+        bg.background(col)
+        Tk.update
+        lbl.text(msgcat.mc("%1$s:: %2$s", 'Color', col.capitalize))
+        btn.flash rescue nil  # flash not available on Ttk buttons
+      }
+      btn = TkButton.new(f, :text=>msgcat.mc(col), :command=>color_procs[col]).pack(:fill=>:x)
+      color_buttons[col] = btn
     }
   }.pack(:anchor=>'center', :pady=>15)
+  top_win.instance_variable_set(:@color_buttons, color_buttons)
+  top_win.instance_variable_set(:@color_procs, color_procs)
 
   TkFrame.new(top_win){|f|
     TkButton.new(f, :text=>msgcat.mc('Delete'),
@@ -114,6 +122,57 @@ Dir.entries(msgcat_dir).sort.each{|f|
 }
 
 top_win = show_sample.call(default_locale)
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    puts "locales: #{lbox.size}"
+
+    delay = TkDemo.delay
+    locales_to_demo = ['en', 'de', 'ja', 'ru']
+
+    demo_locale = proc { |idx|
+      if idx >= locales_to_demo.length
+        Tk.after(delay) { TkDemo.finish }
+      else
+        loc = locales_to_demo[idx]
+        puts "switching to #{loc}"
+
+        # Destroy old window and create new one for this locale
+        top_win.destroy if top_win && top_win.exist?
+        top_win = show_sample.call(loc)
+        Tk.update
+
+        procs = top_win.instance_variable_get(:@color_procs)
+
+        Tk.after(delay) {
+          procs['blue'].call
+          Tk.update
+          puts "  clicked blue"
+
+          Tk.after(delay) {
+            procs['green'].call
+            Tk.update
+            puts "  clicked green"
+
+            Tk.after(delay) {
+              procs['red'].call
+              Tk.update
+              puts "  clicked red"
+
+              Tk.after(delay) { demo_locale.call(idx + 1) }
+            }
+          }
+        }
+      end
+    }
+
+    Tk.after(delay) { demo_locale.call(0) }
+  }
+end
 
 #  start eventloop
 Tk.mainloop

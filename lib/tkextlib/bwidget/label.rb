@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/label'
 require 'tkextlib/bwidget.rb'
 
@@ -16,24 +16,17 @@ module Tk
 end
 
 class Tk::BWidget::Label
+  extend Tk::OptionDSL
+
   TkCommandNames = ['Label'.freeze].freeze
   WidgetClassName = 'Label'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled'
-  end
-  private :__boolval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget Label options
+  option :helptext, type: :string
+  option :helpvar, type: :tkvariable
+  option :dragenabled, type: :boolean
+  option :dropenabled, type: :boolean
 
   def set_focus
     tk_send_without_enc('setfocus')

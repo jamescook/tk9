@@ -2,11 +2,11 @@
 #
 # tk/variable.rb : treat Tk variable object
 #
-require 'tk' unless defined?(Tk)
 
 class TkVariable
   include Tk
   extend TkCore
+  include TkVariableCompatExtension  # Provides USE_OLD_TRACE_OPTION_STYLE = false
 
   include Comparable
 
@@ -27,20 +27,18 @@ class TkVariable
     TkVar_ID_TBL.mutex.synchronize{ TkVar_ID_TBL.clear }
   }
 
-  major, minor, _, _ = TclTkLib.get_version
-  USE_OLD_TRACE_OPTION_STYLE = (major < 8) || (major == 8 && minor < 4)
+  # Register callback for TkVariable.callback, used by rb_var Tcl proc
+  TKVARIABLE_CALLBACK_ID = TkCore::INTERP.register_callback(proc { |*args| TkVariable.callback(*args) })
 
-  #TkCore::INTERP.add_tk_procs('rb_var', 'args',
-  #     "ruby [format \"TkVariable.callback %%Q!%s!\" $args]")
-  TkCore::INTERP.add_tk_procs('rb_var', 'args', <<-'EOL')
-    if {[set st [catch {eval {ruby_cmd TkVariable callback} $args} ret]] != 0} {
-       set idx [string first "\n\n" $ret]
+  TkCore::INTERP.add_tk_procs('rb_var', 'args', <<-EOL)
+    if {[set st [catch {eval {ruby_callback #{TKVARIABLE_CALLBACK_ID}} $args} ret]] != 0} {
+       set idx [string first "\\n\\n" $ret]
        if {$idx > 0} {
           global errorInfo
           set tcl_backtrace $errorInfo
-          set errorInfo [string range $ret [expr $idx + 2] \
+          set errorInfo [string range $ret [expr $idx + 2] \\
                                            [string length $ret]]
-          append errorInfo "\n" $tcl_backtrace
+          append errorInfo "\\n" $tcl_backtrace
           bgerror [string range $ret 0 [expr $idx - 1]]
        } else {
           bgerror $ret
@@ -64,19 +62,15 @@ class TkVariable
         exit(0)
       rescue Interrupt
         exit!(1)
-      rescue Exception => e
+      rescue StandardError => e
         begin
-          msg = _toUTF8(e.class.inspect) + ': ' +
-                _toUTF8(e.message) + "\n" +
+          msg = e.class.inspect + ': ' +
+                e.message + "\n" +
                 "\n---< backtrace of Ruby side >-----\n" +
-                _toUTF8(e.backtrace.join("\n")) +
+                e.backtrace.join("\n") +
                 "\n---< backtrace of Tk side >-------"
-          if TkCore::WITH_ENCODING
-            msg.force_encoding('utf-8')
-          else
-            msg.instance_variable_set(:@encoding, 'utf-8')
-          end
-        rescue Exception
+          msg.force_encoding('utf-8')
+        rescue StandardError
           msg = e.class.inspect + ': ' + e.message + "\n" +
                 "\n---< backtrace of Ruby side >-----\n" +
                 e.backtrace.join("\n") +
@@ -456,15 +450,6 @@ class TkVariable
     self
   end
 
-unless const_defined?(:USE_TCLs_SET_VARIABLE_FUNCTIONS)
-  USE_TCLs_SET_VARIABLE_FUNCTIONS = true
-end
-
-if USE_TCLs_SET_VARIABLE_FUNCTIONS
-  ###########################################################################
-  # use Tcl function version of set tkvariable
-  ###########################################################################
-
   def _value
     #if INTERP._eval("global #{@id}; array exist #{@id}") == '1'
     INTERP._invoke_without_enc('global', @id)
@@ -473,7 +458,7 @@ if USE_TCLs_SET_VARIABLE_FUNCTIONS
       #Hash[*tk_split_simplelist(INTERP._eval("global #{@id}; array get #{@id}"))]
       Hash[*tk_split_simplelist(INTERP._invoke('array', 'get', @id))]
     else
-      _fromUTF8(INTERP._get_global_var(@id))
+      INTERP._get_global_var(@id)
     end
   end
 
@@ -503,16 +488,29 @@ if USE_TCLs_SET_VARIABLE_FUNCTIONS
 =end
 #      _fromUTF8(INTERP._set_global_var(@id, array2tk_list(val, true)))
     else
-      #_fromUTF8(INTERP._set_global_var(@id, _toUTF8(_get_eval_string(val))))
-      _fromUTF8(INTERP._set_global_var(@id, _get_eval_string(val, true)))
+      INTERP._set_global_var(@id, _get_eval_string(val, true))
     end
   end
 
   def _element_value(*idxs)
     index = idxs.collect{|idx| _get_eval_string(idx, true)}.join(',')
     begin
-      _fromUTF8(INTERP._get_global_var2(@id, index))
+      result = INTERP._get_global_var2(@id, index)
+      # Use default value if result is nil and a default is configured
+      if result.nil? && @def_default
+        case @def_default
+        when :proc
+          @default_val.call(self, *idxs)
+        when :val
+          @default_val
+        else
+          result
+        end
+      else
+        result
+      end
     rescue => e
+      # Tcl error - use default if available, otherwise re-raise
       case @def_default
       when :proc
         @default_val.call(self, *idxs)
@@ -532,7 +530,7 @@ if USE_TCLs_SET_VARIABLE_FUNCTIONS
     type = default_element_value_type(args)
     val = val._value if !type && type != :variable && val.kind_of?(TkVariable)
     index = args.collect{|idx| _get_eval_string(idx, true)}.join(',')
-    _fromUTF8(INTERP._set_global_var2(@id, index, _get_eval_string(val, true)))
+    INTERP._set_global_var2(@id, index, _get_eval_string(val, true))
     #_fromUTF8(INTERP._set_global_var2(@id, _toUTF8(_get_eval_string(index)),
     #                                 _toUTF8(_get_eval_string(val))))
     #_fromUTF8(INTERP._set_global_var2(@id, _get_eval_string(index, true),
@@ -548,134 +546,6 @@ if USE_TCLs_SET_VARIABLE_FUNCTIONS
     end
   end
   alias remove unset
-
-else
-  ###########################################################################
-  # use Ruby script version of set tkvariable (traditional methods)
-  ###########################################################################
-
-  def _value
-    begin
-      INTERP._eval(Kernel.format('global %s; set %s', @id, @id))
-      #INTERP._eval(Kernel.format('set %s', @id))
-      #INTERP._invoke_without_enc('set', @id)
-    rescue
-      if INTERP._eval(Kernel.format('global %s; array exists %s',
-                            @id, @id)) != "1"
-      #if INTERP._eval(Kernel.format('array exists %s', @id)) != "1"
-      #if INTERP._invoke_without_enc('array', 'exists', @id) != "1"
-        fail
-      else
-        Hash[*tk_split_simplelist(INTERP._eval(Kernel.format('global %s; array get %s', @id, @id)))]
-        #Hash[*tk_split_simplelist(_fromUTF8(INTERP._invoke_without_enc('array', 'get', @id)))]
-      end
-    end
-  end
-
-  def value=(val)
-    val = val._value if !@type && @type != :variable && val.kind_of?(TkVariable)
-    begin
-      #s = '"' + _get_eval_string(val).gsub(/[\[\]$"]/, '\\\\\&') + '"'
-      s = '"' + _get_eval_string(val).gsub(/[\[\]$"\\]/, '\\\\\&') + '"'
-      INTERP._eval(Kernel.format('global %s; set %s %s', @id, @id, s))
-      #INTERP._eval(Kernel.format('set %s %s', @id, s))
-      #_fromUTF8(INTERP._invoke_without_enc('set', @id, _toUTF8(s)))
-    rescue
-      if INTERP._eval(Kernel.format('global %s; array exists %s',
-                            @id, @id)) != "1"
-      #if INTERP._eval(Kernel.format('array exists %s', @id)) != "1"
-      #if INTERP._invoke_without_enc('array', 'exists', @id) != "1"
-        fail
-      else
-        if val == []
-          INTERP._eval(Kernel.format('global %s; unset %s; set %s(0) 0; unset %s(0)', @id, @id, @id, @id))
-          #INTERP._eval(Kernel.format('unset %s; set %s(0) 0; unset %s(0)',
-          #                          @id, @id, @id))
-          #INTERP._invoke_without_enc('unset', @id)
-          #INTERP._invoke_without_enc('set', @id+'(0)', 0)
-          #INTERP._invoke_without_enc('unset', @id+'(0)')
-        elsif val.kind_of?(Array)
-          a = []
-          val.each_with_index{|e,i| a.push(i); a.push(array2tk_list(e, true))}
-          #s = '"' + a.join(" ").gsub(/[\[\]$"]/, '\\\\\&') + '"'
-          s = '"' + a.join(" ").gsub(/[\[\]$"\\]/, '\\\\\&') + '"'
-          INTERP._eval(Kernel.format('global %s; unset %s; array set %s %s',
-                                     @id, @id, @id, s))
-          #INTERP._eval(Kernel.format('unset %s; array set %s %s',
-          #                          @id, @id, s))
-          #INTERP._invoke_without_enc('unset', @id)
-          #_fromUTF8(INTERP._invoke_without_enc('array','set', @id, _toUTF8(s)))
-        elsif  val.kind_of?(Hash)
-          #s = '"' + val.to_a.collect{|e| array2tk_list(e)}.join(" ")\
-          #                      .gsub(/[\[\]$"]/, '\\\\\&') + '"'
-          s = '"' + val.to_a.collect{|e| array2tk_list(e, true)}.join(" ")\
-                                .gsub(/[\[\]$\\"]/, '\\\\\&') + '"'
-          INTERP._eval(Kernel.format('global %s; unset %s; array set %s %s',
-                                     @id, @id, @id, s))
-          #INTERP._eval(Kernel.format('unset %s; array set %s %s',
-          #                          @id, @id, s))
-          #INTERP._invoke_without_enc('unset', @id)
-          #_fromUTF8(INTERP._invoke_without_enc('array','set', @id, _toUTF8(s)))
-        else
-          fail
-        end
-      end
-    end
-  end
-
-  def _element_value(*idxs)
-    index = idxs.collect{|idx| _get_eval_string(idx)}.join(',')
-    begin
-      INTERP._eval(Kernel.format('global %s; set %s(%s)', @id, @id, index))
-    rescue => e
-      case @def_default
-      when :proc
-        @default_val.call(self, *idxs)
-      when :val
-        @default_val
-      else
-        fail e
-      end
-    end
-    #INTERP._eval(Kernel.format('global %s; set %s(%s)', @id, @id, index))
-    #INTERP._eval(Kernel.format('global %s; set %s(%s)',
-    #                           @id, @id, _get_eval_string(index)))
-    #INTERP._eval(Kernel.format('set %s(%s)', @id, _get_eval_string(index)))
-    #INTERP._eval('set ' + @id + '(' + _get_eval_string(index) + ')')
-  end
-
-  def []=(*args)
-    val = args.pop
-    type = default_element_value_type(args)
-    val = val._value if !type && type != :variable && val.kind_of?(TkVariable)
-    index = args.collect{|idx| _get_eval_string(idx)}.join(',')
-    INTERP._eval(Kernel.format('global %s; set %s(%s) %s', @id, @id,
-                              index, _get_eval_string(val)))
-    #INTERP._eval(Kernel.format('global %s; set %s(%s) %s', @id, @id,
-    #                          _get_eval_string(index), _get_eval_string(val)))
-    #INTERP._eval(Kernel.format('set %s(%s) %s', @id,
-    #                          _get_eval_string(index), _get_eval_string(val)))
-    #INTERP._eval('set ' + @id + '(' + _get_eval_string(index) + ') ' +
-    #            _get_eval_string(val))
-  end
-
-  def unset(*elems)
-    if elems.empty?
-      INTERP._eval(Kernel.format('global %s; unset %s', @id, @id))
-      #INTERP._eval(Kernel.format('unset %s', @id))
-      #INTERP._eval('unset ' + @id)
-    else
-      index = elems.collect{|idx| _get_eval_string(idx, true)}.join(',')
-      INTERP._eval(Kernel.format('global %s; unset %s(%s)', @id, @id, index))
-      #INTERP._eval(Kernel.format('global %s; unset %s(%s)',
-      #                           @id, @id, _get_eval_string(elem)))
-      #INTERP._eval(Kernel.format('unset %s(%s)', @id, tk_tcl2ruby(elem)))
-      #INTERP._eval('unset ' + @id + '(' + _get_eval_string(elem) + ')')
-    end
-  end
-  alias remove unset
-
-end
 
   protected :_value, :_element_value
 
@@ -1279,23 +1149,26 @@ end
   end
 
   def <=>(other)
+    # Convert TkVariable to its value first
     if other.kind_of?(TkVariable)
       begin
-        val = other.numeric
-        other = val
+        other = other.numeric
       rescue
         other = other._value
       end
-    elsif other.kind_of?(Numeric)
+    end
+
+    # Now compare based on the type of other
+    if other.kind_of?(Numeric)
       begin
-        return self.numeric <=> other
+        self.numeric <=> other
       rescue
-        return self._value <=> other.to_s
+        self._value <=> other.to_s
       end
     elsif other.kind_of?(Array)
-      return self.list <=> other
+      self.list <=> other
     else
-      return self._value <=> other
+      self._value <=> other
     end
   end
 
@@ -1314,6 +1187,8 @@ end
     end
   end
 
+  # Convert trace options to modern Tcl 8.6+ format (array of strings).
+  # Accepts both legacy short format ('rw') and modern format ('read', 'write').
   def _check_trace_opt(opts)
     if opts.kind_of?(Array)
       opt_str = opts.map{|s| s.to_s}.join(' ')
@@ -1324,50 +1199,24 @@ end
     fail ArgumentError, 'null trace option' if opt_str.empty?
 
     if opt_str =~ /[^arwu\s]/
-      # new format (Tcl/Tk8.4+?)
+      # Modern format: 'read', 'write', 'unset', 'array'
       if opts.kind_of?(Array)
-        opt_ary = opts.map{|opt| opt.to_s.strip}
+        opts.map{|opt| opt.to_s.strip}
       else
         opt_ary = opt_str.split(/\s+|\|/)
         opt_ary.delete('')
-      end
-      if USE_OLD_TRACE_OPTION_STYLE
-        opt_ary.uniq.map{|opt|
-          case opt
-          when 'array'
-            'a'
-          when 'read'
-            'r'
-          when 'write'
-            'w'
-          when 'unset'
-            'u'
-          else
-            fail ArgumentError, "unsupported trace option '#{opt}' on Tcl/Tk#{Tk::TCL_PATCHLEVEL}"
-          end
-        }.join
-      else
         opt_ary
       end
     else
-      # old format
-      opt_ary = opt_str.delete('^arwu').split(//).uniq
-      if USE_OLD_TRACE_OPTION_STYLE
-        opt_ary.join
-      else
-        opt_ary.map{|c|
-          case c
-          when 'a'
-            'array'
-          when 'r'
-            'read'
-          when 'w'
-            'write'
-          when 'u'
-            'unset'
-          end
-        }
-      end
+      # Legacy short format: 'r', 'w', 'u', 'a' - convert to modern
+      opt_str.delete('^arwu').split(//).uniq.map{|c|
+        case c
+        when 'a' then 'array'
+        when 'r' then 'read'
+        when 'w' then 'write'
+        when 'u' then 'unset'
+        end
+      }
     end
   end
   private :_check_trace_opt
@@ -1375,38 +1224,21 @@ end
   def trace(opts, cmd = nil, &block)
     cmd ||= block
     opts = _check_trace_opt(opts)
-    (@trace_var ||= []).unshift([opts,cmd])
+    (@trace_var ||= []).unshift([opts, cmd])
 
-    if @trace_opts == nil
+    if @trace_opts.nil?
       TkVar_CB_TBL[@id] = self
       @trace_opts = opts.dup
-      if USE_OLD_TRACE_OPTION_STYLE
-        Tk.tk_call_without_enc('trace', 'variable',
+      Tk.tk_call_without_enc('trace', 'add', 'variable',
+                             @id, @trace_opts, 'rb_var ' << @id)
+    else
+      newopts = @trace_opts | opts
+      unless (newopts - @trace_opts).empty?
+        Tk.tk_call_without_enc('trace', 'remove', 'variable',
                                @id, @trace_opts, 'rb_var ' << @id)
-      else
+        @trace_opts.replace(newopts)
         Tk.tk_call_without_enc('trace', 'add', 'variable',
                                @id, @trace_opts, 'rb_var ' << @id)
-      end
-    else
-      newopts = @trace_opts.dup
-      if USE_OLD_TRACE_OPTION_STYLE
-        opts.each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-        if newopts != @trace_opts
-          Tk.tk_call_without_enc('trace', 'vdelete',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-          @trace_opts.replace(newopts)
-          Tk.tk_call_without_enc('trace', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
-      else
-        newopts |= opts
-        unless (newopts - @trace_opts).empty?
-          Tk.tk_call_without_enc('trace', 'remove', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-          @trace_opts.replace(newopts)
-          Tk.tk_call_without_enc('trace', 'add', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
       end
     end
 
@@ -1422,38 +1254,21 @@ end
 
     opts = _check_trace_opt(opts)
 
-    ((@trace_elem ||= {})[elem] ||= []).unshift([opts,cmd])
+    ((@trace_elem ||= {})[elem] ||= []).unshift([opts, cmd])
 
-    if @trace_opts == nil
+    if @trace_opts.nil?
       TkVar_CB_TBL[@id] = self
       @trace_opts = opts.dup
-      if USE_OLD_TRACE_OPTION_STYLE
+      Tk.tk_call_without_enc('trace', 'add', 'variable',
+                             @id, @trace_opts, 'rb_var ' << @id)
+    else
+      newopts = @trace_opts | opts
+      unless (newopts - @trace_opts).empty?
+        Tk.tk_call_without_enc('trace', 'remove', 'variable',
+                               @id, @trace_opts, 'rb_var ' << @id)
+        @trace_opts.replace(newopts)
         Tk.tk_call_without_enc('trace', 'add', 'variable',
                                @id, @trace_opts, 'rb_var ' << @id)
-      else
-        Tk.tk_call_without_enc('trace', 'variable',
-                               @id, @trace_opts, 'rb_var ' << @id)
-      end
-    else
-      newopts = @trace_opts.dup
-      if USE_OLD_TRACE_OPTION_STYLE
-        opts.each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-        if newopts != @trace_opts
-          Tk.tk_call_without_enc('trace', 'vdelete',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-          @trace_opts.replace(newopts)
-          Tk.tk_call_without_enc('trace', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
-      else
-        newopts |= opts
-        unless (newopts - @trace_opts).empty?
-          Tk.tk_call_without_enc('trace', 'remove', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-          @trace_opts.replace(newopts)
-          Tk.tk_call_without_enc('trace', 'add', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
       end
     end
 
@@ -1477,40 +1292,22 @@ end
   end
   alias trace_vinfo_for_element trace_info_for_element
 
-  def trace_remove(opts,cmd)
-    return self unless @trace_var.kind_of? Array
+  def trace_remove(opts, cmd)
+    return self unless @trace_var.kind_of?(Array)
 
     opts = _check_trace_opt(opts)
 
+    # Find and remove the matching trace entry
     idx = -1
-    if USE_OLD_TRACE_OPTION_STYLE
-      newopts = ''
-      @trace_var.each_with_index{|e, i|
-        if idx < 0 && e[1] == cmd
-          diff = false
-          ['a', 'r', 'w', 'u'].each{|c|
-            break if (diff = e[0].index(c) ^ opts.index(c))
-          }
-          unless diff
-            #find
-            idx = i
-            next
-          end
-        end
-        e[0].each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-      }
-    else
-      newopts = []
-      @trace_var.each_with_index{|e, i|
-        if idx < 0 && e[1] == cmd &&
-            e[0].size == opts.size && (e[0] - opts).empty?
-          # find
-          idx = i
-          next
-        end
-        newopts |= e[0]
-      }
-    end
+    newopts = []
+    @trace_var.each_with_index{|e, i|
+      if idx < 0 && e[1] == cmd &&
+          e[0].size == opts.size && (e[0] - opts).empty?
+        idx = i
+        next
+      end
+      newopts |= e[0]
+    }
 
     if idx >= 0
       @trace_var.delete_at(idx)
@@ -1518,37 +1315,19 @@ end
       return self
     end
 
-    (@trace_elem ||= {}).each{|elem|
-      @trace_elem[elem].each{|e|
-        if USE_OLD_TRACE_OPTION_STYLE
-          e[0].each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-        else
-          newopts |= e[0]
-        end
-      }
+    # Collect remaining options from element traces
+    (@trace_elem || {}).each_value{|elem_traces|
+      elem_traces.each{|e| newopts |= e[0] }
     }
 
-    if USE_OLD_TRACE_OPTION_STYLE
-      diff = false
-      @trace_opts.each_byte{|c| break if (diff = ! newopts.index(c))}
-      if diff
-        Tk.tk_call_without_enc('trace', 'vdelete',
+    # Update Tcl trace if needed
+    unless (@trace_opts - newopts).empty?
+      Tk.tk_call_without_enc('trace', 'remove', 'variable',
+                             @id, @trace_opts, 'rb_var ' << @id)
+      @trace_opts.replace(newopts)
+      unless @trace_opts.empty?
+        Tk.tk_call_without_enc('trace', 'add', 'variable',
                                @id, @trace_opts, 'rb_var ' << @id)
-        @trace_opts.replace(newopts)
-        unless @trace_opts.empty?
-          Tk.tk_call_without_enc('trace', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
-      end
-    else
-      unless (@trace_opts - newopts).empty?
-        Tk.tk_call_without_enc('trace', 'remove', 'variable',
-                               @id, @trace_opts, 'rb_var ' << @id)
-        @trace_opts.replace(newopts)
-        unless @trace_opts.empty?
-          Tk.tk_call_without_enc('trace', 'add', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
       end
     end
 
@@ -1557,41 +1336,25 @@ end
   alias trace_delete  trace_remove
   alias trace_vdelete trace_remove
 
-  def trace_remove_for_element(elem,opts,cmd)
+  def trace_remove_for_element(elem, opts, cmd)
     if @elem
       fail(RuntimeError,
            "invalid for a TkVariable which denotes an element of Tcl's array")
     end
-    return self unless @trace_elem.kind_of? Hash
-    return self unless @trace_elem[elem].kind_of? Array
+    return self unless @trace_elem.kind_of?(Hash)
+    return self unless @trace_elem[elem].kind_of?(Array)
 
     opts = _check_trace_opt(opts)
 
+    # Find and remove the matching element trace entry
     idx = -1
-    if USE_OLD_TRACE_OPTION_STYLE
-      @trace_elem[elem].each_with_index{|e, i|
-        if idx < 0 && e[1] == cmd
-          diff = false
-          ['a', 'r', 'w', 'u'].each{|c|
-            break if (diff = e[0].index(c) ^ opts.index(c))
-          }
-          unless diff
-            #find
-            idx = i
-            next
-          end
-        end
-      }
-    else
-      @trace_elem[elem].each_with_index{|e, i|
-        if idx < 0 && e[1] == cmd &&
-            e[0].size == opts.size && (e[0] - opts).empty?
-          # find
-          idx = i
-          next
-        end
-      }
-    end
+    @trace_elem[elem].each_with_index{|e, i|
+      if idx < 0 && e[1] == cmd &&
+          e[0].size == opts.size && (e[0] - opts).empty?
+        idx = i
+        next
+      end
+    }
 
     if idx >= 0
       @trace_elem[elem].delete_at(idx)
@@ -1599,49 +1362,21 @@ end
       return self
     end
 
-    if USE_OLD_TRACE_OPTION_STYLE
-      newopts = ''
-      @trace_var.each{|e|
-        e[0].each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-      }
-      @trace_elem.each{|elem|
-        @trace_elem[elem].each{|e|
-          e[0].each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-        }
-      }
-    else
-      newopts = []
-      @trace_var.each{|e|
-        newopts |= e[0]
-      }
-      @trace_elem.each{|elem|
-        @trace_elem[elem].each{|e|
-          e[0].each_byte{|c| newopts.concat(c.chr) unless newopts.index(c.chr)}
-        }
-      }
-    end
+    # Collect remaining options from all traces
+    newopts = []
+    (@trace_var || []).each{|e| newopts |= e[0] }
+    @trace_elem.each_value{|elem_traces|
+      elem_traces.each{|e| newopts |= e[0] }
+    }
 
-    if USE_OLD_TRACE_OPTION_STYLE
-      diff = false
-      @trace_opts.each_byte{|c| break if (diff = ! newopts.index(c))}
-      if diff
-        Tk.tk_call_without_enc('trace', 'vdelete',
+    # Update Tcl trace if needed
+    unless (@trace_opts - newopts).empty?
+      Tk.tk_call_without_enc('trace', 'remove', 'variable',
+                             @id, @trace_opts, 'rb_var ' << @id)
+      @trace_opts.replace(newopts)
+      unless @trace_opts.empty?
+        Tk.tk_call_without_enc('trace', 'add', 'variable',
                                @id, @trace_opts, 'rb_var ' << @id)
-        @trace_opts.replace(newopts)
-        unless @trace_opts.empty?
-          Tk.tk_call_without_enc('trace', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
-      end
-    else
-      unless (@trace_opts - newopts).empty?
-        Tk.tk_call_without_enc('trace', 'remove', 'variable',
-                               @id, @trace_opts, 'rb_var ' << @id)
-        @trace_opts.replace(newopts)
-        unless @trace_opts.empty?
-          Tk.tk_call_without_enc('trace', 'add', 'variable',
-                                 @id, @trace_opts, 'rb_var ' << @id)
-        end
       end
     end
 
@@ -1777,7 +1512,7 @@ module Tk
       INTERP._invoke_without_enc('global', 'env')
       auto_path = INTERP._invoke('set', 'env(TCLLIBPATH)')
     rescue
-      auto_path = Tk::LIBRARY
+      auto_path = Tk.library
     end
   end
 
@@ -1796,4 +1531,11 @@ module Tk
   LIBRARY_PATH = TCL_LIBRARY_PATH
 
   TCL_PRECISION = TkVarAccess.new('tcl_precision')
+
+  # Deprecation warning for removed constant
+  if const_defined?(:USE_TCLs_SET_VARIABLE_FUNCTIONS, false)
+    Tk::Warnings.warn_once(:variable_use_tcl_set,
+      "TkVariable::USE_TCLs_SET_VARIABLE_FUNCTIONS is deprecated and ignored. " \
+      "The Tcl eval code path has been removed; C API is now always used.")
+  end
 end

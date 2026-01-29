@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=500x450
 #
 #  tktextframe.rb : a sample of TkComposite
 #
@@ -189,12 +190,8 @@ class TkTextFrame < TkText
 
   def textbg_info
     info = @text.configinfo(:background)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      info[0] = 'textbackground'
-      info
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      {'textbackground' => info['background']}
-    end
+    info[0] = 'textbackground'
+    info
   end
 
   # get/set borderwidth of text widget
@@ -228,15 +225,22 @@ if __FILE__ == $0
   t = TkTextFrame.new(:textborderwidth=>3,
                       :textrelief=>:ridge,
                       :scrollbarrelief=>:ridge).pack
+
+  # Insert placeholder text so there's something to scroll
+  lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 3
+  (1..15).each { |i| t.insert('end', "#{i}: #{lorem}\n") }
   p t.configinfo
-  TkButton.new(f, 'text'=>'vscr OFF',
-               'command'=>proc{t.vscroll(false)}).pack('side'=>'right')
-  TkButton.new(f, 'text'=>'vscr ON',
-               'command'=>proc{t.vscroll(true)}).pack('side'=>'right')
-  TkButton.new(f, 'text'=>'hscr ON',
-               'command'=>proc{t.hscroll(true)}).pack('side'=>'left')
-  TkButton.new(f, 'text'=>'hscr OFF',
-               'command'=>proc{t.hscroll(false)}).pack('side'=>'left')
+
+  # Store toggle procs for demo
+  vscroll_off = proc { t.vscroll(false) }
+  vscroll_on = proc { t.vscroll(true) }
+  hscroll_on = proc { t.hscroll(true) }
+  hscroll_off = proc { t.hscroll(false) }
+
+  TkButton.new(f, 'text'=>'vscr OFF', 'command'=>vscroll_off).pack('side'=>'right')
+  TkButton.new(f, 'text'=>'vscr ON', 'command'=>vscroll_on).pack('side'=>'right')
+  TkButton.new(f, 'text'=>'hscr ON', 'command'=>hscroll_on).pack('side'=>'left')
+  TkButton.new(f, 'text'=>'hscr OFF', 'command'=>hscroll_off).pack('side'=>'left')
 
   ############################################
 
@@ -262,21 +266,82 @@ if __FILE__ == $0
   lbox = ScrListbox.new(f).pack(:side=>:left)
   lbox.value = %w(aa bb cc dd eeeeeeeeeeeeeeeeeeeeeeeeee ffffffffff gg hh ii jj kk ll mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm nn oo pp qq)
   fb = TkFrame.new(f).pack(:expand=>true, :fill=>:y, :padx=>5)
+
+  # Store listbox toggle procs for demo
+  lbox_hscroll_off = proc { lbox.hscroll(false) }
+  lbox_hscroll_on = proc { lbox.hscroll(true) }
+  lbox_vscroll_off = proc { lbox.vscroll(false) }
+  lbox_vscroll_on = proc { lbox.vscroll(true) }
+
   TkButton.new(fb, 'text'=>'lbox hscr OFF',
-               'command'=>proc{lbox.hscroll(false)}).pack(:side=>:bottom,
-                                                          :fill=>:x)
+               'command'=>lbox_hscroll_off).pack(:side=>:bottom, :fill=>:x)
   TkButton.new(fb, 'text'=>'lbox hscr ON',
-               'command'=>proc{lbox.hscroll(true)}).pack(:side=>:bottom,
-                                                          :fill=>:x)
+               'command'=>lbox_hscroll_on).pack(:side=>:bottom, :fill=>:x)
   TkFrame.new(fb).pack(:pady=>5, :side=>:bottom)
   TkButton.new(fb, 'text'=>'lbox vscr OFF',
-               'command'=>proc{lbox.vscroll(false)}).pack(:side=>:bottom,
-                                                          :fill=>:x)
+               'command'=>lbox_vscroll_off).pack(:side=>:bottom, :fill=>:x)
   TkButton.new(fb, 'text'=>'lbox vscr ON',
-               'command'=>proc{lbox.vscroll(true)}).pack(:side=>:bottom,
-                                                          :fill=>:x)
+               'command'=>lbox_vscroll_on).pack(:side=>:bottom, :fill=>:x)
 
   ############################################
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      puts "TkComposite scrollbar demo"
+
+      delay = TkDemo.delay
+
+      # Demo: toggle scrollbars on text widget
+      Tk.after(delay) {
+        vscroll_off.call
+        Tk.update
+        puts "text vscroll off"
+
+        Tk.after(delay) {
+          hscroll_off.call
+          Tk.update
+          puts "text hscroll off"
+
+          Tk.after(delay) {
+            vscroll_on.call
+            Tk.update
+            puts "text vscroll on"
+
+            Tk.after(delay) {
+              hscroll_on.call
+              Tk.update
+              puts "text hscroll on"
+
+              Tk.after(delay) {
+                # Toggle listbox scrollbars
+                lbox_hscroll_on.call
+                Tk.update
+                puts "listbox hscroll on"
+
+                Tk.after(delay) {
+                  lbox_vscroll_off.call
+                  Tk.update
+                  puts "listbox vscroll off"
+
+                  Tk.after(delay) {
+                    lbox_vscroll_on.call
+                    Tk.update
+                    puts "listbox vscroll on"
+
+                    Tk.after(delay) { TkDemo.finish }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  end
 
   Tk.mainloop
 end

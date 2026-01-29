@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/canvas'
 require 'tkextlib/bwidget.rb'
 
@@ -21,7 +21,7 @@ module Tk
 end
 
 class Tk::BWidget::ListBox
-  include TkItemConfigMethod
+  extend Tk::ItemOptionDSL
   include Scrollable
 
   TkCommandNames = ['ListBox'.freeze].freeze
@@ -35,11 +35,6 @@ class Tk::BWidget::ListBox
       ]
     end
   end
-
-  def __boolval_optkeys
-    super() << 'autofocus' << 'dragenabled' << 'dropenabled' << 'selectfill'
-  end
-  private :__boolval_optkeys
 
   def tagid(tag)
     if tag.kind_of?(Tk::BWidget::ListBox::Item)

@@ -3,7 +3,6 @@
 #  tkbgerror -- bgerror ( tkerror ) module
 #                     1998/07/16 by Hidetoshi Nagai <nagai@ai.kyutech.ac.jp>
 #
-require 'tk' unless defined?(Tk)
 
 module TkBgError
   extend Tk

@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/button'
 
@@ -20,12 +20,7 @@ class Tk::BWidget::ButtonBox
   WidgetClassName = 'ButtonBox'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  include TkItemConfigMethod
-
-  def __boolval_optkeys
-    super() << 'homogeneous'
-  end
-  private :__boolval_optkeys
+  extend Tk::ItemOptionDSL
 
   def tagid(tagOrId)
     if tagOrId.kind_of?(Tk::BWidget::Button)

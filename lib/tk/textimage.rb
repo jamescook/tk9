@@ -2,7 +2,6 @@
 #
 # tk/textimage.rb - treat Tk text image object
 #
-require 'tk' unless defined?(Tk)
 require 'tk/text'
 
 class TkTextImage<TkObject

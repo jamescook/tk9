@@ -1,8 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: false
+# tk-record: screen_size=640x480
 # This script is a re-implementation of tktimer.rb with TkTimer(TkAfter) class.
 
 require "tk"
+
+Tk.root.geometry('640x480')
 
 root = TkRoot.new(:title=>'realtime timer sample')
 
@@ -74,5 +77,28 @@ TkButton.new(:text=>'Reset', :state=>:normal) {
 
 ev_quit = TkVirtualEvent.new('Control-c', 'Control-q')
 Tk.root.bind(ev_quit, proc{Tk.exit}).focus
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "timers running"
+    # Timers already started, let them run
+    Tk.after(TkDemo.delay(test: 300, record: 2000)) {
+      puts "stop clicked"
+      b_stop.invoke
+      Tk.after(TkDemo.delay(test: 100, record: 500)) {
+        puts "start clicked"
+        b_start.invoke
+        Tk.after(TkDemo.delay(test: 200, record: 1000)) {
+          puts "stop clicked"
+          b_stop.invoke
+          TkDemo.finish
+        }
+      }
+    }
+  }
+end
 
 Tk.mainloop

@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-# Ensure local lib takes precedence over any installed gem
-$LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
-
-require 'minitest/autorun'
+require_relative 'test_helper'
 require_relative 'visual_regression/runner'
 
 class TestVisualRegression < Minitest::Test

@@ -2,7 +2,6 @@
 #
 # tk/grid.rb : control grid geometry manager
 #
-require 'tk' unless defined?(Tk)
 
 module TkGrid
   include Tk

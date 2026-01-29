@@ -22,7 +22,7 @@ $button_demo = TkToplevel.new {|w|
 
 # label
 msg = TkLabel.new($button_demo) {
-  font $kanji_font
+  font $font
   wraplength '4i'
   justify 'left'
   text "If you click on any of the four buttons below, the background of the button area will change to the color indicated in the button.  You can press Tab to move among the buttons, then press Space to invoke the current button."

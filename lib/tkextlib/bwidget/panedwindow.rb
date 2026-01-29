@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 
@@ -19,11 +19,6 @@ class Tk::BWidget::PanedWindow
   TkCommandNames = ['PanedWindow'.freeze].freeze
   WidgetClassName = 'PanedWindow'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __strval_optkeys
-    super() << 'activator'
-  end
-  private :__strval_optkeys
 
   def add(keys={})
     window(tk_send('add', *hash_kv(keys)))

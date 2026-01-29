@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+# tk-record: screen_size=320x480
 #
 #  tkcombobox.rb : auto scrollbox & combobox
 #
@@ -333,10 +334,27 @@ EOD
   end
   private :_state_control
 
-  def __methodcall_optkeys  # { key=>method, ... }
-    {'state' => :_state_control}
+  # Override cget to intercept 'state' option
+  def cget(slot)
+    slot.to_s == 'state' ? _state_control : super
   end
-  private :__methodcall_optkeys
+
+  # Override configure to intercept 'state' option
+  def configure(slot, value = None)
+    if slot.is_a?(Hash)
+      slot = _symbolkey2str(slot)
+      if slot.key?('state')
+        _state_control(slot.delete('state'))
+      end
+      super(slot) unless slot.empty?
+      self
+    elsif slot.to_s == 'state'
+      _state_control(value)
+      self
+    else
+      super
+    end
+  end
 
   #----------------------------------------------------
 
@@ -461,6 +479,8 @@ end
 # test
 ################################################
 if __FILE__ == $0
+  Tk.root.geometry('320x480')
+
 # e0 = Tk::RbWidget::Combobox.new.pack
 # e0.values(%w(aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu))
 
@@ -494,5 +514,16 @@ if __FILE__ == $0
                  :command=>proc{l.scrollbar(false)}).pack(:side=>:right)
     pack(:fill=>:x)
   }
+
+  # Automated demo support (testing and recording)
+  require 'tk/demo_support'
+
+  if TkDemo.active?
+    TkDemo.on_visible {
+      puts "UI loaded"
+      Tk.after(TkDemo.delay) { TkDemo.finish }
+    }
+  end
+
   Tk.mainloop
 end

@@ -108,15 +108,6 @@ module Tk
   autoload :ValidateConfigure,     'tk/validation'
   autoload :ItemValidateConfigure, 'tk/validation'
 
-  autoload :EncodedString,    'tk/encodedstr'
-  def Tk.EncodedString(str, enc = nil); Tk::EncodedString.new(str, enc); end
-
-  autoload :BinaryString,     'tk/encodedstr'
-  def Tk.BinaryString(str); Tk::BinaryString.new(str); end
-
-  autoload :UTF8_String,      'tk/encodedstr'
-  def Tk.UTF8_String(str); Tk::UTF8_String.new(str); end
-
 end
 
 
@@ -165,17 +156,14 @@ autoload :TkWarningObj,       'tk/dialog'
 autoload :TkEvent,            'tk/event'
 
 autoload :TkFont,             'tk/font'
-autoload :TkNamedFont,        'tk/font'
 
 autoload :TkImage,            'tk/image'
 autoload :TkBitmapImage,      'tk/image'
 autoload :TkPhotoImage,       'tk/image'
 
-autoload :TkItemConfigMethod, 'tk/itemconfig'
+# TkItemConfigMethod removed - now Tk::ItemOptionDSL::InstanceMethods
 
-autoload :TkTreatItemFont,    'tk/itemfont'
-
-autoload :TkKinput,           'tk/kinput'
+# TkKinput removed - kinput2 is obsolete (1990s X11 Japanese input)
 
 autoload :TkSystemMenu,       'tk/menu'
 

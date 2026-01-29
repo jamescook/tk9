@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/entry'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/labelframe'
@@ -18,21 +18,15 @@ module Tk
 end
 
 class Tk::BWidget::LabelEntry
+  extend Tk::OptionDSL
   include Scrollable
 
   TkCommandNames = ['LabelEntry'.freeze].freeze
   WidgetClassName = 'LabelEntry'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext' << 'insertbackground' << 'entryfg' << 'entrybg'
-  end
-  private :__strval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget LabelEntry options
+  option :helpvar, type: :tkvariable
 
   def __font_optkeys
     super() << 'labelfont'

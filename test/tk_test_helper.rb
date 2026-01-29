@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'method_source'
+require_relative 'simplecov_config'
+
 # Helper for running Tk tests in isolated subprocesses.
 #
 # Why subprocesses? Tk's interpreter is a singleton - once you call
@@ -16,8 +19,21 @@
 # We spawn a fresh Ruby process for each test to get a clean Tk interpreter.
 
 require 'open3'
+require 'timeout'
 
 module TkTestHelper
+  # Project root for absolute paths in subprocesses
+  PROJECT_ROOT = SimpleCovConfig::PROJECT_ROOT
+
+  # SimpleCov preamble injected into subprocess code for coverage merging
+  # Only runs if ENV['COVERAGE'] is set
+  #
+  # Each subprocess writes to its own directory to avoid race conditions.
+  # Directory is named <COVERAGE_NAME>_sub_<PID> so collation can find them all.
+  def self.simplecov_preamble
+    SimpleCovConfig.subprocess_preamble
+  end
+
   # Runs Ruby code in a separate process with fresh Tk interpreter.
   # Returns [success, stdout, stderr, status]
   #
@@ -29,13 +45,21 @@ module TkTestHelper
   #     root.destroy
   #   RUBY
   #
-  def tk_subprocess(code)
+  def tk_subprocess(code, coverage: true)
     # Build load path from current process
     load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(__dir__)) }
     load_path_args = load_paths.flat_map { |p| ["-I", p] }
 
+    # Prepend SimpleCov setup for coverage merging
+    full_code = coverage ? "#{TkTestHelper.simplecov_preamble}\n#{code}" : code
+
+    # Pass env vars to subprocess
+    env = {}
+    env['VISUAL'] = '1' if ENV['VISUAL']
+    env['COVERAGE'] = '1' if ENV['COVERAGE']
+
     stdout, stderr, status = Open3.capture3(
-      RbConfig.ruby, *load_path_args, "-e", code
+      env, RbConfig.ruby, *load_path_args, "-e", full_code
     )
 
     [status.success?, stdout, stderr, status]
@@ -48,7 +72,7 @@ module TkTestHelper
   #
   # Example:
   #   def test_something
-  #     assert_tk_test("should do the thing") do
+  #     assert_tk_subprocess("should do the thing") do
   #       <<~RUBY
   #         require 'tk'
   #         root = TkRoot.new { withdraw }
@@ -58,7 +82,15 @@ module TkTestHelper
   #     end
   #   end
   #
-  def assert_tk_test(message = "Tk subprocess test failed")
+  @_subprocess_warned = false
+
+  def assert_tk_subprocess(message = "Tk subprocess test failed")
+    unless TkTestHelper.instance_variable_get(:@_subprocess_warned)
+      TkTestHelper.instance_variable_set(:@_subprocess_warned, true)
+      warn "Note: assert_tk_subprocess spawns a new process per test (slow). " \
+           "Use assert_tk_app for most tests."
+    end
+
     code = yield
     success, stdout, stderr, status = tk_subprocess(code)
 
@@ -66,6 +98,184 @@ module TkTestHelper
     output << "STDOUT:\n#{stdout}" unless stdout.empty?
     output << "STDERR:\n#{stderr}" unless stderr.empty?
     output << "Exit status: #{status.exitstatus}"
+
+    assert success, "#{message}\n#{output.join("\n")}"
+  end
+
+  # DEPRECATED: Use assert_tk_app instead (uses persistent TkWorker)
+  # This spawns a new subprocess for each test - slower but supports VISUAL mode.
+  def assert_tk_app_subprocess(message, app_method)
+    # Extract method body (skip def line and closing end)
+    source_lines = app_method.source.lines
+    body = source_lines[1..-2].join
+
+    # Prepend visual mode helper (defines tk_end)
+    full_body = "#{TkTestHelper.visual_mode_preamble}\n#{body}"
+
+    success, stdout, stderr, status = tk_subprocess(full_body)
+
+    output = []
+    output << "STDOUT:\n#{stdout}" unless stdout.empty?
+    output << "STDERR:\n#{stderr}" unless stderr.empty?
+    output << "Exit status: #{status.exitstatus}"
+
+    assert success, "#{message}\n#{output.join("\n")}"
+  end
+
+  # Smoke test a sample file - checks it loads without crashing.
+  #
+  # Spawns the sample with TK_READY_FD env var pointing to a pipe.
+  # Sample calls Tk.signal_ready when UI is loaded, which writes to the pipe.
+  # Parent waits for signal, then sends SIGTERM for clean shutdown.
+  #
+  # Returns [success, stdout, stderr]
+  #
+  # Options:
+  #   :timeout - max seconds to wait for ready signal (default: 10)
+  #
+  def smoke_test_sample(sample_path, timeout: 10, args: [])
+    sample_path = File.expand_path(sample_path)
+    raise ArgumentError, "Sample not found: #{sample_path}" unless File.exist?(sample_path)
+
+    load_paths = $LOAD_PATH.select { |p| p.include?(File.dirname(__dir__)) }
+    load_path_args = load_paths.flat_map { |p| ["-I", p] }
+
+    # Create pipe for ready signal
+    ready_r, ready_w = IO.pipe
+    stdout_r, stdout_w = IO.pipe
+    stderr_r, stderr_w = IO.pipe
+
+    pid = Process.spawn(
+      { 'TK_READY_FD' => '3' },
+      RbConfig.ruby, *load_path_args, sample_path, *args,
+      in: :close,
+      out: stdout_w,
+      err: stderr_w,
+      3 => ready_w
+    )
+
+    # Parent closes write ends
+    ready_w.close
+    stdout_w.close
+    stderr_w.close
+
+    success = false
+    stdout = ""
+    stderr = ""
+
+    # Hard timeout wrapper - ensures we never hang forever
+    hard_timeout = timeout + 5
+
+    begin
+      Timeout.timeout(hard_timeout) do
+        # Wait for ready signal or timeout
+        timed_out = false
+        if IO.select([ready_r], nil, nil, timeout)
+          ready_r.read(1)  # Got ready signal - UI is up
+          success = true
+        else
+          timed_out = true
+        end
+        ready_r.close
+
+        # Send SIGTERM and wait for clean shutdown
+        # (tcltk_compat.rb installs a handler that defers to Tk.root.destroy)
+        if process_alive?(pid)
+          Process.kill("TERM", pid)
+          begin
+            Timeout.timeout(2) { Process.wait(pid) }
+          rescue Timeout::Error
+            Process.kill("KILL", pid)
+            Process.wait(pid)
+          end
+        else
+          Process.wait(pid)
+          success = false unless success
+        end
+
+        stdout = stdout_r.read
+        stderr = stderr_r.read
+        if timed_out
+          stderr = "TIMEOUT: Sample did not signal ready within #{timeout}s\n#{stderr}"
+        end
+      end
+    rescue Timeout::Error
+      # Hard timeout hit - force kill and fail
+      Process.kill("KILL", pid) rescue nil
+      Process.wait(pid) rescue nil
+      stdout = stdout_r.read rescue ""
+      stderr = "HARD TIMEOUT: Sample did not respond within #{hard_timeout}s\n#{stderr_r.read rescue ""}"
+      success = false
+    ensure
+      stdout_r.close unless stdout_r.closed?
+      stderr_r.close unless stderr_r.closed?
+    end
+
+    [success, stdout, stderr]
+  end
+
+  def process_alive?(pid)
+    Process.kill(0, pid)
+    true
+  rescue Errno::ESRCH
+    false
+  end
+
+  # Run test using persistent TkWorker (fast, no subprocess spawn per test).
+  #
+  # The test code has access to `root` (a withdrawn TkRoot instance).
+  # Do NOT create your own TkRoot or call root.destroy - worker manages this.
+  #
+  # Example:
+  #   def test_something
+  #     assert_tk_app("should work", method(:my_app))
+  #   end
+  #
+  #   def my_app
+  #     require 'tk'
+  #     label = TkLabel.new(root) { text "Hello" }
+  #     raise "wrong" unless label.cget(:text) == "Hello"
+  #   end
+  #
+  def assert_tk_app(message, app_method)
+    require_relative 'tk_worker'
+
+    # Extract method body (skip def line and closing end)
+    source_lines = app_method.source.lines
+    body = source_lines[1..-2].join
+
+    result = TkWorker.run_test(body)
+
+    # Show warnings (interpreter cleanup, etc.) even on success
+    if result[:warnings]&.any?
+      warn "TkWorker warnings: #{result[:warnings].join('; ')}"
+    end
+
+    unless result[:success]
+      output = []
+      output << "Error: #{result[:error_class]}: #{result[:error_message]}"
+      output << "Code:\n#{result[:code_context]}" if result[:code_context]
+      output << "Backtrace:\n  #{result[:backtrace].join("\n  ")}" if result[:backtrace]
+      output << "STDOUT:\n#{result[:stdout]}" unless result[:stdout].to_s.empty?
+      output << "STDERR:\n#{result[:stderr]}" unless result[:stderr].to_s.empty?
+      output << "Warnings:\n#{result[:warnings].join("\n")}" if result[:warnings]&.any?
+
+      flunk "#{message}\n#{output.join("\n")}"
+    end
+
+    assert true  # Explicit pass
+  end
+
+  # Assertion wrapper for smoke_test_sample
+  def assert_sample_loads(sample_path, message: nil, timeout: 10)
+    sample_name = File.basename(sample_path)
+    message ||= "Sample #{sample_name} should load without crashing"
+
+    success, stdout, stderr = smoke_test_sample(sample_path, timeout: timeout)
+
+    output = []
+    output << "STDOUT:\n#{stdout}" unless stdout.empty?
+    output << "STDERR:\n#{stderr}" unless stderr.empty?
 
     assert success, "#{message}\n#{output.join("\n")}"
   end

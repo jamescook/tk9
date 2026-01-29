@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/dialog.rb'
 
@@ -45,16 +45,6 @@ class Tk::BWidget::MessageDlg
   end
   private :create_self
 
-  def __strval_optkeys
-    super() << 'message' << 'title'
-  end
-  private :__strval_optkeys
-
-  def __listval_optkeys
-    super() << 'buttons'
-  end
-  private :__listval_optkeys
-
   def cget(slot)
     slot = slot.to_s
     if slot == 'relative'
@@ -90,7 +80,7 @@ class Tk::BWidget::MessageDlg
       if @info
         # update @info
         slot.each{|k, v|
-          if TkComm::GET_CONFIGINFO_AS_ARRAY
+          if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
             if (inf = @info.assoc(k))
               inf[-1] = v
             else
@@ -113,7 +103,7 @@ class Tk::BWidget::MessageDlg
 
       if @info
         # update @info
-        if TkComm::GET_CONFIGINFO_AS_ARRAY
+        if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
           if (inf = @info.assoc(slot))
             inf[-1] = value
           else
@@ -135,14 +125,14 @@ class Tk::BWidget::MessageDlg
   def configinfo(slot=nil)
     if winfo_exist?
       @info = super()
-      if TkComm::GET_CONFIGINFO_AS_ARRAY
+      if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
         @info << ['relative', 'parent']
       else
         @info['relative'] = 'parent'
       end
     end
 
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
+    if true # FIXME: Forced true after GET_CONFIGINFO_AS_ARRAY removal - needs cleanup
       if @info
         if winfo_exist?
           # update @keys
@@ -162,7 +152,7 @@ class Tk::BWidget::MessageDlg
         @info.dup
       end
 
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
+    else # ! true
       if @info
         if winfo_exist?
           # update @keys

@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 
 # call setup script for general 'tkextlib' libraries
 require 'tkextlib/setup.rb'
@@ -113,6 +113,70 @@ module Tk
 
     def self.wrongNumArgsString(str)
       tk_call('BWidget::wrongNumArgsString', str)
+    end
+
+    # Reset BWidget internal state for test isolation.
+    # This clears caches and destroys internal widgets so they can be
+    # recreated fresh. Call this between tests when reusing a Tk interpreter.
+    #
+    # This unwinds state created by Widget::init and Widget::_get_tkwidget_options.
+    # See: https://github.com/tcltk/bwidget/blob/master/widget.tcl
+    def self.reset
+      TkCore::INTERP._eval(<<~'TCL')
+        # Destroy help shell
+        catch {destroy .help_shell}
+
+        # Clear Widget instance tracking (from Widget::init)
+        catch {array unset ::Widget::_class}
+        catch {array unset ::Widget::_inuse}
+
+        # Clear DynamicHelp state
+        catch {array unset ::DynamicHelp::_registered}
+        catch {array unset ::DynamicHelp::_canvases}
+        catch {array unset ::DynamicHelp::_texts}
+        catch {set ::DynamicHelp::_current_balloon ""}
+        catch {set ::DynamicHelp::_current_variable ""}
+
+        # Clear Button state
+        catch {set ::Button::_current ""}
+        catch {set ::Button::_pressed ""}
+
+        # Clear ArrowButton state
+        catch {set ::ArrowButton::_grabbed ""}
+
+        # Clear DragSite/DropSite state
+        catch {set ::DragSite::_dragwidget ""}
+        catch {array unset ::DragSite::_dragonroot}
+        catch {array unset ::DropSite::_dropwidget}
+
+        # Clear Entry state
+        catch {set ::Entry::_current_entry ""}
+
+        # Clear ComboBox state
+        catch {set ::ComboBox::_index ""}
+        catch {set ::ComboBox::_mapped ""}
+
+        # Clear Tree state
+        catch {array unset ::Tree::_nodes}
+
+        # Clear ListBox state
+        catch {array unset ::ListBox::_items}
+
+        # Clear NoteBook state
+        catch {array unset ::NoteBook::_pages}
+
+        # Destroy and recreate .#BWidget with test widgets
+        # Widget::_test_tkresource assumes these exist based on _tk_widget cache
+        catch {destroy .#BWidget}
+        if {[info exists ::Widget::_tk_widget]} {
+          frame .#BWidget
+          foreach tkw [array names ::Widget::_tk_widget] {
+            catch {$tkw .#BWidget.#$tkw}
+          }
+        }
+      TCL
+
+      nil
     end
 
     ####################################################

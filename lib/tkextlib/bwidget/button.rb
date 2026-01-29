@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/button'
 require 'tkextlib/bwidget.rb'
 
@@ -16,17 +16,13 @@ module Tk
 end
 
 class Tk::BWidget::Button
+  extend Tk::OptionDSL
+
   TkCommandNames = ['Button'.freeze].freeze
-  WidgetClassName = 'Button'.freeze
+  WidgetClassName = 'BWidget::Button'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext'
-  end
-  private :__strval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget Button options
+  option :helptext, type: :string
+  option :helpvar, type: :tkvariable
 end

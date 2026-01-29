@@ -2,37 +2,19 @@
 #
 # tk/menu.rb : treat menu and menubutton
 #
-require 'tk' unless defined?(Tk)
-require 'tk/itemconfig'
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/menu.html
+# See: https://www.tcl-lang.org/man/tcl/TkCmd/menubutton.html
+#
 require 'tk/menuspec'
+require 'tk/option_dsl'
+require 'tk/item_option_dsl'
 
 module TkMenuEntryConfig
-  include TkItemConfigMethod
+  include Tk::ItemOptionDSL::InstanceMethods
 
-  def __item_cget_cmd(id)
-    [self.path, 'entrycget', id]
-  end
-  private :__item_cget_cmd
-
-  def __item_config_cmd(id)
-    [self.path, 'entryconfigure', id]
-  end
-  private :__item_config_cmd
-
-  def __item_strval_optkeys(id)
-    super(id) << 'selectcolor'
-  end
-  private :__item_strval_optkeys
-
-  def __item_listval_optkeys(id)
-    []
-  end
-  private :__item_listval_optkeys
-
-  def __item_val2ruby_optkeys(id)  # { key=>proc, ... }
-    super(id).update('menu'=>proc{|i, v| window(v)})
-  end
-  private :__item_val2ruby_optkeys
+  # Item command configuration moved to DSL:
+  #   item_commands cget: 'entrycget', configure: 'entryconfigure'
+  # Set on Tk::Menu class after including Tk::Generated::MenuItems
 
   alias entrycget_tkstring itemcget_tkstring
   alias entrycget itemcget
@@ -49,6 +31,11 @@ class Tk::Menu<TkWindow
   include Wm
   include TkMenuEntryConfig
   extend TkMenuSpec
+  include Tk::Generated::Menu
+  include Tk::Generated::MenuItems
+
+  # Declare item command structure (menu entries use 'entry*' commands)
+  item_commands cget: 'entrycget', configure: 'entryconfigure'
 
   TkCommandNames = ['menu'.freeze].freeze
   WidgetClassName = 'Menu'.freeze
@@ -63,15 +50,8 @@ class Tk::Menu<TkWindow
   #end
   #private :create_self
 
-  def __strval_optkeys
-    super() << 'selectcolor' << 'title'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'tearoff'
-  end
-  private :__boolval_optkeys
+  # NOTE: __strval_optkeys override for 'selectcolor', 'title' removed - now declared via OptionDSL
+  # NOTE: __boolval_optkeys override for 'tearoff' removed - now declared via OptionDSL
 
   def self.new_menuspec(menu_spec, parent = nil, tearoff = false, keys = nil)
     if parent.kind_of?(Hash)
@@ -154,7 +134,7 @@ class Tk::Menu<TkWindow
     (ret == 'none')? nil: number(ret)
   end
   def invoke(index)
-    _fromUTF8(tk_send_without_enc('invoke', _get_eval_enc_str(index)))
+    tk_send_without_enc('invoke', _get_eval_enc_str(index))
   end
   def insert(index, type, keys=nil)
     tk_send_without_enc('insert', _get_eval_enc_str(index),
@@ -180,7 +160,7 @@ class Tk::Menu<TkWindow
     self
   end
   def post(x, y)
-    _fromUTF8(tk_send_without_enc('post', x, y))
+    tk_send_without_enc('post', x, y)
   end
   def postcascade(index)
     tk_send_without_enc('postcascade', _get_eval_enc_str(index))
@@ -211,180 +191,6 @@ class Tk::Menu<TkWindow
   def yposition(index)
     number(tk_send_without_enc('yposition', _get_eval_enc_str(index)))
   end
-
-=begin
-  def entrycget(index, key)
-    case key.to_s
-    when 'text', 'label', 'show'
-      _fromUTF8(tk_send_without_enc('entrycget',
-                                    _get_eval_enc_str(index), "-#{key}"))
-    when 'font', 'kanjifont'
-      #fnt = tk_tcl2ruby(tk_send('entrycget', index, "-#{key}"))
-      fnt = tk_tcl2ruby(_fromUTF8(tk_send_without_enc('entrycget', _get_eval_enc_str(index), '-font')))
-      unless fnt.kind_of?(TkFont)
-        fnt = tagfontobj(index, fnt)
-      end
-      if key.to_s == 'kanjifont' && JAPANIZED_TK && TK_VERSION =~ /^4\.*/
-        # obsolete; just for compatibility
-        fnt.kanji_font
-      else
-        fnt
-      end
-    else
-      tk_tcl2ruby(_fromUTF8(tk_send_without_enc('entrycget', _get_eval_enc_str(index), "-#{key}")))
-    end
-  end
-  def entryconfigure(index, key, val=None)
-    if key.kind_of? Hash
-      if (key['font'] || key[:font] ||
-          key['kanjifont'] || key[:kanjifont] ||
-          key['latinfont'] || key[:latinfont] ||
-          key['asciifont'] || key[:asciifont])
-        tagfont_configure(index, _symbolkey2str(key))
-      else
-        tk_send_without_enc('entryconfigure', _get_eval_enc_str(index),
-                            *hash_kv(key, true))
-      end
-
-    else
-      if (key == 'font' || key == :font ||
-          key == 'kanjifont' || key == :kanjifont ||
-          key == 'latinfont' || key == :latinfont ||
-          key == 'asciifont' || key == :asciifont )
-        if val == None
-          tagfontobj(index)
-        else
-          tagfont_configure(index, {key=>val})
-        end
-      else
-        tk_call('entryconfigure', index, "-#{key}", val)
-      end
-    end
-    self
-  end
-
-  def entryconfiginfo(index, key=nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if key
-        case key.to_s
-        when 'text', 'label', 'show'
-          conf = tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-        when 'font', 'kanjifont'
-          conf = tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-          conf[4] = tagfont_configinfo(index, conf[4])
-        else
-          conf = tk_split_list(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-        end
-        conf[0] = conf[0][1..-1]
-        conf
-      else
-        ret = tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure', _get_eval_enc_str(index)))).collect{|conflist|
-          conf = tk_split_simplelist(conflist)
-          conf[0] = conf[0][1..-1]
-          case conf[0]
-          when 'text', 'label', 'show'
-          else
-            if conf[3]
-              if conf[3].index('{')
-                conf[3] = tk_split_list(conf[3])
-              else
-                conf[3] = tk_tcl2ruby(conf[3])
-              end
-            end
-            if conf[4]
-              if conf[4].index('{')
-                conf[4] = tk_split_list(conf[4])
-              else
-                conf[4] = tk_tcl2ruby(conf[4])
-              end
-            end
-          end
-          conf[1] = conf[1][1..-1] if conf.size == 2 # alias info
-          conf
-        }
-        if fontconf
-          ret.delete_if{|item| item[0] == 'font' || item[0] == 'kanjifont'}
-          fontconf[4] = tagfont_configinfo(index, fontconf[4])
-          ret.push(fontconf)
-        else
-          ret
-        end
-      end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      if key
-        case key.to_s
-        when 'text', 'label', 'show'
-          conf = tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-        when 'font', 'kanjifont'
-          conf = tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-          conf[4] = tagfont_configinfo(index, conf[4])
-        else
-          conf = tk_split_list(_fromUTF8(tk_send_without_enc('entryconfigure',_get_eval_enc_str(index),"-#{key}")))
-        end
-        key = conf.shift[1..-1]
-        { key => conf }
-      else
-        ret = {}
-        tk_split_simplelist(_fromUTF8(tk_send_without_enc('entryconfigure', _get_eval_enc_str(index)))).each{|conflist|
-          conf = tk_split_simplelist(conflist)
-          key = conf.shift[1..-1]
-          case key
-          when 'text', 'label', 'show'
-          else
-            if conf[2]
-              if conf[2].index('{')
-                conf[2] = tk_split_list(conf[2])
-              else
-                conf[2] = tk_tcl2ruby(conf[2])
-              end
-            end
-            if conf[3]
-              if conf[3].index('{')
-                conf[3] = tk_split_list(conf[3])
-              else
-                conf[3] = tk_tcl2ruby(conf[3])
-              end
-            end
-          end
-          if conf.size == 1
-            ret[key] = conf[0][1..-1]  # alias info
-          else
-            ret[key] = conf
-          end
-        }
-        fontconf = ret['font']
-        if fontconf
-          ret.delete('font')
-          ret.delete('kanjifont')
-          fontconf[3] = tagfont_configinfo(index, fontconf[3])
-          ret['font'] = fontconf
-        end
-        ret
-      end
-    end
-  end
-
-  def current_entryconfiginfo(index, key=nil)
-    if TkComm::GET_CONFIGINFO_AS_ARRAY
-      if key
-        conf = entryconfiginfo(index, key)
-        {conf[0] => conf[4]}
-      else
-        ret = {}
-        entryconfiginfo(index).each{|conf|
-          ret[conf[0]] = conf[4] if conf.size > 2
-        }
-        ret
-      end
-    else # ! TkComm::GET_CONFIGINFO_AS_ARRAY
-      ret = {}
-      entryconfiginfo(index, key).each{|k, conf|
-        ret[k] = conf[-1] if conf.kind_of?(Array)
-      }
-      ret
-    end
-  end
-=end
 end
 
 #TkMenu = Tk::Menu unless Object.const_defined? :TkMenu
@@ -536,40 +342,58 @@ Tk.__set_loaded_toplevel_aliases__('tk/menu.rb', :Tk, Tk::SysMenu_Apple,
 
 
 class Tk::Menubutton<Tk::Label
+  include Tk::Generated::Menubutton
+  # @generated:options:start
+  # Available options (auto-generated from Tk introspection):
+  #
+  #   :activebackground
+  #   :activeforeground
+  #   :anchor
+  #   :background
+  #   :bitmap
+  #   :borderwidth
+  #   :compound
+  #   :cursor
+  #   :direction
+  #   :disabledforeground
+  #   :font
+  #   :foreground
+  #   :height
+  #   :highlightbackground
+  #   :highlightcolor
+  #   :highlightthickness
+  #   :image
+  #   :indicatoron
+  #   :justify
+  #   :menu
+  #   :padx
+  #   :pady
+  #   :relief
+  #   :state
+  #   :takefocus
+  #   :text
+  #   :textvariable (tkvariable)
+  #   :underline
+  #   :width
+  #   :wraplength
+  # @generated:options:end
+
+
   TkCommandNames = ['menubutton'.freeze].freeze
   WidgetClassName = 'Menubutton'.freeze
   WidgetClassNames[WidgetClassName] ||= self
+
   def create_self(keys)
     if keys and keys != None
-      unless TkConfigMethod.__IGNORE_UNKNOWN_CONFIGURE_OPTION__
-        # tk_call_without_enc('menubutton', @path, *hash_kv(keys, true))
-        tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                            *hash_kv(keys, true))
-      else
-        begin
-          tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                              *hash_kv(keys, true))
-        rescue
-          tk_call_without_enc(self.class::TkCommandNames[0], @path)
-          keys = __check_available_configure_options(keys)
-          unless keys.empty?
-            tk_call_without_enc('destroy', @path) rescue nil
-            tk_call_without_enc(self.class::TkCommandNames[0], @path,
-                                *hash_kv(keys, true))
-          end
-        end
-      end
+      tk_call_without_enc(self.class::TkCommandNames[0], @path,
+                          *hash_kv(keys, true))
     else
-      # tk_call_without_enc('menubutton', @path)
       tk_call_without_enc(self.class::TkCommandNames[0], @path)
     end
   end
   private :create_self
 
-  def __boolval_optkeys
-    super() << 'indicatoron'
-  end
-  private :__boolval_optkeys
+  # NOTE: __boolval_optkeys override for 'indicatoron' removed - now declared via OptionDSL
 
 end
 Tk::MenuButton = Tk::Menubutton

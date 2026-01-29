@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 
@@ -19,11 +19,6 @@ class Tk::BWidget::PanelFrame
   TkCommandNames = ['PanelFrame'.freeze].freeze
   WidgetClassName = 'PanelFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
-
-  def __strval_optkeys
-    super() + ['panelforeground', 'panelbackground']
-  end
-  private :__strval_optkeys
 
   def add(win, keys={})
     tk_send('add', win, keys)

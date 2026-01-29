@@ -1,9 +1,47 @@
 # frozen_string_literal: false
 #
-#   tk/virtevent.rb : treats virtual events
-#                     1998/07/16 by Hidetoshi Nagai <nagai@ai.kyutech.ac.jp>
+# tk/virtevent.rb : treats virtual events
+#                   1998/07/16 by Hidetoshi Nagai <nagai@ai.kyutech.ac.jp>
 #
-require 'tk' unless defined?(Tk)
+# Virtual events are custom, application-defined events that can be triggered
+# by one or more physical event sequences. They provide a layer of abstraction
+# between the physical events (like key presses) and application actions.
+#
+# == Use Cases
+#
+# - Define application-specific shortcuts that can be customized
+# - Create platform-independent bindings (different keys on Mac vs Windows)
+# - Group multiple key sequences that trigger the same action
+# - Define semantic events like <<Save>>, <<Undo>>, <<MyCustomAction>>
+#
+# == Example Usage
+#
+#   require 'tk'
+#   require 'tk/virtevent'
+#
+#   # Create a virtual event triggered by Ctrl+S or F2
+#   save_event = TkVirtualEvent.new('Control-s', 'F2')
+#
+#   # Bind a widget to the virtual event
+#   button = TkButton.new(root, text: 'Click me')
+#   button.bind(save_event.path) { puts "Save triggered!" }
+#
+#   # Add another trigger sequence later
+#   save_event.add('Control-Shift-s')
+#
+#   # Query what sequences trigger this event
+#   save_event.info  #=> ['Control-s', 'F2', 'Control-Shift-s']
+#
+#   # Remove a sequence
+#   save_event.delete('F2')
+#
+#   # Delete the entire virtual event
+#   save_event.delete
+#
+#   # Access predefined virtual events (platform-dependent)
+#   TkVirtualEvent.info  #=> [<<Copy>>, <<Paste>>, <<Cut>>, ...]
+#
+require 'tk'
 
 class TkVirtualEvent<TkObject
   extend Tk

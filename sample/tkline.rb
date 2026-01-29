@@ -1,6 +1,9 @@
 # frozen_string_literal: false
+# tk-record: screen_size=320x240
 
 require "tkclass"
+
+Tk.root.geometry('320x240')
 
 $tkline_init = false
 def start_random
@@ -45,4 +48,24 @@ end
 $c.bind("1", proc{|e| do_press e.x, e.y})
 $c.bind("B1-Motion", proc{|x, y| do_motion x, y}, "%x %y")
 $c.bind("ButtonRelease-1", proc{|x, y| do_release x, y}, "%x %y")
+
+# Automated demo support (testing and recording)
+require 'tk/demo_support'
+
+if TkDemo.active?
+  TkDemo.on_visible {
+    puts "UI loaded"
+    # Draw a line
+    $c.event_generate('1', :x => 50, :y => 50)
+    Tk.update
+    $c.event_generate('Motion', :x => 150, :y => 100, :state => 256)  # B1-Motion
+    Tk.update
+    $c.event_generate('ButtonRelease-1', :x => 150, :y => 100)
+    Tk.update
+    puts "line drawn"
+
+    Tk.after(TkDemo.delay) { TkDemo.finish }
+  }
+end
+
 Tk.mainloop

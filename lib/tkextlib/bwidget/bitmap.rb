@@ -3,7 +3,7 @@
 #  tkextlib/bwidget/bitmap.rb
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/image'
 require 'tkextlib/bwidget.rb'
 

@@ -4,7 +4,7 @@
 #                               by Hidetoshi NAGAI (nagai@ai.kyutech.ac.jp)
 #
 
-require 'tk' unless defined?(Tk)
+require 'tk'
 require 'tk/frame'
 require 'tkextlib/bwidget.rb'
 require 'tkextlib/bwidget/label'
@@ -17,24 +17,14 @@ module Tk
 end
 
 class Tk::BWidget::LabelFrame
+  extend Tk::OptionDSL
+
   TkCommandNames = ['LabelFrame'.freeze].freeze
   WidgetClassName = 'LabelFrame'.freeze
   WidgetClassNames[WidgetClassName] ||= self
 
-  def __strval_optkeys
-    super() << 'helptext'
-  end
-  private :__strval_optkeys
-
-  def __boolval_optkeys
-    super() << 'dragenabled' << 'dropenabled'
-  end
-  private :__boolval_optkeys
-
-  def __tkvariable_optkeys
-    super() << 'helpvar'
-  end
-  private :__tkvariable_optkeys
+  # BWidget LabelFrame options
+  option :helpvar, type: :tkvariable
 
   def self.align(*args)
     tk_call('LabelFrame::align', *args)
