@@ -325,6 +325,16 @@ class TestSamples < Minitest::Test
     assert_includes stdout, 'loaded jpeg_color.jpg'
     assert_includes stdout, 'loaded tiff_lzw.tiff'
   end
+
+  def test_threading_demo
+    # Use --quick for smoke test (runs Thread mode only instead of all 5 modes)
+    success, stdout, stderr = smoke_test_sample("#{SAMPLE_DIR}/threading_demo.rb", args: ["--quick"], timeout: 15)
+
+    assert success, "Sample failed\nSTDOUT: #{stdout}\nSTDERR: #{stderr}"
+    assert_includes stdout, 'Window size:', "Missing window size output\nSTDOUT: #{stdout}"
+    assert_includes stdout, '[DEMO] Quick smoke test', "Demo didn't start\nSTDOUT: #{stdout}"
+    assert_includes stdout, '[DEMO] All tests completed', "Demo didn't complete\nSTDOUT: #{stdout}"
+  end
 end
 
 # Separate test class for samples that test deprecated/removed features

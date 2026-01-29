@@ -78,8 +78,9 @@ APP_PID=$!
 
 # Wait for window to appear (--sync blocks until found)
 echo "Waiting for window..."
-xdotool search --sync --onlyvisible --name "" >/dev/null
-echo "Window detected, starting recording..."
+WINDOW_ID=$(xdotool search --sync --onlyvisible --name "" | head -1)
+echo "Window detected (id: $WINDOW_ID), moving to 0,0..."
+xdotool windowmove "$WINDOW_ID" 0 0
 sleep 0.3  # Brief settle time
 
 ffmpeg -y -f x11grab -video_size ${SCREEN_SIZE} \

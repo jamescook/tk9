@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 #
-# Test multiple independent Tcl interpreters using Tk::Bridge
+# Test multiple independent Tcl interpreters using TclTkIp directly
 #
 # Uses polling approach with DONT_WAIT + sleep for multi-interpreter support.
 # Note: On macOS, all GUI must be on the main thread, so we use a combined
@@ -12,89 +12,90 @@
 
 $stdout.sync = true
 
-require 'tk/bridge'
+require 'tcltklib'
+require 'set'
 
 puts "=== Multi-Interpreter Test ==="
 puts
 
 # Create 3 independent interpreters
-bridges = []
+interps = []
+closed_interps = Set.new
 
 3.times do |i|
-  bridge = Tk::Bridge.new
-  bridges << bridge
+  interp = TclTkIp.new
+  interps << interp
 
   puts "Interpreter #{i + 1} created"
 
-  bridge.eval("wm title . {Interpreter #{i + 1}}")
-  bridge.eval("wm geometry . 300x150+#{50 + i * 320}+100")
+  interp.tcl_eval("wm title . {Interpreter #{i + 1}}")
+  interp.tcl_eval("wm geometry . 300x150+#{50 + i * 320}+100")
 
   # Each has its own click counter (isolated state)
   click_count = 0
 
-  click_cb = bridge.register_callback do
+  click_cb = interp.register_callback(proc {
     click_count += 1
-    bridge.invoke(".lbl", "configure", "-text", "Interp #{i + 1}: clicked #{click_count}x")
+    interp.tcl_invoke(".lbl", "configure", "-text", "Interp #{i + 1}: clicked #{click_count}x")
     puts "Interpreter #{i + 1} clicked! Count: #{click_count}"
-  end
+  })
 
-  bridge.invoke("label", ".lbl", "-text", "Interp #{i + 1}: click the button")
-  bridge.invoke("pack", ".lbl", "-pady", "20")
+  interp.tcl_invoke("label", ".lbl", "-text", "Interp #{i + 1}: click the button")
+  interp.tcl_invoke("pack", ".lbl", "-pady", "20")
 
-  bridge.invoke("button", ".btn", "-text", "Click Me (Interp #{i + 1})",
-                "-command", bridge.tcl_callback_command(click_cb))
-  bridge.invoke("pack", ".btn", "-pady", "10")
+  interp.tcl_invoke("button", ".btn", "-text", "Click Me (Interp #{i + 1})",
+                    "-command", "ruby_callback #{click_cb}")
+  interp.tcl_invoke("pack", ".btn", "-pady", "10")
 
-  close_cb = bridge.register_callback do
+  close_cb = interp.register_callback(proc {
     puts "Closing interpreter #{i + 1}..."
-    bridge.eval("destroy .")
-  end
-  bridge.invoke("button", ".close", "-text", "Close This Window",
-                "-command", bridge.tcl_callback_command(close_cb))
-  bridge.invoke("pack", ".close", "-pady", "5")
+    closed_interps << interp
+    interp.tcl_eval("destroy .")
+  })
+  interp.tcl_invoke("button", ".close", "-text", "Close This Window",
+                    "-command", "ruby_callback #{close_cb}")
+  interp.tcl_invoke("pack", ".close", "-pady", "5")
 end
 
 puts
-puts "Created 3 interpreters."
+puts "Created #{interps.size} interpreters."
 puts "Each has its own state - clicking one doesn't affect others."
 puts "Close all windows to exit."
 puts
 
-# Smoke test support - click close buttons programmatically
-smoke_test_mode = ENV.delete('TK_READY_FD')
-buttons_clicked = false
+# Smoke test support - save FD for signaling at the very end
+ready_fd = ENV.delete('TK_READY_FD')
 
-if smoke_test_mode
-  # Set up visibility detection
-  bridges[0].eval('set ::visibility_triggered 0')
-  bridges[0].eval('bind . <Visibility> { set ::visibility_triggered 1 }')
+if ready_fd
+  # Process events briefly to ensure windows are up
+  3.times do
+    interps.each { |ip| ip.do_one_event(TclTkLib::ALL_EVENTS | TclTkLib::DONT_WAIT) }
+    sleep 0.01
+  end
+
+  # Invoke close buttons directly (synchronously triggers "Closing interpreter N...")
+  interps.each do |interp|
+    interp.tcl_eval(".close invoke")
+  end
+end
+
+# Helper to check if interpreter is still active
+def interp_active?(interp, closed_set)
+  !interp.deleted? && !closed_set.include?(interp)
 end
 
 # Combined event loop - process events from all interpreters
 # Uses DONT_WAIT so we can poll multiple interpreters without blocking
 running = true
 while running
-  active_bridges = bridges.select { |b| b.window_exists?(".") }
+  active_interps = interps.select { |ip| interp_active?(ip, closed_interps) }
 
-  if active_bridges.empty?
+  if active_interps.empty?
     running = false
   else
-    active_bridges.each do |bridge|
+    active_interps.each do |interp|
       # Non-blocking event processing
-      bridge.interp.do_one_event(TclTkLib::ALL_EVENTS | TclTkLib::DONT_WAIT)
-      bridge.dispatch_pending_callbacks
-    end
-
-    # Smoke test: once visible, click the close buttons
-    if smoke_test_mode && !buttons_clicked
-      if bridges[0].eval('set ::visibility_triggered') == '1'
-        # Click close button on each interpreter
-        bridges.each do |bridge|
-          bridge.invoke(".close", "invoke")
-          bridge.dispatch_pending_callbacks
-        end
-        buttons_clicked = true
-      end
+      interp.do_one_event(TclTkLib::ALL_EVENTS | TclTkLib::DONT_WAIT)
     end
 
     # Small sleep to avoid busy-waiting (necessary for multi-interpreter polling)
@@ -104,3 +105,9 @@ end
 
 puts
 puts "=== Done! ==="
+$stdout.flush
+
+# Signal ready at the very end - process exits immediately after
+if ready_fd
+  IO.for_fd(ready_fd.to_i).tap { |io| io.write("1"); io.close } rescue nil
+end

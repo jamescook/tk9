@@ -491,8 +491,11 @@ namespace :docker do
   DOCKERFILE = 'Dockerfile.ci-test'
   DOCKER_LABEL = 'project=ruby-tk'
 
-  def docker_image_name(tcl_version)
-    tcl_version == '8.6' ? 'tk-ci-test-8' : 'tk-ci-test-9'
+  def docker_image_name(tcl_version, ruby_version = nil)
+    ruby_version ||= ruby_version_from_env
+    base = tcl_version == '8.6' ? 'tk-ci-test-8' : 'tk-ci-test-9'
+    # Include Ruby version suffix for non-default versions
+    ruby_version == '3.4' ? base : "#{base}-ruby#{ruby_version}"
   end
 
   def tcl_version_from_env
@@ -503,44 +506,51 @@ namespace :docker do
     version
   end
 
-  desc "Build Docker image (TCL_VERSION=9.0|8.6)"
+  def ruby_version_from_env
+    ENV.fetch('RUBY_VERSION', '3.4')
+  end
+
+  desc "Build Docker image (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
   task :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
     verbose = ENV['VERBOSE'] || ENV['V']
     quiet = !verbose
     if quiet
-      puts "Building Docker image for Tcl #{tcl_version}... (VERBOSE=1 for details)"
+      puts "Building Docker image for Ruby #{ruby_version}, Tcl #{tcl_version}... (VERBOSE=1 for details)"
     else
-      puts "Building Docker image for Tcl #{tcl_version}..."
+      puts "Building Docker image for Ruby #{ruby_version}, Tcl #{tcl_version}..."
     end
     cmd = "docker build -f #{DOCKERFILE}"
     cmd += " -q" if quiet
     cmd += " --label #{DOCKER_LABEL}"
+    cmd += " --build-arg RUBY_VERSION=#{ruby_version}"
     cmd += " --build-arg TCL_VERSION=#{tcl_version}"
     cmd += " -t #{image_name} ."
 
     sh cmd, verbose: !quiet
   end
 
-  desc "Run tests in Docker (TCL_VERSION=9.0|8.6, TEST=path/to/test.rb)"
+  desc "Run tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|..., TEST=path/to/test.rb)"
   task test: :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
     # Ensure output directories exist on host
     require 'fileutils'
     FileUtils.mkdir_p('screenshots')
     FileUtils.mkdir_p('coverage')
 
-    puts "Running tests in Docker (Tcl #{tcl_version})..."
+    puts "Running tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
     cmd = "docker run --rm --init"
     cmd += " -v #{Dir.pwd}/screenshots:/app/screenshots"
     cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
     cmd += " -e TCL_VERSION=#{tcl_version}"
-    # Pass TEST env var to run a single test file
-    cmd += " -e TEST=#{ENV['TEST']}" if ENV['TEST']
+    # Pass TEST env var (quoted to support multiple files)
+    cmd += " -e TEST='#{ENV['TEST']}'" if ENV['TEST']
     # Pass TESTOPTS for minitest options (e.g., -v for verbose)
     cmd += " -e TESTOPTS=#{ENV['TESTOPTS']}" if ENV['TESTOPTS']
     if ENV['COVERAGE'] == '1'
@@ -553,12 +563,13 @@ namespace :docker do
   end
 
   namespace :test do
-    desc "Run widget tests in Docker (TCL_VERSION=9.0|8.6)"
+    desc "Run widget tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
     task widget: 'docker:build' do
       tcl_version = tcl_version_from_env
-      image_name = docker_image_name(tcl_version)
+      ruby_version = ruby_version_from_env
+      image_name = docker_image_name(tcl_version, ruby_version)
 
-      puts "Running widget tests in Docker (Tcl #{tcl_version})..."
+      puts "Running widget tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
       cmd += " -e TCL_VERSION=#{tcl_version}"
       cmd += " #{image_name}"
@@ -567,15 +578,16 @@ namespace :docker do
       sh cmd
     end
 
-    desc "Run bwidget tests in Docker (TCL_VERSION=9.0|8.6)"
+    desc "Run bwidget tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
     task bwidget: 'docker:build' do
       tcl_version = tcl_version_from_env
-      image_name = docker_image_name(tcl_version)
+      ruby_version = ruby_version_from_env
+      image_name = docker_image_name(tcl_version, ruby_version)
 
       require 'fileutils'
       FileUtils.mkdir_p('coverage')
 
-      puts "Running bwidget tests in Docker (Tcl #{tcl_version})..."
+      puts "Running bwidget tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
       cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
       cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -589,15 +601,16 @@ namespace :docker do
       sh cmd
     end
 
-    desc "Run tkdnd tests in Docker (TCL_VERSION=9.0|8.6)"
+    desc "Run tkdnd tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
     task tkdnd: 'docker:build' do
       tcl_version = tcl_version_from_env
-      image_name = docker_image_name(tcl_version)
+      ruby_version = ruby_version_from_env
+      image_name = docker_image_name(tcl_version, ruby_version)
 
       require 'fileutils'
       FileUtils.mkdir_p('coverage')
 
-      puts "Running tkdnd tests in Docker (Tcl #{tcl_version})..."
+      puts "Running tkdnd tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
       cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
       cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -611,12 +624,13 @@ namespace :docker do
       sh cmd
     end
 
-    desc "Run tkimg tests in Docker (TCL_VERSION=9.0|8.6)"
+    desc "Run tkimg tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
     task tkimg: 'docker:build' do
       tcl_version = tcl_version_from_env
-      image_name = docker_image_name(tcl_version)
+      ruby_version = ruby_version_from_env
+      image_name = docker_image_name(tcl_version, ruby_version)
 
-      puts "Running tkimg tests in Docker (Tcl #{tcl_version})..."
+      puts "Running tkimg tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
       cmd += " -e TCL_VERSION=#{tcl_version}"
       cmd += " #{image_name}"
@@ -625,15 +639,16 @@ namespace :docker do
       sh cmd
     end
 
-    desc "Run tile tests in Docker (TCL_VERSION=9.0|8.6, TEST=path/to/test.rb)"
+    desc "Run tile tests in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|..., TEST=path/to/test.rb)"
     task tile: 'docker:build' do
       tcl_version = tcl_version_from_env
-      image_name = docker_image_name(tcl_version)
+      ruby_version = ruby_version_from_env
+      image_name = docker_image_name(tcl_version, ruby_version)
 
       require 'fileutils'
       FileUtils.mkdir_p('coverage')
 
-      puts "Running tile tests in Docker (Tcl #{tcl_version})..."
+      puts "Running tile tests in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
       cmd = "docker run --rm --init"
       cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
       cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -649,7 +664,33 @@ namespace :docker do
       sh cmd
     end
 
-    desc "Run all tests in Docker with combined coverage (TCL_VERSION=9.0|8.6)"
+    desc "Run background_work tests on Ruby 4.x (tests Ruby 4.x Ractor code paths)"
+    task ruby4x: 'docker:build' do
+      tcl_version = tcl_version_from_env
+
+      # Force Ruby 4.0 for this task
+      ruby_version = '4.0'
+      image_name = docker_image_name(tcl_version, ruby_version)
+
+      require 'fileutils'
+      FileUtils.mkdir_p('coverage')
+
+      puts "Running Ruby 4.x Ractor tests in Docker..."
+      cmd = "docker run --rm --init"
+      cmd += " -v #{Dir.pwd}/coverage:/app/coverage"
+      cmd += " -e TCL_VERSION=#{tcl_version}"
+      if ENV['COVERAGE'] == '1'
+        cmd += " -e COVERAGE=1"
+        cmd += " -e COVERAGE_NAME=ruby4x"
+      end
+      cmd += " #{image_name}"
+      # Run tests directly (don't use default CMD which runs `rake test` and triggers clean_coverage)
+      cmd += " xvfb-run -a bundle exec ruby -Itest -Ilib test/test_background_work.rb"
+
+      sh cmd
+    end
+
+    desc "Run all tests in Docker with combined coverage (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
     task all: :build do
       # Clean coverage results first
       require 'fileutils'
@@ -662,11 +703,13 @@ namespace :docker do
       Rake::Task['docker:test:tkdnd'].invoke
       Rake::Task['docker:test:tkimg'].invoke
       Rake::Task['docker:test:tile'].invoke
+      Rake::Task['docker:test:ruby4x'].invoke
 
       # Collate coverage inside Docker (paths match)
       if ENV['COVERAGE'] == '1'
         tcl_version = tcl_version_from_env
-        image_name = docker_image_name(tcl_version)
+        ruby_version = ruby_version_from_env
+        image_name = docker_image_name(tcl_version, ruby_version)
 
         puts "Collating coverage results..."
         cmd = "docker run --rm --init"
@@ -679,10 +722,11 @@ namespace :docker do
     end
   end
 
-  desc "Run interactive shell in Docker (TCL_VERSION=9.0|8.6)"
+  desc "Run interactive shell in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
   task shell: :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
     cmd = "docker run --rm --init -it"
     cmd += " -v #{Dir.pwd}/screenshots:/app/screenshots"
@@ -693,12 +737,13 @@ namespace :docker do
     sh cmd
   end
 
-  desc "Generate options in Docker (TCL_VERSION=9.0|8.6)"
+  desc "Generate options in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
   task generate_options: :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
-    puts "Generating options in Docker (Tcl #{tcl_version})..."
+    puts "Generating options in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
     cmd = "docker run --rm --init"
     cmd += " -v #{Dir.pwd}/lib/tk/generated:/app/lib/tk/generated"
     cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -707,12 +752,13 @@ namespace :docker do
     sh cmd
   end
 
-  desc "Generate item options in Docker (TCL_VERSION=9.0|8.6)"
+  desc "Generate item options in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
   task generate_item_options: :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
-    puts "Generating item options in Docker (Tcl #{tcl_version})..."
+    puts "Generating item options in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
     cmd = "docker run --rm --init"
     cmd += " -v #{Dir.pwd}/lib/tk/generated:/app/lib/tk/generated"
     cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -721,12 +767,13 @@ namespace :docker do
     sh cmd
   end
 
-  desc "Generate Ttk options in Docker (TCL_VERSION=9.0|8.6)"
+  desc "Generate Ttk options in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|...)"
   task generate_ttk_options: :build do
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
-    puts "Generating Ttk options in Docker (Tcl #{tcl_version})..."
+    puts "Generating Ttk options in Docker (Ruby #{ruby_version}, Tcl #{tcl_version})..."
     cmd = "docker run --rm --init"
     cmd += " -v #{Dir.pwd}/lib/tk/generated:/app/lib/tk/generated"
     cmd += " -e TCL_VERSION=#{tcl_version}"
@@ -767,13 +814,14 @@ namespace :docker do
     end
   end
 
-  desc "Record demos in Docker (TCL_VERSION=9.0|8.6, DEMO=sample/foo.rb)"
+  desc "Record demos in Docker (TCL_VERSION=9.0|8.6, RUBY_VERSION=3.4|4.0|..., DEMO=sample/foo.rb)"
   task record_demos: :build do
     require 'fileutils'
     FileUtils.mkdir_p('recordings')
 
     tcl_version = tcl_version_from_env
-    image_name = docker_image_name(tcl_version)
+    ruby_version = ruby_version_from_env
+    image_name = docker_image_name(tcl_version, ruby_version)
 
     demos = if ENV['DEMO']
               # Single demo from env var

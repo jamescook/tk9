@@ -9,6 +9,7 @@ Fork of [ruby/tk](https://github.com/ruby/tk) with Tcl/Tk 8.6 and 9.x support. M
 - Full Tcl/Tk 9.x compatibility
 - Backward compatible with Tcl/Tk 8.6
 - New Tcl 9 widget options (e.g., `placeholder` for Entry/Combobox)
+- Background work API for responsive UIs (Thread/Ractor modes)
 - Visual regression testing for both Tcl versions
 
 ## Installation
@@ -46,6 +47,61 @@ Tk.mainloop
 ```
 
 Note: You still `require 'tk'` - the gem name is `tk-ng` but the library interface is unchanged.
+
+## Background Work API
+
+Tk applications need to keep the UI responsive while doing CPU-intensive work. The `TkCore.background_work` API provides a simple way to run work in threads or Ractors with automatic UI integration.
+
+```ruby
+require 'tk'
+
+# Run work in background, stream results to UI
+task = TkCore.background_work(files) do |t, data|
+  data.each { |file| t.yield(process(file)) }
+end.on_progress do |result|
+  @log.insert(:end, "#{result}\n")
+end.on_done do
+  puts "Finished!"
+end
+
+# Control the task
+task.pause   # Pause work (call t.check_pause in work block)
+task.resume  # Resume paused work
+task.stop    # Stop completely
+```
+
+**Important:** The work block runs in a background thread/Ractor and cannot access Tk directly. Use `t.yield()` to send results to `on_progress`, which runs on the main thread where Tk is available.
+
+### Modes
+
+Set the concurrency mode globally or per-task:
+
+```ruby
+# Global default (affects all subsequent background_work calls)
+TkCore.background_work_mode = :thread   # Background thread (GVL-bound)
+TkCore.background_work_mode = :ractor   # True parallelism (default)
+
+# Per-task override
+TkCore.background_work(data, mode: :thread) { |t, d| ... }
+```
+
+- **`:thread`** - Uses Ruby threads. Work shares the GVL with UI. Pause/resume always works.
+- **`:ractor`** - Uses Ractors for true parallelism. [Data must be shareable](https://docs.ruby-lang.org/en/4.0/language/ractor_md.html#label-Shareable+procs). Best throughput on Ruby 4.x.
+
+### Pause Support
+
+For pause/resume to work, your work block must periodically check for pause requests:
+
+```ruby
+TkCore.background_work(items) do |t, data|
+  data.each_slice(100) do |batch|
+    t.check_pause  # Block here if paused
+    batch.each { |item| t.yield(process(item)) }
+  end
+end
+```
+
+See [`sample/threading_demo.rb`](sample/threading_demo.rb) for a complete example comparing modes.
 
 ## Documentation
 

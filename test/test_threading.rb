@@ -290,4 +290,101 @@ class TestThreading < Minitest::Test
     t.join(1)
     raise "Expected '21', got '#{thread_eval_result}'" unless thread_eval_result == "21"
   end
+
+  # TkCore.on_main_thread from background thread
+  def test_on_main_thread_from_background
+    assert_tk_app("on_main_thread should work from background thread", method(:app_on_main_thread_from_background))
+  end
+
+  def app_on_main_thread_from_background
+    require 'tk'
+
+    # DEBUG: Show interpreter count before test
+    count = TclTkIp.instance_count
+    instances = TclTkIp.instances.map { |i| "#{i.object_id}(deleted=#{i.deleted?})" }
+    STDERR.puts "\n=== DEBUG: #{count} interpreters: #{instances.join(', ')} ==="
+    STDERR.flush
+
+    result = nil
+    error = nil
+
+    t = Thread.new do
+      begin
+        result = TkCore.on_main_thread { 6 * 7 }
+      rescue => e
+        error = e
+      end
+    end
+
+    # Pump event loop so the queued work gets processed
+    start = Time.now
+    while Time.now - start < 0.3
+      Tk.update
+      sleep 0.01
+    end
+
+    t.join(1)
+    raise "on_main_thread raised: #{error}" if error
+    raise "Expected 42, got #{result.inspect}" unless result == 42
+  end
+
+  # TkCore.on_main_thread from main thread (should execute immediately)
+  def test_on_main_thread_from_main
+    assert_tk_app("on_main_thread should execute immediately on main thread", method(:app_on_main_thread_from_main))
+  end
+
+  def app_on_main_thread_from_main
+    require 'tk'
+
+    # Verify we're on main thread
+    raise "Test not running on main thread" unless Thread.current == Thread.main
+
+    # Should execute immediately without needing event loop pump
+    result = TkCore.on_main_thread { "immediate" }
+    raise "Expected 'immediate', got #{result.inspect}" unless result == "immediate"
+
+    # Should propagate exceptions
+    exception_caught = false
+    begin
+      TkCore.on_main_thread { raise "test_error" }
+    rescue => e
+      exception_caught = e.message.include?("test_error")
+    end
+    raise "Exception not propagated from on_main_thread" unless exception_caught
+  end
+
+  # TkCore.on_main_thread propagates exceptions from background thread
+  def test_on_main_thread_exception_propagation
+    assert_tk_app("on_main_thread should propagate exceptions to caller", method(:app_on_main_thread_exception_propagation))
+  end
+
+  def app_on_main_thread_exception_propagation
+    require 'tk'
+
+    # DEBUG: Show interpreter count before test
+    count = TclTkIp.instance_count
+    instances = TclTkIp.instances.map { |i| "#{i.object_id}(deleted=#{i.deleted?})" }
+    STDERR.puts "\n=== DEBUG: #{count} interpreters: #{instances.join(', ')} ==="
+    STDERR.flush
+
+    caught_exception = nil
+
+    t = Thread.new do
+      begin
+        TkCore.on_main_thread { raise "background_error" }
+      rescue => e
+        caught_exception = e
+      end
+    end
+
+    start = Time.now
+    while Time.now - start < 0.3
+      Tk.update
+      sleep 0.01
+    end
+
+    t.join(1)
+    raise "Exception not caught in background thread" unless caught_exception
+    raise "Wrong exception: #{caught_exception.message}" unless caught_exception.message.include?("background_error")
+  end
 end

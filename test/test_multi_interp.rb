@@ -126,17 +126,17 @@ class TestMultiInterp < Minitest::Test
       <<~RUBY
         require 'tcltklib'
 
-        # Check default value
+        # Check default value (16ms = ~60fps)
         default = TclTkLib.thread_timer_ms
-        raise "default should be 5, got \#{default}" unless default == 5
+        raise "default should be 16, got \#{default}" unless default == 16
 
         # Set to new value
         TclTkLib.thread_timer_ms = 10
         raise "should be 10" unless TclTkLib.thread_timer_ms == 10
 
         # Set back
-        TclTkLib.thread_timer_ms = 5
-        raise "should be 5 again" unless TclTkLib.thread_timer_ms == 5
+        TclTkLib.thread_timer_ms = 16
+        raise "should be 16 again" unless TclTkLib.thread_timer_ms == 16
       RUBY
     end
   end

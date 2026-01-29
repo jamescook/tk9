@@ -83,7 +83,8 @@ static int ruby_eval_proc(ClientData, Tcl_Interp *, int, Tcl_Obj *const *);
 static void interp_deleted_callback(ClientData, Tcl_Interp *);
 
 /* Default timer interval for thread-aware mainloop (ms) */
-#define DEFAULT_TIMER_INTERVAL_MS 5
+/* 16ms ≈ 60fps - balances UI responsiveness with scheduler contention */
+#define DEFAULT_TIMER_INTERVAL_MS 16
 
 /* Global timer interval for TclTkLib.mainloop (mutable) */
 static int g_thread_timer_ms = DEFAULT_TIMER_INTERVAL_MS;
@@ -1028,6 +1029,11 @@ interp_mainloop(VALUE self)
  *
  * Runs the Tk event loop until all windows are closed.
  * Uses the global g_thread_timer_ms setting for thread yielding.
+ *
+ * IMPORTANT: GVL is released during Tcl_DoOneEvent so background
+ * Ruby threads can run while waiting for Tk events. Without this,
+ * background threads would be starved (only running during brief
+ * yields between events).
  * --------------------------------------------------------- */
 
 /* Global timer handler - re-registers itself using global interval */
@@ -1043,6 +1049,7 @@ static VALUE
 lib_mainloop(int argc, VALUE *argv, VALUE self)
 {
     int check_root = 1;  /* default: exit when no windows remain */
+    int event_flags = TCL_ALL_EVENTS;
 
     /* Optional check_root argument:
      *   true (default): exit when Tk_GetNumMainWindows() == 0
@@ -1052,7 +1059,8 @@ lib_mainloop(int argc, VALUE *argv, VALUE self)
         check_root = RTEST(argv[0]);
     }
 
-    /* Start recurring timer if interval > 0 */
+    /* Start recurring timer to ensure DoOneEvent returns periodically.
+     * This lets us check for Ruby interrupts and window closure. */
     if (g_thread_timer_ms > 0) {
         Tcl_CreateTimerHandler(g_thread_timer_ms, global_keepalive_timer_proc, NULL);
     }
@@ -1063,12 +1071,28 @@ lib_mainloop(int argc, VALUE *argv, VALUE self)
             break;
         }
 
-        Tcl_DoOneEvent(TCL_ALL_EVENTS);
-
-        if (g_thread_timer_ms > 0) {
-            rb_thread_call_without_gvl(thread_yield_func, NULL, RUBY_UBF_IO, NULL);
+        if (rb_thread_alone()) {
+            /* No other threads - blocking wait is fine */
+            Tcl_DoOneEvent(event_flags);
+        } else {
+            /* Other threads exist - use non-blocking poll + yield.
+             *
+             * NOTE: We tried rb_thread_call_without_gvl() here to release the
+             * GVL during Tcl_DoOneEvent, which gave better throughput for
+             * background threads. However, it causes scheduler deadlocks when
+             * background threads use Ruby's sleep() - both threads end up
+             * stuck in thread_sched_to_running waiting on the scheduler mutex.
+             *
+             * The polling approach has ~3x overhead but is stable. Background
+             * threads still run during rb_thread_schedule() yields and during
+             * any GVL-releasing operations (I/O, Digest, etc). */
+            int had_event = Tcl_DoOneEvent(event_flags | TCL_DONT_WAIT);
+            if (!had_event) {
+                rb_thread_schedule();
+            }
         }
 
+        /* Check for Ruby interrupts (Ctrl-C, etc) */
         rb_thread_check_ints();
     }
 

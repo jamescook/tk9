@@ -175,6 +175,35 @@ class TkWorker
         }
         b.local_variable_set(:wait_for_display, wait_for_display)
 
+        # Helper to capture screenshots for debugging test failures
+        # Usage: capture_screenshot("my_test") or capture_screenshot("step1", window: some_widget)
+        screenshot_dir = File.expand_path('../../screenshots/test', __FILE__)
+        test_root = @root
+        test_count = @test_count
+        capture_screenshot = ->(name, window: nil) {
+          begin
+            win = window || test_root
+            unless win
+              STDERR.puts "Screenshot failed: no root window available"
+              return
+            end
+
+            require 'tkextlib/tkimg/window'
+            require 'tkextlib/tkimg/png'
+
+            FileUtils.mkdir_p(screenshot_dir)
+            Tk.update
+
+            path = File.join(screenshot_dir, "#{name}_#{test_count}.png")
+            img = TkPhotoImage.new(:format => 'window', :data => win.path)
+            img.write(path, :format => 'png')
+            STDERR.puts "Screenshot saved: #{path}"
+          rescue => e
+            STDERR.puts "Screenshot failed: #{e.message}"
+          end
+        }
+        b.local_variable_set(:capture_screenshot, capture_screenshot)
+
         # Execute the test code
         eval(code, b, "(test)", 1)
 
@@ -219,6 +248,19 @@ class TkWorker
     private
 
     def reset_tk_state!
+      # Clean up extra interpreters and warn via result
+      count = TclTkIp.instance_count
+      if count > 1
+        warning = "TkWorker: #{count} interpreters exist after test ##{@test_count}, cleaning up #{count - 1}"
+        @_test_result[:warnings] ||= []
+        @_test_result[:warnings] << warning
+
+        TclTkIp.instances[1..].each { |ip| ip.delete unless ip.deleted? }
+
+        cached = TkCore.instance_variable_get(:@default_interp)
+        TkCore.instance_variable_set(:@default_interp, nil) if cached&.deleted?
+      end
+
       # Use grid forget on children first (clears their grid config)
       # then destroy them
       @root.winfo_children.each do |child|

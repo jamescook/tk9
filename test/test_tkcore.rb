@@ -297,4 +297,60 @@ class TestTkCore < Minitest::Test
 
     raise errors.join("\n") unless errors.empty?
   end
+
+  # --- Tk.after basic (L509-515) ---
+
+  def test_after_basic
+    assert_tk_app("Tk.after schedules callback", method(:app_after_basic))
+  end
+
+  def app_after_basic
+    require 'tk'
+
+    errors = []
+    called = false
+
+    after_id = Tk.after(10) { called = true }
+    errors << "after should return an ID string" unless after_id.is_a?(String)
+
+    # Process events until callback fires
+    start = Time.now
+    while !called && (Time.now - start) < 2
+      Tk.do_one_event(TclTkLib::DONT_WAIT | TclTkLib::TIMER_EVENTS)
+      sleep 0.01
+    end
+
+    errors << "callback should have been called" unless called
+
+    raise errors.join("\n") unless errors.empty?
+  end
+
+  # --- Tk.after on deleted interpreter ---
+
+  def test_after_on_deleted_interp
+    assert_tk_app("Tk.after fails gracefully on deleted interp", method(:app_after_deleted_interp))
+  end
+
+  def app_after_deleted_interp
+    require 'tk'
+
+    errors = []
+
+    # Create a second interpreter
+    interp2 = TclTkIp.new
+
+    # Delete it
+    interp2.delete
+
+    # Try to call after on the deleted interpreter
+    begin
+      interp2.after(10) { }
+      errors << "after on deleted interp should raise"
+    rescue => e
+      # Expected - should raise some kind of error
+      errors << "error should mention deleted, got: #{e.message}" unless e.message.include?('deleted')
+    end
+
+    raise errors.join("\n") unless errors.empty?
+  end
 end

@@ -246,6 +246,11 @@ module TkTestHelper
 
     result = TkWorker.run_test(body)
 
+    # Show warnings (interpreter cleanup, etc.) even on success
+    if result[:warnings]&.any?
+      warn "TkWorker warnings: #{result[:warnings].join('; ')}"
+    end
+
     unless result[:success]
       output = []
       output << "Error: #{result[:error_class]}: #{result[:error_message]}"
@@ -253,6 +258,7 @@ module TkTestHelper
       output << "Backtrace:\n  #{result[:backtrace].join("\n  ")}" if result[:backtrace]
       output << "STDOUT:\n#{result[:stdout]}" unless result[:stdout].to_s.empty?
       output << "STDERR:\n#{result[:stderr]}" unless result[:stderr].to_s.empty?
+      output << "Warnings:\n#{result[:warnings].join("\n")}" if result[:warnings]&.any?
 
       flunk "#{message}\n#{output.join("\n")}"
     end

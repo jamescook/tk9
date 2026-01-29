@@ -1,6 +1,7 @@
 # frozen_string_literal: false
 
 require_relative 'tk/tk_callback_entry'  # TkCallbackEntry
+require_relative 'tk/ractor_support'     # TkRactorSupport
 
 module TkCore
   include TkComm
@@ -161,6 +162,246 @@ module TkCore
       @init_ip_env.each{|script| script.call(ip)}
       @add_tk_procs.each{|name,args,body| ip._invoke('proc',name,args,body)}
     end
+  end
+
+  # ---------------------------------------------------------
+  # TkCore.interp - Get the interpreter with runtime safety checks
+  #
+  # - Lazily creates an interpreter if none exists
+  # - Raises if multiple interpreters exist (ambiguous)
+  # - Raises if called from background work block
+  # - Preferred over the deprecated INTERP constant
+  # ---------------------------------------------------------
+  def self.interp
+    if Thread.current[:tk_in_background_work]
+      raise RuntimeError,
+        "Cannot access Tk interpreter from background work block. " \
+        "Use task.yield() to send results to the main thread."
+    end
+
+    count = TclTkIp.instance_count
+
+    if count == 0
+      # Lazy creation - create the default interpreter
+      @default_interp = TclTkIp.new
+    elsif count == 1
+      @default_interp ||= TclTkIp.instances.first
+    else
+      raise RuntimeError,
+        "Multiple Tcl interpreters exist (#{count}). " \
+        "Use interp.after(...) on a specific interpreter instance " \
+        "instead of Tk.after(...)"
+    end
+
+    @default_interp
+  end
+
+  # ---------------------------------------------------------
+  # TkCore.on_main_thread { block } - Execute block on main Tcl thread
+  #
+  # If called from main thread: executes immediately
+  # If called from background thread: queues and waits for completion
+  #
+  # This is essential for thread-safe Tk access. Background threads
+  # cannot call Tcl/Tk directly - they must use this wrapper.
+  #
+  # Example:
+  #   Thread.new do
+  #     TkCore.on_main_thread { label.text = "Updated from thread" }
+  #   end
+  #
+  # == Threading Architecture
+  #
+  # Two queue mechanisms work together:
+  # - Tcl's ThreadQueueEvent (C level): safely dispatches to Tcl's event loop
+  # - Ruby Queue (this method): synchronizes the calling thread for results
+  #
+  #   Background Thread                     Main Thread (Tcl event loop)
+  #   ----------------                     ----------------------------
+  #   on_main_thread { work }
+  #     |
+  #     +-- done = Queue.new (Ruby)
+  #     +-- ip.queue_for_main(proc)
+  #     |     |
+  #     |     +-- C: Tcl_ThreadQueueEvent    ---->  ruby_thread_event_handler()
+  #     |     +-- C: Tcl_ThreadAlert                  |
+  #     |     +-- returns immediately                 +-- rb_proc_call(proc)
+  #     |                                             +-- result = yield
+  #     +-- done.pop  <-- BLOCKS                      +-- done << true
+  #     |                                                    |
+  #     +-- returns result  <--------------------------------+
+  #
+  # Why two queues?
+  # - Tcl's queue: Only safe way to run code on the Tcl thread
+  # - Ruby Queue: Lets caller block until completion and retrieve result
+  #
+  # == GVL Limitation
+  #
+  # Ruby's Global VM Lock (GVL) limits the effectiveness of this mechanism
+  # for CPU-bound work. Only one thread can execute Ruby code at a time.
+  #
+  # WORKS WELL (GVL released during these operations):
+  # - I/O-bound work: network requests, file reads, database queries
+  # - C extensions: OpenSSL, image processing, compression libraries
+  # - Tcl's event loop itself (C code) remains responsive
+  #
+  # DOES NOT HELP (GVL held, UI effectively frozen):
+  # - Pure Ruby CPU work: loops, calculations, string processing
+  #
+  #   # Good - I/O releases GVL, UI stays responsive
+  #   Thread.new do
+  #     data = Net::HTTP.get(uri)
+  #     TkCore.on_main_thread { label.text = data }
+  #   end
+  #
+  #   # Limited - CPU work holds GVL, Ruby callbacks on main thread stall
+  #   Thread.new do
+  #     result = (1..10_000_000).map { |n| n * 2 }
+  #     TkCore.on_main_thread { label.text = result.size }
+  #   end
+  #
+  # For true CPU parallelism, consider:
+  # - Ractors (Ruby 3.0+): separate GVL per Ractor
+  # - Subprocesses: complete isolation, communicate via pipes/sockets
+  # - C extensions that release GVL during computation
+  #
+  # == Chunked Work Pattern
+  #
+  # For CPU-bound Ruby work that can't be parallelized, break it into
+  # small chunks and yield to the event loop between chunks:
+  #
+  #   def process_items(items, on_done)
+  #     chunk_size = 100
+  #     index = 0
+  #
+  #     process_chunk = proc do
+  #       chunk_size.times do
+  #         break if index >= items.size
+  #         items[index].process
+  #         index += 1
+  #       end
+  #
+  #       if index >= items.size
+  #         on_done.call
+  #       else
+  #         progress_label.text = "#{index}/#{items.size}"
+  #         Tk.after_idle(&process_chunk)  # Yield to event loop
+  #       end
+  #     end
+  #
+  #     Tk.after_idle(&process_chunk)
+  #   end
+  #
+  # This keeps the UI responsive (redraws, button clicks) at the cost
+  # of slightly slower total processing time.
+  # ---------------------------------------------------------
+  def self.on_main_thread(&block)
+    ip = interp
+    if ip.on_main_thread?
+      yield
+    else
+      # Queue to main thread and wait for completion
+      result = nil
+      error = nil
+      done = Queue.new
+
+      ip.queue_for_main(proc {
+        begin
+          result = yield
+        rescue => e
+          error = e
+        ensure
+          done << true
+        end
+      })
+
+      done.pop  # Wait for completion
+      raise error if error
+      result
+    end
+  end
+
+  # ---------------------------------------------------------
+  # Ractor Support - Thin wrappers to TkRactorSupport module
+  #
+  # See lib/tk/ractor_support.rb for the full implementation.
+  # ---------------------------------------------------------
+
+  # Re-export constants from TkRactorSupport for backwards compatibility
+  RACTOR_PORT_API = TkRactorSupport::RACTOR_PORT_API
+  RACTOR_SHAREABLE_PROC = TkRactorSupport::RACTOR_SHAREABLE_PROC
+  DEFAULT_POLL_MS = TkRactorSupport::DEFAULT_POLL_MS
+
+  # TkCore.ractor_stream - Version-agnostic Ractor streaming
+  #
+  # Creates a Ractor that streams values back to the main thread,
+  # automatically handling Ruby 3.x vs 4.x API differences.
+  #
+  # Example:
+  #   TkCore.ractor_stream(files) do |yielder, data|
+  #     data.each { |f| yielder.yield(process(f)) }
+  #   end.on_progress do |result|
+  #     update_ui(result)
+  #   end.on_done do
+  #     puts "Finished!"
+  #   end
+  def self.ractor_stream(data, &block)
+    TkRactorSupport::RactorStream.new(data, &block)
+  end
+
+  # TkCore.background_work - High-level API for background processing
+  #
+  # Provides a simple interface for running work in the background
+  # while keeping the UI responsive. Supports multiple modes:
+  #
+  #   :ractor - True parallelism (default, recommended)
+  #   :thread - Traditional threading (GVL limitations apply)
+  #
+  # Set the mode globally:
+  #   TkCore.background_work_mode = :ractor  # default
+  #   TkCore.background_work_mode = :thread
+  #
+  # == Basic Example
+  #
+  #   task = TkCore.background_work(files) do |t|
+  #     files.each { |f| t.yield(process(f)) }
+  #   end.on_progress do |result|
+  #     progress_bar.value += 1
+  #   end.on_done do
+  #     status_label.text = "Complete!"
+  #   end
+  #
+  # == Pause/Resume Support
+  #
+  # Two approaches for pause support:
+  #
+  # Option A - Explicit check (better performance):
+  #   Call check_pause at strategic points. Best for batch processing.
+  #
+  #   task = TkCore.background_work(files) do |t|
+  #     files.each_slice(100) do |batch|
+  #       t.check_pause  # Only checks once per batch
+  #       batch.each { |f| t.yield(process(f)) }
+  #     end
+  #   end
+  #   # Later: task.pause / task.resume
+  #
+  # Option B - Auto-check on yield (convenience):
+  #   Every yield automatically checks pause state.
+  #
+  #   task = TkCore.background_work(files, auto_pause: true) do |t|
+  #     files.each { |f| t.yield(process(f)) }  # Checks pause each time
+  #   end
+
+  @background_work_mode = :ractor
+
+  class << self
+    attr_accessor :background_work_mode
+  end
+
+  def self.background_work(data, mode: nil, &block)
+    mode ||= background_work_mode
+    TkRactorSupport::BackgroundWork.new(data, mode: mode, &block)
   end
 
   WIDGET_DESTROY_HOOK = '<WIDGET_DESTROY_HOOK>'

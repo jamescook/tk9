@@ -69,6 +69,17 @@ module Tk
       end
       @version_mismatch = mode
     end
+
+    # Control error handling in background Ractor/thread work
+    # false (default): errors are warned but don't stop the app
+    # true: errors raise an exception (useful for debugging)
+    def abort_on_ractor_error
+      @abort_on_ractor_error ||= false
+    end
+
+    def abort_on_ractor_error=(value)
+      @abort_on_ractor_error = !!value
+    end
   end
 
   # Auto-load version-specific generated options if available
